@@ -320,6 +320,97 @@ async function seed() {
   console.log(`12 articles`)
   console.log(`6 events`)
   console.log(`4 comments`)
+
+  // === CULTURAL MAKERS ===
+  const makers = await db.maker.createMany({
+    data: [
+      {
+        name: "Wangechi Mutu",
+        slug: "wangechi-mutu",
+        discipline: "Visual Arts",
+        bio: "Internationally acclaimed Kenyan-American visual artist known for her sculptural and multimedia works that explore gender, race, and colonial history. Her work has been exhibited at the Metropolitan Museum of Art, the Tate Modern, and the Venice Biennale.",
+        location: "Nairobi / New York",
+        website: "https://wangechimutu.com",
+        instagram: "@wangechimutu",
+        isFeatured: true,
+      },
+      {
+        name: "Blinky Bill",
+        slug: "blinky-bill",
+        discipline: "Music & Production",
+        bio: "Producer, songwriter and multi-instrumentalist pushing the boundaries of Kenyan electronic music. Founder of the BLNK OUT collective, blending Afro-futurism with house, hip-hop, and traditional rhythms.",
+        location: "Nairobi",
+        website: "https://blinkyllky.bandcamp.com",
+        instagram: "@blinkybill",
+        twitter: "@BlinkyBill",
+        isFeatured: true,
+      },
+      {
+        name: "Wanjiru Kinyanjui",
+        slug: "wanjiru-kinyanjui",
+        discipline: "Film & Documentary",
+        bio: "Award-winning Kenyan filmmaker and founder of Joji Films. Known for her documentaries that explore Kenyan social issues, women's stories, and the intersection of tradition and modernity.",
+        location: "Nairobi",
+        website: "",
+        instagram: "@jojifilms",
+        isFeatured: true,
+      },
+      {
+        name: "Muthoni Drummer Queen",
+        slug: "muthoni-drummer-queen",
+        discipline: "Music & Performance",
+        bio: "Kenyan musician, drummer, and festival curator who blends hip-hop, reggae, and Afrobeat. Founder of the Kenya Music Festival and a fierce advocate for women in the Kenyan music industry.",
+        location: "Nairobi",
+        website: "",
+        instagram: "@muthonidrummerqueen",
+        twitter: "@MuthoniDQ",
+        isFeatured: true,
+      },
+      {
+        name: "Peterson Kamwathi",
+        slug: "peterson-kamwathi",
+        discipline: "Visual Arts",
+        bio: "Kenyan contemporary artist whose large-scale charcoal drawings and sculptures interrogate power, politics, and religion in African societies. His work has been shown across Africa and Europe.",
+        location: "Nairobi",
+        website: "",
+        instagram: "@pkamwathi",
+        isFeatured: false,
+      },
+      {
+        name: "Sitawa Namwalie",
+        slug: "sitawa-namwalie",
+        discipline: "Theatre & Poetry",
+        bio: "Kenyan poet, playwright, and performer whose work examines identity, politics, and social justice. Her acclaimed performance piece 'Cut Off My Tongue' has toured extensively across East Africa.",
+        location: "Nairobi",
+        website: "",
+        instagram: "@sitawanz",
+        isFeatured: false,
+      },
+      {
+        name: "Sauti Sol",
+        slug: "sauti-sol",
+        discipline: "Music",
+        bio: "Multi-award-winning Kenyan Afro-pop group composed of Bien-Aimé, Savara, Chimano, and Polycarp. Their music blends Afro-pop, R&B, and Kenyan Benga, and they've become one of Africa's most recognized musical exports.",
+        location: "Nairobi",
+        website: "https://sautisol.com",
+        instagram: "@sautisol",
+        twitter: "@sautisol",
+        isFeatured: true,
+      },
+      {
+        name: "Lupita Nyong'o",
+        slug: "lupita-nyongo",
+        discipline: "Film & Theatre",
+        bio: "Kenyan-Mexican actress and filmmaker who won an Academy Award for her role in '12 Years a Slave.' An advocate for African storytelling, she continues to champion Kenyan narratives on the global stage.",
+        location: "Nairobi / Los Angeles",
+        website: "",
+        instagram: "@lupitanyongo",
+        isFeatured: true,
+      },
+    ]
+  })
+
+  console.log(`${makers.count} cultural makers`)
 }
 
 seed()

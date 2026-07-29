@@ -7,6 +7,8 @@ import { TrendingTicker } from '@/components/sanaa/TrendingTicker'
 import { HeroCarousel } from '@/components/sanaa/HeroCarousel'
 import { StoryGrid } from '@/components/sanaa/StoryGrid'
 import { LensPicks } from '@/components/sanaa/LensPicks'
+import { CulturalMakers } from '@/components/sanaa/CulturalMakers'
+import { FromTheArchive } from '@/components/sanaa/FromTheArchive'
 import { OpinionSection } from '@/components/sanaa/OpinionSection'
 import { EventsSection } from '@/components/sanaa/EventsSection'
 import { ArticleModal } from '@/components/sanaa/ArticleModal'
@@ -19,6 +21,8 @@ import { NewsletterCTA } from '@/components/sanaa/NewsletterCTA'
 import { StoryGridSkeleton } from '@/components/sanaa/Skeletons'
 
 function HomePage() {
+  const makers = useStore(s => s.makers)
+
   return (
     <div className="animate-fadeIn" key="home">
       {/* Value Proposition */}
@@ -49,6 +53,10 @@ function HomePage() {
         <LensPicks />
       </div>
 
+      <div className="py-8 md:py-12">
+        <FromTheArchive />
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 md:px-6"><div className="h-px bg-border" /></div>
 
       <div className="py-8 md:py-12">
@@ -59,6 +67,13 @@ function HomePage() {
 
       <div className="py-8 md:py-12">
         <EventsSection />
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 md:px-6"><div className="h-px bg-border" /></div>
+
+      {/* Cultural Makers Spotlight */}
+      <div className="py-8 md:py-12">
+        <CulturalMakers makers={makers} />
       </div>
 
       {/* Newsletter CTA */}
@@ -77,25 +92,28 @@ export default function Home() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [articlesRes, featuredRes, categoriesRes, eventsRes, authorsRes] = await Promise.all([
+        const [articlesRes, featuredRes, categoriesRes, eventsRes, authorsRes, makersRes] = await Promise.all([
           fetch('/api/articles?limit=20'),
           fetch('/api/articles?featured=true&limit=3'),
           fetch('/api/categories'),
           fetch('/api/events'),
           fetch('/api/authors'),
+          fetch('/api/makers'),
         ])
-        const [articles, featured, categories, events, authors] = await Promise.all([
+        const [articles, featured, categories, events, authors, makers] = await Promise.all([
           articlesRes.json(),
           featuredRes.json(),
           categoriesRes.json(),
           eventsRes.json(),
           authorsRes.json(),
+          makersRes.json(),
         ])
         store.setArticles(articles.articles || [])
         store.setFeaturedArticles(featured.articles || [])
         store.setCategories(categories || [])
         store.setEvents(events || [])
         store.setAuthors(authors || [])
+        store.setMakers(makers || [])
         store.setDataLoaded(true)
       } catch (err) {
         console.error('Failed to fetch data:', err)

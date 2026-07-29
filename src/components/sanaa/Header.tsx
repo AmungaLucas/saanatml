@@ -22,6 +22,7 @@ export function Header() {
     { label: 'Home', slug: 'all', href: '/', view: 'home' as const },
     ...categories.slice(0, 6).map(c => ({ label: c.name, slug: c.slug, href: `/category/${c.slug}`, view: 'category' as const })),
     { label: 'Events', slug: 'events', href: '/events', view: 'events' as const },
+    { label: 'Makers', slug: 'makers', href: '/makers', view: 'events' as const },
     { label: 'About', slug: 'about', href: '/about', view: 'about' as const },
   ]
 

@@ -3,6 +3,8 @@ import { db } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import { ArticlePageClient } from './ArticlePageClient'
 
+const SITE_URL = 'https://sanaathrumylens.co.ke'
+
 interface Props {
   params: Promise<{ slug: string }>
 }
@@ -68,10 +70,54 @@ export default async function ArticlePage({ params }: Props) {
     orderBy: { publishedAt: 'desc' },
   })
 
+  const articleJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: article.title,
+    description: article.excerpt,
+    image: article.coverImage ? `${SITE_URL}${article.coverImage}` : undefined,
+    datePublished: article.publishedAt.toISOString(),
+    dateModified: article.updatedAt.toISOString(),
+    author: {
+      '@type': 'Person',
+      name: article.author.name,
+      url: `${SITE_URL}/authors/${article.author.slug}`,
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Sanaa Through My Lens',
+      url: SITE_URL,
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `${SITE_URL}/articles/${article.slug}`,
+    },
+  }
+
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: article.category.name, item: `${SITE_URL}/category/${article.category.slug}` },
+      { '@type': 'ListItem', position: 3, name: article.title, item: `${SITE_URL}/articles/${article.slug}` },
+    ],
+  }
+
   return (
-    <ArticlePageClient
-      article={JSON.parse(JSON.stringify({ ...article, views: article.views + 1 }))}
-      related={JSON.parse(JSON.stringify(related))}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <ArticlePageClient
+        article={JSON.parse(JSON.stringify({ ...article, views: article.views + 1 }))}
+        related={JSON.parse(JSON.stringify(related))}
+      />
+    </>
   )
 }

@@ -63,6 +63,19 @@ export interface Author {
   role: string
 }
 
+export interface Maker {
+  id: string
+  name: string
+  slug: string
+  discipline: string
+  bio: string
+  location: string
+  website: string
+  instagram: string
+  twitter: string
+  isFeatured: boolean
+}
+
 export type ViewType = 'home' | 'about' | 'events' | 'category' | 'author'
 
 // Load bookmarks from localStorage
@@ -92,6 +105,7 @@ interface AppState {
   categories: Category[]
   events: Event[]
   authors: Author[]
+  makers: Maker[]
   dataLoaded: boolean
 
   // UI State
@@ -112,6 +126,7 @@ interface AppState {
   setCategories: (categories: Category[]) => void
   setEvents: (events: Event[]) => void
   setAuthors: (authors: Author[]) => void
+  setMakers: (makers: Maker[]) => void
   setDataLoaded: (loaded: boolean) => void
   openArticle: (article: Article) => void
   closeArticle: () => void
@@ -130,6 +145,7 @@ export const useStore = create<AppState>((set, get) => ({
   categories: [],
   events: [],
   authors: [],
+  makers: [],
   dataLoaded: false,
   selectedArticle: null,
   isArticleOpen: false,
@@ -145,6 +161,7 @@ export const useStore = create<AppState>((set, get) => ({
   setCategories: (categories) => set({ categories }),
   setEvents: (events) => set({ events }),
   setAuthors: (authors) => set({ authors }),
+  setMakers: (makers) => set({ makers }),
   setDataLoaded: (loaded) => set({ dataLoaded: loaded }),
   openArticle: (article) => set({ selectedArticle: article, isArticleOpen: true }),
   closeArticle: () => set({ selectedArticle: null, isArticleOpen: false }),

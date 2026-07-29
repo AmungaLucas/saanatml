@@ -84,3 +84,19 @@ model NewsletterSubscription {
   email     String   @unique
   createdAt DateTime @default(now())
 }
+
+model Maker {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  discipline  String
+  bio         String
+  avatar      String   @default("")
+  location    String   @default("")
+  website     String   @default("")
+  instagram   String   @default("")
+  twitter     String   @default("")
+  isFeatured  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

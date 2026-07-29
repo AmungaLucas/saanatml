@@ -52,3 +52,33 @@ Stage Summary:
 - 3 new components: ReadingProgress, LensPicks, Skeletons
 - Enhanced features: bookmarks with localStorage, reading progress bar, social sharing, loading skeletons, page fade-in animations
 - All 36 pages statically generated (SSG + static), build passes cleanly
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Phase 3 — Cultural Makers, Admin CMS, SEO enhancements, From the Archive
+
+Work Log:
+- Configured next/image remote patterns for Unsplash domains
+- Added Maker model to Prisma schema (name, slug, discipline, bio, location, social links, isFeatured)
+- Ran prisma db push and seeded 8 cultural makers (Wangechi Mutu, Blinky Bill, Wanjiru Kinyanjui, Muthoni Drummer Queen, Peterson Kamwathi, Sitawa Namwalie, Sauti Sol, Lupita Nyong'o)
+- Created /api/makers API route
+- Created CulturalMakers homepage component with featured maker cards (gold accent borders, discipline badges)
+- Created /makers page with featured hero cards, discipline filter, full grid
+- Added makers to Zustand store, fetched in homepage data loading
+- Added "Makers" nav item to Header
+- Built /admin dashboard page with Overview (8 stat cards: articles, authors, categories, events, comments, makers, subscribers, views) and Articles tab (full CRUD table with create/edit dialog)
+- Created admin API routes: GET/POST /api/admin/articles, PATCH/DELETE /api/admin/articles/[id], GET /api/admin/stats
+- Added JSON-LD structured data to /articles/[slug] (Article + BreadcrumbList schemas)
+- Created FromTheArchive component (numbered archive cards)
+- Updated homepage layout order: Stories → Lens Picks → From the Archive → Opinion → Events → Cultural Makers → Newsletter
+
+Stage Summary:
+- 1 new page: /makers (cultural makers directory)
+- 1 new page: /admin (CMS dashboard with article CRUD)
+- 3 new admin API routes: /api/admin/articles, /api/admin/articles/[id], /api/admin/stats
+- 1 new public API route: /api/makers
+- 1 new Prisma model: Maker
+- 2 new components: CulturalMakers, FromTheArchive
+- JSON-LD structured data on article pages
+- 41 static pages generated, build passes cleanly
