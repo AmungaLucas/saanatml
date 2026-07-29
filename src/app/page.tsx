@@ -6,6 +6,7 @@ import { Header } from '@/components/sanaa/Header'
 import { TrendingTicker } from '@/components/sanaa/TrendingTicker'
 import { HeroCarousel } from '@/components/sanaa/HeroCarousel'
 import { StoryGrid } from '@/components/sanaa/StoryGrid'
+import { LensPicks } from '@/components/sanaa/LensPicks'
 import { OpinionSection } from '@/components/sanaa/OpinionSection'
 import { EventsSection } from '@/components/sanaa/EventsSection'
 import { ArticleModal } from '@/components/sanaa/ArticleModal'
@@ -15,10 +16,11 @@ import { AboutPage } from '@/components/sanaa/AboutPage'
 import { EventsPage } from '@/components/sanaa/EventsPage'
 import { CategoryPage } from '@/components/sanaa/CategoryPage'
 import { NewsletterCTA } from '@/components/sanaa/NewsletterCTA'
+import { StoryGridSkeleton } from '@/components/sanaa/Skeletons'
 
 function HomePage() {
   return (
-    <>
+    <div className="animate-fadeIn" key="home">
       {/* Value Proposition */}
       <section className="max-w-7xl mx-auto px-4 md:px-6 pt-8 pb-2">
         <div className="text-center max-w-2xl mx-auto">
@@ -41,6 +43,12 @@ function HomePage() {
         <StoryGrid />
       </div>
 
+      {/* Lens Picks Editorial Section */}
+      <div className="py-8 md:py-12">
+        <div className="max-w-7xl mx-auto px-4 md:px-6"><div className="h-px bg-border mb-8" /></div>
+        <LensPicks />
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 md:px-6"><div className="h-px bg-border" /></div>
 
       <div className="py-8 md:py-12">
@@ -57,13 +65,14 @@ function HomePage() {
       <section className="max-w-7xl mx-auto px-4 md:px-6 py-12">
         <NewsletterCTA variant="hero" />
       </section>
-    </>
+    </div>
   )
 }
 
 export default function Home() {
   const store = useStore()
   const currentView = useStore(s => s.currentView)
+  const dataLoaded = useStore(s => s.dataLoaded)
 
   useEffect(() => {
     async function fetchData() {
@@ -87,6 +96,7 @@ export default function Home() {
         store.setCategories(categories || [])
         store.setEvents(events || [])
         store.setAuthors(authors || [])
+        store.setDataLoaded(true)
       } catch (err) {
         console.error('Failed to fetch data:', err)
       }
@@ -100,10 +110,23 @@ export default function Home() {
       {currentView === 'home' && <TrendingTicker />}
 
       <main className="flex-1">
-        {currentView === 'home' && <HomePage />}
-        {currentView === 'about' && <AboutPage />}
-        {currentView === 'events' && <EventsPage />}
-        {currentView === 'category' && <CategoryPage />}
+        {currentView === 'home' && (
+          dataLoaded ? <HomePage /> : (
+            <div className="py-8 md:py-12">
+              <div className="max-w-7xl mx-auto px-4 md:px-6">
+                <div className="text-center max-w-2xl mx-auto mb-8">
+                  <div className="h-8 w-64 bg-secondary rounded-lg mx-auto mb-4" />
+                  <div className="h-4 w-48 bg-secondary rounded mx-auto" />
+                </div>
+                <div className="h-[400px] bg-secondary rounded-2xl mb-8" />
+                <StoryGridSkeleton />
+              </div>
+            </div>
+          )
+        )}
+        {currentView === 'about' && <div className="animate-fadeIn" key="about"><AboutPage /></div>}
+        {currentView === 'events' && <div className="animate-fadeIn" key="events"><EventsPage /></div>}
+        {currentView === 'category' && <div className="animate-fadeIn" key="category"><CategoryPage /></div>}
       </main>
 
       <Footer />

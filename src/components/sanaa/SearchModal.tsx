@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '@/store/useStore'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Search, X, Clock, ArrowRight } from 'lucide-react'
-import Link from 'next/link'
 
 export function SearchModal() {
   const { isSearchOpen, toggleSearch, articles, categories, openArticle } = useStore()

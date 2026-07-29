@@ -1,0 +1,977 @@
+     1	'use client'
+     2	
+     3	import { useState, useEffect, useCallback } from 'react'
+     4	import { useStore } from '@/store/useStore'
+     5	import { Badge } from '@/components/ui/badge'
+     6	import { Button } from '@/components/ui/button'
+     7	import { Clock, ChevronLeft, ChevronRight, User } from 'lucide-react'
+     8	
+     9	export function HeroCarousel() {
+    10	  const { featuredArticles, openArticle } = useStore()
+    11	  const [current, setCurrent] = useState(0)
+    12	
+    13	  const featured = featuredArticles.length > 0 ? featuredArticles : useStore.getState().articles.slice(0, 3)
+    14	
+    15	  const next = useCallback(() => setCurrent(c => (c + 1) % featured.length), [featured.length])
+    16	  const prev = useCallback(() => setCurrent(c => (c - 1 + featured.length) % featured.length), [featured.length])
+    17	
+    18	  useEffect(() => {
+    19	    const timer = setInterval(next, 6000)
+    20	    return () => clearInterval(timer)
+    21	  }, [next])
+    22	
+    23	  if (featured.length === 0) return null
+    24	
+    25	  const article = featured[current]
+    26	
+    27	  return (
+    28	    <section className="relative">
+    29	      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10">
+    30	        <div className="relative rounded-2xl overflow-hidden group" style={{ aspectRatio: '16/9' }}>
+    31	          {/* Background Image */}
+    32	          <div className="absolute inset-0">
+    33	            <img
+    34	              src={article.coverImage}
+    35	              alt={article.title}
+    36	              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+    37	            />
+    38	            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+    39	            <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
+    40	          </div>
+    41	
+    42	          {/* Content */}
+    43	          <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 lg:p-12">
+    44	            <div className="max-w-2xl">
+    45	              <Badge
+    46	                className="mb-3 hover:opacity-80 transition-opacity"
+    47	                style={{ backgroundColor: article.category.color, color: '#fff' }}
+    48	              >
+    49	                {article.category.name}
+    50	              </Badge>
+    51	              <h2
+    52	                className="font-serif text-2xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-3 cursor-pointer hover:underline decoration-2 underline-offset-4"
+    53	                onClick={() => openArticle(article)}
+    54	              >
+    55	                {article.title}
+    56	              </h2>
+    57	              <p className="text-white/80 text-sm md:text-base line-clamp-2 mb-4 max-w-xl">
+    58	                {article.excerpt}
+    59	              </p>
+    60	              <div className="flex items-center gap-4 text-white/60 text-xs font-mono">
+    61	                <span className="flex items-center gap-1.5">
+    62	                  <User className="h-3 w-3" />
+    63	                  {article.author.name}
+    64	                </span>
+    65	                <span>{new Date(article.publishedAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+    66	                <span className="flex items-center gap-1">
+    67	                  <Clock className="h-3 w-3" />
+    68	                  {article.readTime} min
+    69	                </span>
+    70	              </div>
+    71	            </div>
+    72	          </div>
+    73	
+    74	          {/* Navigation */}
+    75	          <Button
+    76	            variant="ghost"
+    77	            size="icon"
+    78	            onClick={prev}
+    79	            className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white rounded-full h-10 w-10 opacity-0 group-hover:opacity-100 transition-opacity"
+    80	          >
+    81	            <ChevronLeft className="h-5 w-5" />
+    82	          </Button>
+    83	          <Button
+    84	            variant="ghost"
+    85	            size="icon"
+    86	            onClick={next}
+    87	            className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white rounded-full h-10 w-10 opacity-0 group-hover:opacity-100 transition-opacity"
+    88	          >
+    89	            <ChevronRight className="h-5 w-5" />
+    90	          </Button>
+    91	        </div>
+    92	
+    93	        {/* Dots */}
+    94	        <div className="flex justify-center gap-2 mt-4">
+    95	          {featured.map((_, i) => (
+    96	            <button
+    97	              key={i}
+    98	              onClick={() => setCurrent(i)}
+    99	              className={`h-1.5 rounded-full transition-all duration-300 ${
+   100	                i === current ? 'w-8 bg-primary' : 'w-1.5 bg-border hover:bg-muted-foreground/30'
+   101	              }`}
+   102	            />
+   103	          ))}
+   104	        </div>
+   105	      </div>
+   106	    </section>
+   107	  )
+   108	}
+   109	'use client'
+   110	
+   111	import { useStore } from '@/store/useStore'
+   112	import { Badge } from '@/components/ui/badge'
+   113	import { Button } from '@/components/ui/button'
+   114	import { ArticleCard } from './ArticleCard'
+   115	import { TrendingUp, Calendar, ArrowRight } from 'lucide-react'
+   116	
+   117	export function Sidebar() {
+   118	  const { articles, events, openArticle, setActiveCategory } = useStore()
+   119	
+   120	  const trending = articles.slice(0, 5)
+   121	  const upcomingEvents = events.filter(e => !e.isPast).slice(0, 3)
+   122	
+   123	  return (
+   124	    <aside className="space-y-8">
+   125	      {/* Trending */}
+   126	      <div className="bg-card border border-border rounded-xl p-5">
+   127	        <h3 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+   128	          <TrendingUp className="h-4 w-4 text-primary" />
+   129	          Trending Now
+   130	        </h3>
+   131	        <div className="space-y-1">
+   132	          {trending.map((article, i) => (
+   133	            <div key={article.id} className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0">
+   134	              <span className="font-mono text-lg font-bold text-primary/60 shrink-0 w-6">
+   135	                {String(i + 1).padStart(2, '0')}
+   136	              </span>
+   137	              <button onClick={() => openArticle(article)} className="flex-1 text-left min-w-0">
+   138	                <p className="font-serif font-semibold text-sm line-clamp-2 hover:text-primary transition-colors leading-snug">
+   139	                  {article.title}
+   140	                </p>
+   141	                <p className="text-xs text-muted-foreground mt-1 font-mono">
+   142	                  {article.readTime} min read
+   143	                </p>
+   144	              </button>
+   145	            </div>
+   146	          ))}
+   147	        </div>
+   148	      </div>
+   149	
+   150	      {/* Upcoming Events */}
+   151	      <div className="bg-card border border-border rounded-xl p-5">
+   152	        <h3 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+   153	          <Calendar className="h-4 w-4 text-gold" />
+   154	          Upcoming Events
+   155	        </h3>
+   156	        <div className="space-y-3">
+   157	          {upcomingEvents.map(event => (
+   158	            <div key={event.id} className="flex gap-3 items-start">
+   159	              <div className="text-center shrink-0 w-12">
+   160	                <div className="font-mono text-xs text-primary uppercase">
+   161	                  {new Date(event.date).toLocaleDateString('en-KE', { month: 'short' })}
+   162	                </div>
+   163	                <div className="font-serif text-xl font-bold">
+   164	                  {new Date(event.date).getDate()}
+   165	                </div>
+   166	              </div>
+   167	              <div className="flex-1 min-w-0">
+   168	                <p className="font-serif font-semibold text-sm line-clamp-1">{event.title}</p>
+   169	                <p className="text-xs text-muted-foreground mt-0.5">
+   170	                  {event.venue}, {event.city}
+   171	                </p>
+   172	                <Badge variant="outline" className="mt-1 text-[10px]">{event.category}</Badge>
+   173	              </div>
+   174	            </div>
+   175	          ))}
+   176	        </div>
+   177	        <Button
+   178	          variant="outline"
+   179	          className="w-full mt-4 text-xs font-mono"
+   180	          onClick={() => setActiveCategory('events')}
+   181	        >
+   182	          View All Events <ArrowRight className="h-3 w-3 ml-1" />
+   183	        </Button>
+   184	      </div>
+   185	
+   186	      {/* Newsletter Inline CTA */}
+   187	      <div className="bg-primary/5 border border-primary/20 rounded-xl p-5">
+   188	        <h3 className="font-serif font-bold text-lg mb-2">This Week in EA Arts</h3>
+   189	        <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+   190	          Curated event picks, new reviews, and exclusive content from the East African art scene.
+   191	        </p>
+   192	        <ul className="text-xs text-muted-foreground space-y-1.5 mb-4 font-mono">
+   193	          <li className="flex items-center gap-2">
+   194	            <span className="text-primary">&#10022;</span> Event Picks
+   195	          </li>
+   196	          <li className="flex items-center gap-2">
+   197	            <span className="text-primary">&#10022;</span> New Reviews
+   198	          </li>
+   199	          <li className="flex items-center gap-2">
+   200	            <span className="text-primary">&#10022;</span> Exclusive Content
+   201	          </li>
+   202	        </ul>
+   203	        <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-mono text-xs" size="sm">
+   204	          Subscribe to Newsletter
+   205	        </Button>
+   206	      </div>
+   207	    </aside>
+   208	  )
+   209	}
+   210	'use client'
+   211	
+   212	import { useStore } from '@/store/useStore'
+   213	import { ArticleCard } from './ArticleCard'
+   214	
+   215	export function OpinionSection() {
+   216	  const { articles, openArticle } = useStore()
+   217	
+   218	  const opinions = articles.filter(a =>
+   219	    a.category.slug === 'opinion-commentary'
+   220	  ).slice(0, 3)
+   221	
+   222	  if (opinions.length === 0) return null
+   223	
+   224	  return (
+   225	    <section className="max-w-7xl mx-auto px-4 md:px-6">
+   226	      <div className="flex items-center gap-3 mb-6">
+   227	        <h2 className="font-serif text-2xl md:text-3xl font-bold">
+   228	          Opinion <span className="text-muted-foreground">&</span> Commentary
+   229	        </h2>
+   230	        <div className="flex-1 h-px bg-border" />
+   231	      </div>
+   232	
+   233	      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+   234	        {/* Featured opinion */}
+   235	        <div className="lg:col-span-2">
+   236	          <button
+   237	            onClick={() => openArticle(opinions[0])}
+   238	            className="w-full text-left group"
+   239	          >
+   240	            <div className="relative rounded-xl overflow-hidden mb-4 aspect-[16/9]">
+   241	              <img
+   242	                src={opinions[0].coverImage}
+   243	                alt=""
+   244	                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+   245	              />
+   246	              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+   247	              <div className="absolute bottom-0 left-0 right-0 p-5">
+   248	                <p className="font-serif font-bold text-xl md:text-2xl text-white leading-tight">
+   249	                  {opinions[0].title}
+   250	                </p>
+   251	                <p className="text-white/70 text-sm mt-2 line-clamp-2">{opinions[0].excerpt}</p>
+   252	                <p className="text-white/50 text-xs mt-3 font-mono">
+   253	                  By {opinions[0].author.name} &middot; {opinions[0].readTime} min read
+   254	                </p>
+   255	              </div>
+   256	            </div>
+   257	          </button>
+   258	        </div>
+   259	
+   260	        {/* Side opinions */}
+   261	        <div className="space-y-5">
+   262	          {opinions.slice(1).map(article => (
+   263	            <button
+   264	              key={article.id}
+   265	              onClick={() => openArticle(article)}
+   266	              className="w-full text-left group"
+   267	            >
+   268	              <ArticleCard article={article} variant="horizontal" />
+   269	            </button>
+   270	          ))}
+   271	        </div>
+   272	      </div>
+   273	    </section>
+   274	  )
+   275	}
+   276	'use client'
+   277	
+   278	import { useStore } from '@/store/useStore'
+   279	import { Badge } from '@/components/ui/badge'
+   280	import { Calendar, MapPin } from 'lucide-react'
+   281	
+   282	export function EventsSection() {
+   283	  const { events } = useStore()
+   284	  const upcoming = events.filter(e => !e.isPast).slice(0, 4)
+   285	  const past = events.filter(e => e.isPast).slice(0, 3)
+   286	
+   287	  if (events.length === 0) return null
+   288	
+   289	  return (
+   290	    <section className="max-w-7xl mx-auto px-4 md:px-6">
+   291	      <div className="flex items-center justify-between mb-6">
+   292	        <h2 className="font-serif text-2xl md:text-3xl font-bold">Events This Week</h2>
+   293	      </div>
+   294	      <p className="text-muted-foreground mb-6 text-sm">
+   295	        Art exhibitions, festivals, concerts, and cultural happenings
+   296	      </p>
+   297	
+   298	      {/* Featured Events */}
+   299	      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+   300	        {upcoming.filter(e => e.isFeatured).map(event => (
+   301	          <div
+   302	            key={event.id}
+   303	            className="relative rounded-xl overflow-hidden group cursor-pointer"
+   304	          >
+   305	            <div className="aspect-[16/9]">
+   306	              <img
+   307	                src={event.imageUrl}
+   308	                alt={event.title}
+   309	                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+   310	                loading="lazy"
+   311	              />
+   312	              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+   313	            </div>
+   314	            <div className="absolute bottom-0 left-0 right-0 p-4">
+   315	              <Badge variant="secondary" className="bg-white/20 text-white backdrop-blur-sm border-0 text-[10px] mb-2">
+   316	                {event.category}
+   317	              </Badge>
+   318	              <h3 className="font-serif font-bold text-lg text-white">{event.title}</h3>
+   319	              <div className="flex items-center gap-3 mt-2 text-white/70 text-xs">
+   320	                <span className="flex items-center gap-1">
+   321	                  <Calendar className="h-3 w-3" />
+   322	                  {new Date(event.date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
+   323	                </span>
+   324	                <span className="flex items-center gap-1">
+   325	                  <MapPin className="h-3 w-3" />
+   326	                  {event.venue}, {event.city}
+   327	                </span>
+   328	              </div>
+   329	            </div>
+   330	          </div>
+   331	        ))}
+   332	      </div>
+   333	
+   334	      {/* Event List */}
+   335	      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   336	        {upcoming.map(event => (
+   337	          <div
+   338	            key={event.id}
+   339	            className="flex gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors cursor-pointer group"
+   340	          >
+   341	            <div className="text-center shrink-0">
+   342	              <div className="font-mono text-xs text-primary uppercase">
+   343	                {new Date(event.date).toLocaleDateString('en-KE', { month: 'short' })}
+   344	              </div>
+   345	              <div className="font-serif text-2xl font-bold">{new Date(event.date).getDate()}</div>
+   346	              <div className="font-mono text-[10px] text-muted-foreground">
+   347	                {new Date(event.date).toLocaleDateString('en-KE', { weekday: 'short' })}
+   348	              </div>
+   349	            </div>
+   350	            <div className="flex-1 min-w-0">
+   351	              <h3 className="font-serif font-semibold text-sm group-hover:text-primary transition-colors line-clamp-1">
+   352	                {event.title}
+   353	              </h3>
+   354	              <p className="text-xs text-muted-foreground mt-1">
+   355	                {event.venue}, {event.city}
+   356	              </p>
+   357	              <Badge variant="outline" className="mt-2 text-[10px]">{event.category}</Badge>
+   358	            </div>
+   359	          </div>
+   360	        ))}
+   361	      </div>
+   362	    </section>
+   363	  )
+   364	}
+   365	'use client'
+   366	
+   367	import { useState } from 'react'
+   368	import { Input } from '@/components/ui/input'
+   369	import { Button } from '@/components/ui/button'
+   370	import { Check, Mail } from 'lucide-react'
+   371	
+   372	export function NewsletterCTA({ variant = 'inline' }: { variant?: 'inline' | 'hero' }) {
+   373	  const [name, setName] = useState('')
+   374	  const [email, setEmail] = useState('')
+   375	  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+   376	
+   377	  async function handleSubmit(e: React.FormEvent) {
+   378	    e.preventDefault()
+   379	    if (!email.trim()) return
+   380	    setStatus('loading')
+   381	    try {
+   382	      const res = await fetch('/api/newsletter', {
+   383	        method: 'POST',
+   384	        headers: { 'Content-Type': 'application/json' },
+   385	        body: JSON.stringify({ name: name || '', email }),
+   386	      })
+   387	      if (res.ok) {
+   388	        setStatus('success')
+   389	        setName('')
+   390	        setEmail('')
+   391	      } else {
+   392	        setStatus('error')
+   393	      }
+   394	    } catch {
+   395	      setStatus('error')
+   396	    }
+   397	  }
+   398	
+   399	  if (status === 'success') {
+   400	    return (
+   401	      <div className={`rounded-2xl p-8 md:p-12 text-center ${variant === 'hero' ? 'bg-primary text-primary-foreground' : 'bg-primary/5 border border-primary/20'}`}>
+   402	        <div className="flex items-center justify-center gap-2 mb-3">
+   403	          <Check className="h-5 w-5" />
+   404	          <span className="font-serif text-xl font-bold">You&rsquo;re subscribed!</span>
+   405	        </div>
+   406	        <p className="text-sm opacity-80 max-w-md mx-auto">
+   407	          Welcome to the Sanaa community. Look out for our next edition in your inbox.
+   408	        </p>
+   409	      </div>
+   410	    )
+   411	  }
+   412	
+   413	  if (variant === 'hero') {
+   414	    return (
+   415	      <div className="bg-primary text-primary-foreground rounded-2xl p-8 md:p-12 text-center">
+   416	        <h2 className="font-serif text-2xl md:text-3xl font-bold mb-3">This Week in East African Arts</h2>
+   417	        <p className="text-primary-foreground/80 max-w-lg mx-auto mb-6 text-sm md:text-base">
+   418	          Get our weekly newsletter with curated event picks, new reviews, and exclusive content from the East African art scene.
+   419	        </p>
+   420	        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+   421	          <input
+   422	            placeholder="Your name (optional)"
+   423	            value={name}
+   424	            onChange={e => setName(e.target.value)}
+   425	            className="flex-1 px-4 py-2.5 rounded-lg bg-primary-foreground/10 border border-primary-foreground/20 text-sm text-primary-foreground placeholder:text-primary-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary-foreground/50"
+   426	          />
+   427	          <input
+   428	            placeholder="Your email address"
+   429	            required
+   430	            value={email}
+   431	            onChange={e => setEmail(e.target.value)}
+   432	            className="flex-1 px-4 py-2.5 rounded-lg bg-primary-foreground/10 border border-primary-foreground/20 text-sm text-primary-foreground placeholder:text-primary-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary-foreground/50"
+   433	          />
+   434	          <button
+   435	            type="submit"
+   436	            disabled={status === 'loading'}
+   437	            className="px-6 py-2.5 rounded-lg bg-primary-foreground text-primary font-mono text-xs font-semibold hover:bg-primary-foreground/90 transition-colors shrink-0 disabled:opacity-50"
+   438	          >
+   439	            {status === 'loading' ? 'Subscribing...' : 'Subscribe'}
+   440	          </button>
+   441	        </form>
+   442	      </div>
+   443	    )
+   444	  }
+   445	
+   446	  return (
+   447	    <div className="mt-12 p-6 rounded-xl bg-primary/5 border border-primary/20">
+   448	      <h3 className="font-serif font-bold text-lg mb-2 flex items-center gap-2">
+   449	        <Mail className="h-4 w-4 text-primary" />
+   450	        Enjoyed this story?
+   451	      </h3>
+   452	      <p className="text-sm text-muted-foreground mb-4">Get more like this delivered to your inbox every week.</p>
+   453	      <form onSubmit={handleSubmit} className="flex gap-2">
+   454	        <Input
+   455	          placeholder="Your name (optional)"
+   456	          value={name}
+   457	          onChange={e => setName(e.target.value)}
+   458	          className="max-w-[200px] h-9 text-sm"
+   459	        />
+   460	        <Input
+   461	          placeholder="Your email address"
+   462	          required
+   463	          value={email}
+   464	          onChange={e => setEmail(e.target.value)}
+   465	          className="flex-1 h-9 text-sm"
+   466	        />
+   467	        <Button
+   468	          type="submit"
+   469	          size="sm"
+   470	          disabled={status === 'loading'}
+   471	          className="bg-primary text-primary-foreground h-9 px-4 text-xs font-mono"
+   472	        >
+   473	          {status === 'loading' ? '...' : 'Subscribe'}
+   474	        </Button>
+   475	      </form>
+   476	      {status === 'error' && (
+   477	        <p className="text-xs text-destructive mt-2">Something went wrong. Please try again.</p>
+   478	      )}
+   479	    </div>
+   480	  )
+   481	}
+   482	'use client'
+   483	
+   484	import { useStore } from '@/store/useStore'
+   485	import { Badge } from '@/components/ui/badge'
+   486	import { Separator } from '@/components/ui/separator'
+   487	import { User, Mail, ArrowRight } from 'lucide-react'
+   488	
+   489	export function AboutPage() {
+   490	  const { categories, authors, setView } = useStore()
+   491	
+   492	  return (
+   493	    <main className="max-w-4xl mx-auto px-4 md:px-6 py-8 md:py-12">
+   494	      {/* Breadcrumb */}
+   495	      <nav className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-8">
+   496	        <button onClick={() => useStore.getState().goHome()} className="hover:text-foreground">Home</button>
+   497	        <span>/</span>
+   498	        <span>About</span>
+   499	      </nav>
+   500	
+   501	      {/* Hero */}
+   502	      <div className="text-center mb-12">
+   503	        <h1 className="font-serif text-3xl md:text-5xl font-bold mb-4">About Sanaa Through My Lens</h1>
+   504	        <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+   505	          An arts &amp; culture opinion blog highlighting stories around the art scene in Kenya and East Africa — music, film, book reviews, commentary, events, and infortainment.
+   506	        </p>
+   507	      </div>
+   508	
+   509	      {/* What We Cover */}
+   510	      <section className="mb-12">
+   511	        <h2 className="font-serif text-2xl font-bold mb-6">What We Cover</h2>
+   512	        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   513	          {categories.map(cat => (
+   514	            <button
+   515	              key={cat.id}
+   516	              onClick={() => { useStore.getState().setActiveCategory(cat.slug) }}
+   517	              className="flex items-center gap-4 p-4 rounded-xl border border-border hover:bg-secondary/50 transition-colors text-left group"
+   518	            >
+   519	              <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: cat.color + '15' }}>
+   520	                <div className="h-3 w-3 rounded-full" style={{ backgroundColor: cat.color }} />
+   521	              </div>
+   522	              <div className="flex-1 min-w-0">
+   523	                <h3 className="font-serif font-semibold text-sm group-hover:text-primary transition-colors">{cat.name}</h3>
+   524	                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{cat.description}</p>
+   525	              </div>
+   526	              <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+   527	            </button>
+   528	          ))}
+   529	        </div>
+   530	      </section>
+   531	
+   532	      <Separator className="my-10" />
+   533	
+   534	      {/* Our Mission */}
+   535	      <section className="mb-12">
+   536	        <h2 className="font-serif text-2xl font-bold mb-6">Our Mission</h2>
+   537	        <div className="space-y-4 text-muted-foreground leading-relaxed">
+   538	          <p>
+   539	            Sanaa Through My Lens was founded with a clear purpose: to amplify East African voices in arts and culture. In a media landscape where African stories are often told through external lenses, we believe in the power of opinionated, first-hand perspectives from within the region.
+   540	          </p>
+   541	          <p>
+   542	            We cover the full spectrum of the creative economy — from the music pulsing through Nairobi&rsquo;s clubs to the visual art redefining gallery spaces, from the theatre challenging social norms to the books reshaping literary canons. Our focus is not neutral reporting; it&rsquo;s informed opinion, critical commentary, and cultural analysis.
+   543	          </p>
+   544	          <p>
+   545	            East Africa&rsquo;s creative scene is exploding. A new generation of artists, musicians, writers, filmmakers, and performers is redefining what it means to be African in the 21st century. We&rsquo;re here to document that explosion, to celebrate its highs, to critique its failures, and to push the conversation forward.
+   546	          </p>
+   547	        </div>
+   548	      </section>
+   549	
+   550	      <Separator className="my-10" />
+   551	
+   552	      {/* The Team */}
+   553	      <section className="mb-12">
+   554	        <h2 className="font-serif text-2xl font-bold mb-6">The Team</h2>
+   555	        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+   556	          {authors.map(author => (
+   557	            <div
+   558	              key={author.id}
+   559	              className="p-6 rounded-xl border border-border bg-card"
+   560	            >
+   561	              <div className="flex items-start gap-4">
+   562	                <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+   563	                  <User className="h-6 w-6 text-primary" />
+   564	                </div>
+   565	                <div className="flex-1 min-w-0">
+   566	                  <h3 className="font-serif font-bold text-base">{author.name}</h3>
+   567	                  <p className="font-mono text-[10px] uppercase tracking-wider text-primary mb-2">{author.role}</p>
+   568	                  <p className="text-sm text-muted-foreground leading-relaxed">{author.bio}</p>
+   569	                </div>
+   570	              </div>
+   571	            </div>
+   572	          ))}
+   573	        </div>
+   574	      </section>
+   575	
+   576	      <Separator className="my-10" />
+   577	
+   578	      {/* Get In Touch */}
+   579	      <section>
+   580	        <h2 className="font-serif text-2xl font-bold mb-6">Get In Touch</h2>
+   581	        <div className="p-6 rounded-xl bg-secondary/30 border border-border">
+   582	          <div className="flex items-center gap-3 mb-4">
+   583	            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+   584	              <Mail className="h-5 w-5 text-primary" />
+   585	            </div>
+   586	            <div>
+   587	              <p className="text-sm font-medium">Email Us</p>
+   588	              <a href="mailto:hello@sanaathrumylens.co.ke" className="text-primary text-sm hover:underline">
+   589	                hello@sanaathrumylens.co.ke
+   590	              </a>
+   591	            </div>
+   592	          </div>
+   593	          <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+   594	            <p>
+   595	              <strong className="text-foreground">Pitch a story:</strong> Have a story idea, review, or opinion piece? We&rsquo;d love to hear from you. Send us a brief pitch (150 words max) with your angle and why it matters now.
+   596	            </p>
+   597	            <p>
+   598	              <strong className="text-foreground">Advertise:</strong> Interested in reaching our engaged audience of East African arts and culture enthusiasts? Get in touch for our media kit and rates.
+   599	            </p>
+   600	            <p>
+   601	              <strong className="text-foreground">Collaborate:</strong> We&rsquo;re open to partnerships with cultural organisations, festivals, and brands that align with our mission.
+   602	            </p>
+   603	          </div>
+   604	        </div>
+   605	      </section>
+   606	    </main>
+   607	  )
+   608	}
+   609	'use client'
+   610	
+   611	import { useStore } from '@/store/useStore'
+   612	import { Badge } from '@/components/ui/badge'
+   613	import { ArticleCard } from './ArticleCard'
+   614	import { Button } from '@/components/ui/button'
+   615	import { ArrowLeft } from 'lucide-react'
+   616	import { useState } from 'react'
+   617	
+   618	export function CategoryPage() {
+   619	  const { articles, categories, activeCategory, setActiveCategory, events } = useStore()
+   620	
+   621	  const category = categories.find(c => c.slug === activeCategory)
+   622	  const filteredArticles = articles.filter(a => a.category.slug === activeCategory)
+   623	  const relatedEvents = events.filter(e => !e.isPast && e.category === category?.name)
+   624	  const [showCount, setShowCount] = useState(6)
+   625	  const visible = filteredArticles.slice(0, showCount)
+   626	
+   627	  return (
+   628	    <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
+   629	      {/* Breadcrumb */}
+   630	      <nav className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-8">
+   631	        <button onClick={() => useStore.getState().goHome()} className="hover:text-foreground">Home</button>
+   632	        <span>/</span>
+   633	        <span style={{ color: category?.color }}>{category?.name || activeCategory}</span>
+   634	      </nav>
+   635	
+   636	      {/* Category Hero */}
+   637	      {category && (
+   638	        <div className="mb-10">
+   639	          <div className="flex items-center gap-3 mb-3">
+   640	            <div className="h-4 w-4 rounded-full" style={{ backgroundColor: category.color }} />
+   641	            <Badge style={{ backgroundColor: category.color + '15', color: category.color }} className="text-xs">
+   642	              {category.name}
+   643	            </Badge>
+   644	          </div>
+   645	          <h1 className="font-serif text-3xl md:text-5xl font-bold mb-3">{category.name}</h1>
+   646	          <p className="text-lg text-muted-foreground max-w-2xl leading-relaxed">{category.description}</p>
+   647	          <p className="font-mono text-sm text-muted-foreground mt-2">
+   648	            {filteredArticles.length} stor{filteredArticles.length === 1 ? 'y' : 'ies'}
+   649	          </p>
+   650	        </div>
+   651	      )}
+   652	
+   653	      {/* Articles */}
+   654	      <section className="mb-12">
+   655	        {visible.length > 0 ? (
+   656	          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+   657	            {visible.map(article => (
+   658	              <ArticleCard key={article.id} article={article} />
+   659	            ))}
+   660	          </div>
+   661	        ) : (
+   662	          <div className="text-center py-16">
+   663	            <p className="font-serif text-lg text-muted-foreground">No stories in this category yet</p>
+   664	            <Button
+   665	              variant="outline"
+   666	              onClick={() => useStore.getState().goHome()}
+   667	              className="mt-4 font-mono text-xs"
+   668	            >
+   669	              <ArrowLeft className="h-3 w-3 mr-1" /> Back to all stories
+   670	            </Button>
+   671	          </div>
+   672	        )}
+   673	
+   674	        {visible.length < filteredArticles.length && (
+   675	          <div className="text-center mt-8">
+   676	            <Button
+   677	              variant="outline"
+   678	              onClick={() => setShowCount(p => p + 6)}
+   679	              className="font-mono text-xs"
+   680	            >
+   681	              Load More
+   682	            </Button>
+   683	          </div>
+   684	        )}
+   685	      </section>
+   686	
+   687	      {/* Related Events */}
+   688	      {relatedEvents.length > 0 && (
+   689	        <section>
+   690	          <div className="flex items-center gap-3 mb-6">
+   691	            <h2 className="font-serif text-xl font-bold">Upcoming Events</h2>
+   692	            <div className="flex-1 h-px bg-border" />
+   693	          </div>
+   694	          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   695	            {relatedEvents.slice(0, 3).map(event => (
+   696	              <div key={event.id} className="flex gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors">
+   697	                <div className="text-center shrink-0">
+   698	                  <div className="font-mono text-xs text-primary uppercase">
+   699	                    {new Date(event.date).toLocaleDateString('en-KE', { month: 'short' })}
+   700	                  </div>
+   701	                  <div className="font-serif text-2xl font-bold">{new Date(event.date).getDate()}</div>
+   702	                </div>
+   703	                <div className="flex-1 min-w-0">
+   704	                  <h3 className="font-serif font-semibold text-sm line-clamp-1">{event.title}</h3>
+   705	                  <p className="text-xs text-muted-foreground mt-1">{event.venue}, {event.city}</p>
+   706	                  <Badge variant="outline" className="mt-2 text-[10px]">{event.category}</Badge>
+   707	                </div>
+   708	              </div>
+   709	            ))}
+   710	          </div>
+   711	        </section>
+   712	      )}
+   713	
+   714	      {/* Other Categories */}
+   715	      <section className="mt-12">
+   716	        <div className="flex items-center gap-3 mb-6">
+   717	          <h2 className="font-serif text-xl font-bold">Explore Other Categories</h2>
+   718	          <div className="flex-1 h-px bg-border" />
+   719	        </div>
+   720	        <div className="flex flex-wrap gap-2">
+   721	          {categories
+   722	            .filter(c => c.slug !== activeCategory)
+   723	            .map(cat => (
+   724	              <Button
+   725	                key={cat.id}
+   726	                variant="outline"
+   727	                size="sm"
+   728	                onClick={() => { setActiveCategory(cat.slug); setShowCount(6); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+   729	                className="font-mono text-xs"
+   730	              >
+   731	                {cat.name}
+   732	              </Button>
+   733	            ))}
+   734	        </div>
+   735	      </section>
+   736	    </main>
+   737	  )
+   738	}
+   739	'use client'
+   740	
+   741	import { useState } from 'react'
+   742	import { useStore } from '@/store/useStore'
+   743	import { Badge } from '@/components/ui/badge'
+   744	import { Button } from '@/components/ui/button'
+   745	import { Calendar, MapPin, Clock, ArrowLeft, ExternalLink } from 'lucide-react'
+   746	
+   747	export function EventsPage() {
+   748	  const { events, categories, setView } = useStore()
+   749	  const [cityFilter, setCityFilter] = useState('all')
+   750	  const [catFilter, setCatFilter] = useState('all')
+   751	  const [showPast, setShowPast] = useState(false)
+   752	
+   753	  const cities = [...new Set(events.map(e => e.city))]
+   754	  const eventCategories = [...new Set(events.map(e => e.category))]
+   755	
+   756	  const filtered = events.filter(e => {
+   757	    if (!showPast && e.isPast) return false
+   758	    if (cityFilter !== 'all' && e.city !== cityFilter) return false
+   759	    if (catFilter !== 'all' && e.category !== catFilter) return false
+   760	    return true
+   761	  })
+   762	
+   763	  const upcoming = filtered.filter(e => !e.isPast)
+   764	  const past = filtered.filter(e => e.isPast)
+   765	  const featuredEvents = upcoming.filter(e => e.isFeatured)
+   766	
+   767	  return (
+   768	    <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
+   769	      {/* Breadcrumb */}
+   770	      <nav className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-8">
+   771	        <button onClick={() => useStore.getState().goHome()} className="hover:text-foreground">Home</button>
+   772	        <span>/</span>
+   773	        <span>Events</span>
+   774	      </nav>
+   775	
+   776	      {/* Header */}
+   777	      <div className="mb-8">
+   778	        <h1 className="font-serif text-3xl md:text-5xl font-bold mb-3">Events</h1>
+   779	        <p className="text-lg text-muted-foreground max-w-2xl">
+   780	          Art exhibitions, festivals, concerts, launches and cultural happenings in Kenya and East Africa
+   781	        </p>
+   782	      </div>
+   783	
+   784	      {/* Featured Events */}
+   785	      {featuredEvents.length > 0 && (
+   786	        <section className="mb-10">
+   787	          <h2 className="font-serif text-xl font-bold mb-4">Featured Events</h2>
+   788	          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   789	            {featuredEvents.map(event => (
+   790	              <div key={event.id} className="relative rounded-xl overflow-hidden group cursor-pointer" style={{ minHeight: '220px' }}>
+   791	                <img
+   792	                  src={event.imageUrl}
+   793	                  alt={event.title}
+   794	                  className="w-full h-full object-cover absolute inset-0 group-hover:scale-105 transition-transform duration-500"
+   795	                  loading="lazy"
+   796	                />
+   797	                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+   798	                <div className="absolute bottom-0 left-0 right-0 p-5">
+   799	                  <Badge variant="secondary" className="bg-white/20 text-white backdrop-blur-sm border-0 text-[10px] mb-2">
+   800	                    {event.category}
+   801	                  </Badge>
+   802	                  <h3 className="font-serif font-bold text-lg text-white">{event.title}</h3>
+   803	                  <div className="flex flex-wrap items-center gap-3 mt-2 text-white/70 text-xs">
+   804	                    <span className="flex items-center gap-1">
+   805	                      <Calendar className="h-3 w-3" />
+   806	                      {new Date(event.date).toLocaleDateString('en-KE', { day: 'numeric', month: 'long', year: 'numeric' })}
+   807	                    </span>
+   808	                    <span className="flex items-center gap-1">
+   809	                      <MapPin className="h-3 w-3" />
+   810	                      {event.venue}, {event.city}
+   811	                    </span>
+   812	                    {event.ticketUrl && (
+   813	                      <span className="flex items-center gap-1 ml-auto">
+   814	                        <ExternalLink className="h-3 w-3" />
+   815	                        Tickets
+   816	                      </span>
+   817	                    )}
+   818	                  </div>
+   819	                </div>
+   820	              </div>
+   821	            ))}
+   822	          </div>
+   823	        </section>
+   824	      )}
+   825	
+   826	      {/* Filters */}
+   827	      <section className="mb-8 flex flex-wrap items-center gap-3">
+   828	        <div className="flex items-center gap-2 flex-wrap">
+   829	          <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Category:</span>
+   830	          <Button
+   831	            size="sm"
+   832	            variant={catFilter === 'all' ? 'default' : 'outline'}
+   833	            onClick={() => setCatFilter('all')}
+   834	            className="font-mono text-xs h-7"
+   835	          >
+   836	            All
+   837	          </Button>
+   838	          {eventCategories.map(cat => (
+   839	            <Button
+   840	              key={cat}
+   841	              size="sm"
+   842	              variant={catFilter === cat ? 'default' : 'outline'}
+   843	              onClick={() => setCatFilter(cat)}
+   844	              className="font-mono text-xs h-7"
+   845	            >
+   846	              {cat}
+   847	            </Button>
+   848	          ))}
+   849	        </div>
+   850	        <div className="flex items-center gap-2">
+   851	          <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">City:</span>
+   852	          <Button
+   853	            size="sm"
+   854	            variant={cityFilter === 'all' ? 'default' : 'outline'}
+   855	            onClick={() => setCityFilter('all')}
+   856	            className="font-mono text-xs h-7"
+   857	          >
+   858	            All
+   859	          </Button>
+   860	          {cities.map(city => (
+   861	            <Button
+   862	              key={city}
+   863	              size="sm"
+   864	              variant={cityFilter === city ? 'default' : 'outline'}
+   865	              onClick={() => setCityFilter(city)}
+   866	              className="font-mono text-xs h-7"
+   867	            >
+   868	              {city}
+   869	            </Button>
+   870	          ))}
+   871	        </div>
+   872	        <Button
+   873	          size="sm"
+   874	          variant={showPast ? 'default' : 'ghost'}
+   875	          onClick={() => setShowPast(!showPast)}
+   876	          className="font-mono text-xs h-7 ml-auto"
+   877	        >
+   878	          {showPast ? 'Hide Past' : 'Show Past'}
+   879	        </Button>
+   880	      </section>
+   881	
+   882	      {/* Upcoming Events */}
+   883	      <section className="mb-10">
+   884	        <h2 className="font-serif text-xl font-bold mb-4">
+   885	          Upcoming Events
+   886	          <span className="text-muted-foreground font-mono text-sm font-normal ml-3">
+   887	            ({upcoming.length})
+   888	          </span>
+   889	        </h2>
+   890	        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   891	          {upcoming.map(event => (
+   892	            <div
+   893	              key={event.id}
+   894	              className="flex gap-4 p-5 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors cursor-pointer group"
+   895	            >
+   896	              <div className="text-center shrink-0">
+   897	                <div className="font-mono text-xs text-primary uppercase">
+   898	                  {new Date(event.date).toLocaleDateString('en-KE', { month: 'short' })}
+   899	                </div>
+   900	                <div className="font-serif text-3xl font-bold leading-none">{new Date(event.date).getDate()}</div>
+   901	                <div className="font-mono text-[10px] text-muted-foreground mt-0.5">
+   902	                  {new Date(event.date).toLocaleDateString('en-KE', { weekday: 'short' })}
+   903	                </div>
+   904	              </div>
+   905	              <div className="flex-1 min-w-0">
+   906	                <h3 className="font-serif font-semibold text-sm group-hover:text-primary transition-colors line-clamp-1">
+   907	                  {event.title}
+   908	                </h3>
+   909	                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{event.description}</p>
+   910	                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+   911	                  <MapPin className="h-3 w-3 shrink-0" />
+   912	                  <span className="truncate">{event.venue}, {event.city}</span>
+   913	                </div>
+   914	                <Badge variant="outline" className="mt-2 text-[10px]">{event.category}</Badge>
+   915	                {event.ticketUrl && (
+   916	                  <a
+   917	                    href={event.ticketUrl}
+   918	                    className="inline-flex items-center gap-1 text-[10px] text-primary font-mono mt-2 hover:underline"
+   919	                    onClick={e => e.stopPropagation()}
+   920	                    target="_blank"
+   921	                    rel="noopener noreferrer"
+   922	                  >
+   923	                    <ExternalLink className="h-2.5 w-2.5" /> Get Tickets
+   924	                  </a>
+   925	                )}
+   926	              </div>
+   927	            </div>
+   928	          ))}
+   929	        </div>
+   930	      </section>
+   931	
+   932	      {/* Past Events */}
+   933	      {showPast && past.length > 0 && (
+   934	        <section>
+   935	          <h2 className="font-serif text-xl font-bold mb-4">
+   936	            Past Events
+   937	            <span className="text-muted-foreground font-mono text-sm font-normal ml-3">
+   938	              ({past.length})
+   939	            </span>
+   940	          </h2>
+   941	          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   942	            {past.map(event => (
+   943	              <div
+   944	                key={event.id}
+   945	                className="flex gap-4 p-5 rounded-xl border border-border bg-muted/30 opacity-70 cursor-pointer group"
+   946	              >
+   947	                <div className="text-center shrink-0">
+   948	                  <div className="font-mono text-xs text-muted-foreground uppercase">
+   949	                    {new Date(event.date).toLocaleDateString('en-KE', { month: 'short' })}
+   950	                  </div>
+   951	                  <div className="font-serif text-3xl font-bold leading-none text-muted-foreground">{new Date(event.date).getDate()}</div>
+   952	                </div>
+   953	                <div className="flex-1 min-w-0">
+   954	                  <h3 className="font-serif font-semibold text-sm text-muted-foreground group-hover:text-foreground transition-colors line-clamp-1">
+   955	                    {event.title}
+   956	                  </h3>
+   957	                  <p className="text-xs text-muted-foreground mt-1">
+   958	                    {event.venue}, {event.city}
+   959	                  </p>
+   960	                </div>
+   961	              </div>
+   962	            ))}
+   963	          </div>
+   964	        </section>
+   965	      )}
+   966	
+   967	      {filtered.length === 0 && (
+   968	        <div className="text-center py-16">
+   969	          <p className="font-serif text-lg text-muted-foreground">No events match your filters</p>
+   970	          <Button variant="outline" onClick={() => { setCatFilter('all'); setCityFilter('all'); setShowPast(false) }} className="mt-4 font-mono text-xs">
+   971	            Clear Filters
+   972	          </Button>
+   973	        </div>
+   974	      )}
+   975	    </main>
+   976	  )
+   977	}

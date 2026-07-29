@@ -1,0 +1,1488 @@
+===== src/components/sanaa/ReadingProgress.tsx =====
+     1	'use client'
+     2	
+     3	import { useEffect, useState } from 'react'
+     4	
+     5	export function ReadingProgress() {
+     6	  const [progress, setProgress] = useState(0)
+     7	
+     8	  useEffect(() => {
+     9	    const handleScroll = () => {
+    10	      const scrollTop = window.scrollY
+    11	      const docHeight = document.documentElement.scrollHeight - window.innerHeight
+    12	      if (docHeight > 0) {
+    13	        setProgress((scrollTop / docHeight) * 100)
+    14	      }
+    15	    }
+    16	    window.addEventListener('scroll', handleScroll, { passive: true })
+    17	    handleScroll()
+    18	    return () => window.removeEventListener('scroll', handleScroll)
+    19	  }, [])
+    20	
+    21	  return (
+    22	    <div
+    23	      className="reading-progress"
+    24	      style={{ width: `${Math.min(progress, 100)}%` }}
+    25	      role="progressbar"
+    26	      aria-valuenow={Math.round(progress)}
+    27	      aria-valuemin={0}
+    28	      aria-valuemax={100}
+    29	      aria-label="Reading progress"
+    30	    />
+    31	  )
+    32	}
+
+===== src/components/sanaa/Skeletons.tsx =====
+     1	import { Skeleton } from '@/components/ui/skeleton'
+     2	
+     3	export function StoryGridSkeleton() {
+     4	  return (
+     5	    <div className="max-w-7xl mx-auto px-4 md:px-6">
+     6	      <Skeleton className="h-8 w-48 mb-6 bg-secondary" />
+     7	      <div className="flex gap-2 mb-6">
+     8	        {[1, 2, 3, 4].map(i => (
+     9	          <Skeleton key={i} className="h-7 w-16 bg-secondary" />
+    10	        ))}
+    11	      </div>
+    12	      <div className="flex flex-col lg:flex-row gap-8">
+    13	        <div className="flex-1">
+    14	          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    15	            {[1, 2, 3, 4, 5, 6].map(i => (
+    16	              <div key={i} className="rounded-xl overflow-hidden border border-border">
+    17	                <Skeleton className="w-full h-48 bg-secondary" />
+    18	                <div className="p-4 space-y-3">
+    19	                  <Skeleton className="h-4 w-20 bg-secondary" />
+    20	                  <Skeleton className="h-5 w-full bg-secondary" />
+    21	                  <Skeleton className="h-4 w-3/4 bg-secondary" />
+    22	                  <Skeleton className="h-3 w-32 bg-secondary" />
+    23	                </div>
+    24	              </div>
+    25	            ))}
+    26	          </div>
+    27	        </div>
+    28	        <div className="w-full lg:w-80 shrink-0 space-y-4">
+    29	          <Skeleton className="h-6 w-32 bg-secondary" />
+    30	          {[1, 2, 3, 4].map(i => (
+    31	            <div key={i} className="flex gap-3 p-3 rounded-lg border border-border">
+    32	              <Skeleton className="w-16 h-16 rounded-lg bg-secondary shrink-0" />
+    33	              <div className="flex-1 space-y-2">
+    34	                <Skeleton className="h-4 w-full bg-secondary" />
+    35	                <Skeleton className="h-3 w-20 bg-secondary" />
+    36	              </div>
+    37	            </div>
+    38	          ))}
+    39	        </div>
+    40	      </div>
+    41	    </div>
+    42	  )
+    43	}
+    44	
+    45	export function ArticlePageSkeleton() {
+    46	  return (
+    47	    <div className="max-w-3xl mx-auto px-4 py-12 space-y-8">
+    48	      <Skeleton className="h-4 w-24 bg-secondary" />
+    49	      <div className="flex gap-3">
+    50	        <Skeleton className="h-5 w-20 bg-secondary" />
+    51	        <Skeleton className="h-5 w-32 bg-secondary" />
+    52	      </div>
+    53	      <Skeleton className="h-10 w-full bg-secondary" />
+    54	      <Skeleton className="h-10 w-3/4 bg-secondary" />
+    55	      <div className="flex items-center gap-3">
+    56	        <Skeleton className="w-10 h-10 rounded-full bg-secondary" />
+    57	        <div className="space-y-2">
+    58	          <Skeleton className="h-4 w-28 bg-secondary" />
+    59	          <Skeleton className="h-3 w-20 bg-secondary" />
+    60	        </div>
+    61	      </div>
+    62	      <Skeleton className="w-full h-80 rounded-xl bg-secondary" />
+    63	      <div className="space-y-4">
+    64	        {Array.from({ length: 8 }).map((_, i) => (
+    65	          <Skeleton key={i} className="h-4 w-full bg-secondary" />
+    66	        ))}
+    67	      </div>
+    68	      <div className="border border-border rounded-xl p-6 space-y-3">
+    69	        <Skeleton className="h-5 w-32 bg-secondary" />
+    70	        <div className="flex items-center gap-3">
+    71	          <Skeleton className="w-12 h-12 rounded-full bg-secondary" />
+    72	          <div className="space-y-2">
+    73	            <Skeleton className="h-4 w-24 bg-secondary" />
+    74	            <Skeleton className="h-3 w-16 bg-secondary" />
+    75	          </div>
+    76	        </div>
+    77	        <Skeleton className="h-4 w-full bg-secondary" />
+    78	        <Skeleton className="h-4 w-3/4 bg-secondary" />
+    79	      </div>
+    80	    </div>
+    81	  )
+    82	}
+    83	
+    84	export function EventsPageSkeleton() {
+    85	  return (
+    86	    <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 space-y-8">
+    87	      <div className="text-center space-y-3">
+    88	        <Skeleton className="h-9 w-64 mx-auto bg-secondary" />
+    89	        <Skeleton className="h-5 w-96 mx-auto bg-secondary" />
+    90	      </div>
+    91	      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    92	        {Array.from({ length: 6 }).map((_, i) => (
+    93	          <div key={i} className="rounded-xl border border-border overflow-hidden">
+    94	            <Skeleton className="w-full h-48 bg-secondary" />
+    95	            <div className="p-4 space-y-3">
+    96	              <Skeleton className="h-5 w-3/4 bg-secondary" />
+    97	              <Skeleton className="h-4 w-full bg-secondary" />
+    98	              <Skeleton className="h-4 w-2/3 bg-secondary" />
+    99	              <div className="flex gap-2 pt-2">
+   100	                <Skeleton className="h-5 w-20 bg-secondary" />
+   101	                <Skeleton className="h-5 w-24 bg-secondary" />
+   102	              </div>
+   103	            </div>
+   104	          </div>
+   105	        ))}
+   106	      </div>
+   107	    </div>
+   108	  )
+   109	}
+
+===== src/components/sanaa/StoryGrid.tsx =====
+     1	'use client'
+     2	
+     3	import { useState } from 'react'
+     4	import { useStore } from '@/store/useStore'
+     5	import { ArticleCard } from './ArticleCard'
+     6	import { Sidebar } from './Sidebar'
+     7	import { Button } from '@/components/ui/button'
+     8	
+     9	export function StoryGrid() {
+    10	  const { articles, categories, activeCategory, setActiveCategory } = useStore()
+    11	
+    12	  const filterOptions = [
+    13	    { label: 'All', slug: 'all' },
+    14	    ...categories.map(c => ({ label: c.name, slug: c.slug })),
+    15	  ]
+    16	
+    17	  const filtered = activeCategory === 'all'
+    18	    ? articles
+    19	    : articles.filter(a => a.category.slug === activeCategory)
+    20	
+    21	  const [showCount, setShowCount] = useState(6)
+    22	
+    23	  const visible = filtered.slice(0, showCount)
+    24	  const hasMore = filtered.length > showCount
+    25	
+    26	  return (
+    27	    <section className="max-w-7xl mx-auto px-4 md:px-6">
+    28	      <div className="flex items-center justify-between mb-6">
+    29	        <h2 className="font-serif text-2xl md:text-3xl font-bold">Latest Stories</h2>
+    30	      </div>
+    31	
+    32	      {/* Category Filters */}
+    33	      <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-none -mx-4 px-4 md:mx-0 md:px-0">
+    34	        {filterOptions.map(opt => (
+    35	          <Button
+    36	            key={opt.slug}
+    37	            variant={activeCategory === opt.slug ? 'default' : 'outline'}
+    38	            size="sm"
+    39	            onClick={() => { setActiveCategory(opt.slug); setShowCount(6) }}
+    40	            className={`shrink-0 font-mono text-xs ${
+    41	              activeCategory === opt.slug
+    42	                ? 'bg-primary text-primary-foreground'
+    43	                : 'hover:bg-secondary'
+    44	            }`}
+    45	          >
+    46	            {opt.label}
+    47	          </Button>
+    48	        ))}
+    49	      </div>
+    50	
+    51	      {/* Two-column layout */}
+    52	      <div className="flex flex-col lg:flex-row gap-8">
+    53	        {/* Main content */}
+    54	        <div className="flex-1 min-w-0">
+    55	          {visible.length > 0 ? (
+    56	            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    57	              {visible.map(article => (
+    58	                <ArticleCard key={article.id} article={article} />
+    59	              ))}
+    60	            </div>
+    61	          ) : (
+    62	            <div className="text-center py-16">
+    63	              <p className="font-serif text-lg text-muted-foreground">No stories in this category yet</p>
+    64	            </div>
+    65	          )}
+    66	
+    67	          {hasMore && (
+    68	            <div className="text-center mt-8">
+    69	              <Button
+    70	                variant="outline"
+    71	                onClick={() => setShowCount(prev => prev + 6)}
+    72	                className="font-mono text-xs"
+    73	              >
+    74	                Load More Stories
+    75	              </Button>
+    76	            </div>
+    77	          )}
+    78	        </div>
+    79	
+    80	        {/* Sidebar */}
+    81	        <div className="w-full lg:w-80 shrink-0">
+    82	          <Sidebar />
+    83	        </div>
+    84	      </div>
+    85	    </section>
+    86	  )
+    87	}
+
+===== src/components/sanaa/HeroCarousel.tsx =====
+     1	'use client'
+     2	
+     3	import { useState, useEffect, useCallback } from 'react'
+     4	import { useStore } from '@/store/useStore'
+     5	import { Badge } from '@/components/ui/badge'
+     6	import { Button } from '@/components/ui/button'
+     7	import { Clock, ChevronLeft, ChevronRight, User } from 'lucide-react'
+     8	
+     9	export function HeroCarousel() {
+    10	  const { featuredArticles, openArticle } = useStore()
+    11	  const [current, setCurrent] = useState(0)
+    12	
+    13	  const featured = featuredArticles.length > 0 ? featuredArticles : useStore.getState().articles.slice(0, 3)
+    14	
+    15	  const next = useCallback(() => setCurrent(c => (c + 1) % featured.length), [featured.length])
+    16	  const prev = useCallback(() => setCurrent(c => (c - 1 + featured.length) % featured.length), [featured.length])
+    17	
+    18	  useEffect(() => {
+    19	    const timer = setInterval(next, 6000)
+    20	    return () => clearInterval(timer)
+    21	  }, [next])
+    22	
+    23	  if (featured.length === 0) return null
+    24	
+    25	  const article = featured[current]
+    26	
+    27	  return (
+    28	    <section className="relative">
+    29	      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10">
+    30	        <div className="relative rounded-2xl overflow-hidden group" style={{ aspectRatio: '16/9' }}>
+    31	          {/* Background Image */}
+    32	          <div className="absolute inset-0">
+    33	            <img
+    34	              src={article.coverImage}
+    35	              alt={article.title}
+    36	              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+    37	            />
+    38	            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+    39	            <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
+    40	          </div>
+    41	
+    42	          {/* Content */}
+    43	          <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 lg:p-12">
+    44	            <div className="max-w-2xl">
+    45	              <Badge
+    46	                className="mb-3 hover:opacity-80 transition-opacity"
+    47	                style={{ backgroundColor: article.category.color, color: '#fff' }}
+    48	              >
+    49	                {article.category.name}
+    50	              </Badge>
+    51	              <h2
+    52	                className="font-serif text-2xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-3 cursor-pointer hover:underline decoration-2 underline-offset-4"
+    53	                onClick={() => openArticle(article)}
+    54	              >
+    55	                {article.title}
+    56	              </h2>
+    57	              <p className="text-white/80 text-sm md:text-base line-clamp-2 mb-4 max-w-xl">
+    58	                {article.excerpt}
+    59	              </p>
+    60	              <div className="flex items-center gap-4 text-white/60 text-xs font-mono">
+    61	                <span className="flex items-center gap-1.5">
+    62	                  <User className="h-3 w-3" />
+    63	                  {article.author.name}
+    64	                </span>
+    65	                <span>{new Date(article.publishedAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+    66	                <span className="flex items-center gap-1">
+    67	                  <Clock className="h-3 w-3" />
+    68	                  {article.readTime} min
+    69	                </span>
+    70	              </div>
+    71	            </div>
+    72	          </div>
+    73	
+    74	          {/* Navigation */}
+    75	          <Button
+    76	            variant="ghost"
+    77	            size="icon"
+    78	            onClick={prev}
+    79	            className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white rounded-full h-10 w-10 opacity-0 group-hover:opacity-100 transition-opacity"
+    80	          >
+    81	            <ChevronLeft className="h-5 w-5" />
+    82	          </Button>
+    83	          <Button
+    84	            variant="ghost"
+    85	            size="icon"
+    86	            onClick={next}
+    87	            className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white rounded-full h-10 w-10 opacity-0 group-hover:opacity-100 transition-opacity"
+    88	          >
+    89	            <ChevronRight className="h-5 w-5" />
+    90	          </Button>
+    91	        </div>
+    92	
+    93	        {/* Dots */}
+    94	        <div className="flex justify-center gap-2 mt-4">
+    95	          {featured.map((_, i) => (
+    96	            <button
+    97	              key={i}
+    98	              onClick={() => setCurrent(i)}
+    99	              className={`h-1.5 rounded-full transition-all duration-300 ${
+   100	                i === current ? 'w-8 bg-primary' : 'w-1.5 bg-border hover:bg-muted-foreground/30'
+   101	              }`}
+   102	            />
+   103	          ))}
+   104	        </div>
+   105	      </div>
+   106	    </section>
+   107	  )
+   108	}
+
+===== src/components/sanaa/Sidebar.tsx =====
+     1	'use client'
+     2	
+     3	import { useStore } from '@/store/useStore'
+     4	import { Badge } from '@/components/ui/badge'
+     5	import { Button } from '@/components/ui/button'
+     6	import { ArticleCard } from './ArticleCard'
+     7	import { TrendingUp, Calendar, ArrowRight } from 'lucide-react'
+     8	
+     9	export function Sidebar() {
+    10	  const { articles, events, openArticle, setActiveCategory } = useStore()
+    11	
+    12	  const trending = articles.slice(0, 5)
+    13	  const upcomingEvents = events.filter(e => !e.isPast).slice(0, 3)
+    14	
+    15	  return (
+    16	    <aside className="space-y-8">
+    17	      {/* Trending */}
+    18	      <div className="bg-card border border-border rounded-xl p-5">
+    19	        <h3 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+    20	          <TrendingUp className="h-4 w-4 text-primary" />
+    21	          Trending Now
+    22	        </h3>
+    23	        <div className="space-y-1">
+    24	          {trending.map((article, i) => (
+    25	            <div key={article.id} className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0">
+    26	              <span className="font-mono text-lg font-bold text-primary/60 shrink-0 w-6">
+    27	                {String(i + 1).padStart(2, '0')}
+    28	              </span>
+    29	              <button onClick={() => openArticle(article)} className="flex-1 text-left min-w-0">
+    30	                <p className="font-serif font-semibold text-sm line-clamp-2 hover:text-primary transition-colors leading-snug">
+    31	                  {article.title}
+    32	                </p>
+    33	                <p className="text-xs text-muted-foreground mt-1 font-mono">
+    34	                  {article.readTime} min read
+    35	                </p>
+    36	              </button>
+    37	            </div>
+    38	          ))}
+    39	        </div>
+    40	      </div>
+    41	
+    42	      {/* Upcoming Events */}
+    43	      <div className="bg-card border border-border rounded-xl p-5">
+    44	        <h3 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+    45	          <Calendar className="h-4 w-4 text-gold" />
+    46	          Upcoming Events
+    47	        </h3>
+    48	        <div className="space-y-3">
+    49	          {upcomingEvents.map(event => (
+    50	            <div key={event.id} className="flex gap-3 items-start">
+    51	              <div className="text-center shrink-0 w-12">
+    52	                <div className="font-mono text-xs text-primary uppercase">
+    53	                  {new Date(event.date).toLocaleDateString('en-KE', { month: 'short' })}
+    54	                </div>
+    55	                <div className="font-serif text-xl font-bold">
+    56	                  {new Date(event.date).getDate()}
+    57	                </div>
+    58	              </div>
+    59	              <div className="flex-1 min-w-0">
+    60	                <p className="font-serif font-semibold text-sm line-clamp-1">{event.title}</p>
+    61	                <p className="text-xs text-muted-foreground mt-0.5">
+    62	                  {event.venue}, {event.city}
+    63	                </p>
+    64	                <Badge variant="outline" className="mt-1 text-[10px]">{event.category}</Badge>
+    65	              </div>
+    66	            </div>
+    67	          ))}
+    68	        </div>
+    69	        <Button
+    70	          variant="outline"
+    71	          className="w-full mt-4 text-xs font-mono"
+    72	          onClick={() => setActiveCategory('events')}
+    73	        >
+    74	          View All Events <ArrowRight className="h-3 w-3 ml-1" />
+    75	        </Button>
+    76	      </div>
+    77	
+    78	      {/* Newsletter Inline CTA */}
+    79	      <div className="bg-primary/5 border border-primary/20 rounded-xl p-5">
+    80	        <h3 className="font-serif font-bold text-lg mb-2">This Week in EA Arts</h3>
+    81	        <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+    82	          Curated event picks, new reviews, and exclusive content from the East African art scene.
+    83	        </p>
+    84	        <ul className="text-xs text-muted-foreground space-y-1.5 mb-4 font-mono">
+    85	          <li className="flex items-center gap-2">
+    86	            <span className="text-primary">&#10022;</span> Event Picks
+    87	          </li>
+    88	          <li className="flex items-center gap-2">
+    89	            <span className="text-primary">&#10022;</span> New Reviews
+    90	          </li>
+    91	          <li className="flex items-center gap-2">
+    92	            <span className="text-primary">&#10022;</span> Exclusive Content
+    93	          </li>
+    94	        </ul>
+    95	        <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-mono text-xs" size="sm">
+    96	          Subscribe to Newsletter
+    97	        </Button>
+    98	      </div>
+    99	    </aside>
+   100	  )
+   101	}
+
+===== src/components/sanaa/AboutPage.tsx =====
+     1	'use client'
+     2	
+     3	import { useStore } from '@/store/useStore'
+     4	import { Badge } from '@/components/ui/badge'
+     5	import { Separator } from '@/components/ui/separator'
+     6	import { User, Mail, ArrowRight } from 'lucide-react'
+     7	
+     8	export function AboutPage() {
+     9	  const { categories, authors, setView } = useStore()
+    10	
+    11	  return (
+    12	    <main className="max-w-4xl mx-auto px-4 md:px-6 py-8 md:py-12">
+    13	      {/* Breadcrumb */}
+    14	      <nav className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-8">
+    15	        <button onClick={() => useStore.getState().goHome()} className="hover:text-foreground">Home</button>
+    16	        <span>/</span>
+    17	        <span>About</span>
+    18	      </nav>
+    19	
+    20	      {/* Hero */}
+    21	      <div className="text-center mb-12">
+    22	        <h1 className="font-serif text-3xl md:text-5xl font-bold mb-4">About Sanaa Through My Lens</h1>
+    23	        <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+    24	          An arts &amp; culture opinion blog highlighting stories around the art scene in Kenya and East Africa — music, film, book reviews, commentary, events, and infortainment.
+    25	        </p>
+    26	      </div>
+    27	
+    28	      {/* What We Cover */}
+    29	      <section className="mb-12">
+    30	        <h2 className="font-serif text-2xl font-bold mb-6">What We Cover</h2>
+    31	        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    32	          {categories.map(cat => (
+    33	            <button
+    34	              key={cat.id}
+    35	              onClick={() => { useStore.getState().setActiveCategory(cat.slug) }}
+    36	              className="flex items-center gap-4 p-4 rounded-xl border border-border hover:bg-secondary/50 transition-colors text-left group"
+    37	            >
+    38	              <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: cat.color + '15' }}>
+    39	                <div className="h-3 w-3 rounded-full" style={{ backgroundColor: cat.color }} />
+    40	              </div>
+    41	              <div className="flex-1 min-w-0">
+    42	                <h3 className="font-serif font-semibold text-sm group-hover:text-primary transition-colors">{cat.name}</h3>
+    43	                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{cat.description}</p>
+    44	              </div>
+    45	              <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+    46	            </button>
+    47	          ))}
+    48	        </div>
+    49	      </section>
+    50	
+    51	      <Separator className="my-10" />
+    52	
+    53	      {/* Our Mission */}
+    54	      <section className="mb-12">
+    55	        <h2 className="font-serif text-2xl font-bold mb-6">Our Mission</h2>
+    56	        <div className="space-y-4 text-muted-foreground leading-relaxed">
+    57	          <p>
+    58	            Sanaa Through My Lens was founded with a clear purpose: to amplify East African voices in arts and culture. In a media landscape where African stories are often told through external lenses, we believe in the power of opinionated, first-hand perspectives from within the region.
+    59	          </p>
+    60	          <p>
+    61	            We cover the full spectrum of the creative economy — from the music pulsing through Nairobi&rsquo;s clubs to the visual art redefining gallery spaces, from the theatre challenging social norms to the books reshaping literary canons. Our focus is not neutral reporting; it&rsquo;s informed opinion, critical commentary, and cultural analysis.
+    62	          </p>
+    63	          <p>
+    64	            East Africa&rsquo;s creative scene is exploding. A new generation of artists, musicians, writers, filmmakers, and performers is redefining what it means to be African in the 21st century. We&rsquo;re here to document that explosion, to celebrate its highs, to critique its failures, and to push the conversation forward.
+    65	          </p>
+    66	        </div>
+    67	      </section>
+    68	
+    69	      <Separator className="my-10" />
+    70	
+    71	      {/* The Team */}
+    72	      <section className="mb-12">
+    73	        <h2 className="font-serif text-2xl font-bold mb-6">The Team</h2>
+    74	        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+    75	          {authors.map(author => (
+    76	            <div
+    77	              key={author.id}
+    78	              className="p-6 rounded-xl border border-border bg-card"
+    79	            >
+    80	              <div className="flex items-start gap-4">
+    81	                <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+    82	                  <User className="h-6 w-6 text-primary" />
+    83	                </div>
+    84	                <div className="flex-1 min-w-0">
+    85	                  <h3 className="font-serif font-bold text-base">{author.name}</h3>
+    86	                  <p className="font-mono text-[10px] uppercase tracking-wider text-primary mb-2">{author.role}</p>
+    87	                  <p className="text-sm text-muted-foreground leading-relaxed">{author.bio}</p>
+    88	                </div>
+    89	              </div>
+    90	            </div>
+    91	          ))}
+    92	        </div>
+    93	      </section>
+    94	
+    95	      <Separator className="my-10" />
+    96	
+    97	      {/* Get In Touch */}
+    98	      <section>
+    99	        <h2 className="font-serif text-2xl font-bold mb-6">Get In Touch</h2>
+   100	        <div className="p-6 rounded-xl bg-secondary/30 border border-border">
+   101	          <div className="flex items-center gap-3 mb-4">
+   102	            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+   103	              <Mail className="h-5 w-5 text-primary" />
+   104	            </div>
+   105	            <div>
+   106	              <p className="text-sm font-medium">Email Us</p>
+   107	              <a href="mailto:hello@sanaathrumylens.co.ke" className="text-primary text-sm hover:underline">
+   108	                hello@sanaathrumylens.co.ke
+   109	              </a>
+   110	            </div>
+   111	          </div>
+   112	          <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+   113	            <p>
+   114	              <strong className="text-foreground">Pitch a story:</strong> Have a story idea, review, or opinion piece? We&rsquo;d love to hear from you. Send us a brief pitch (150 words max) with your angle and why it matters now.
+   115	            </p>
+   116	            <p>
+   117	              <strong className="text-foreground">Advertise:</strong> Interested in reaching our engaged audience of East African arts and culture enthusiasts? Get in touch for our media kit and rates.
+   118	            </p>
+   119	            <p>
+   120	              <strong className="text-foreground">Collaborate:</strong> We&rsquo;re open to partnerships with cultural organisations, festivals, and brands that align with our mission.
+   121	            </p>
+   122	          </div>
+   123	        </div>
+   124	      </section>
+   125	    </main>
+   126	  )
+   127	}
+
+===== src/components/sanaa/CategoryPage.tsx =====
+     1	'use client'
+     2	
+     3	import { useStore } from '@/store/useStore'
+     4	import { Badge } from '@/components/ui/badge'
+     5	import { ArticleCard } from './ArticleCard'
+     6	import { Button } from '@/components/ui/button'
+     7	import { ArrowLeft } from 'lucide-react'
+     8	import { useState } from 'react'
+     9	
+    10	export function CategoryPage() {
+    11	  const { articles, categories, activeCategory, setActiveCategory, events } = useStore()
+    12	
+    13	  const category = categories.find(c => c.slug === activeCategory)
+    14	  const filteredArticles = articles.filter(a => a.category.slug === activeCategory)
+    15	  const relatedEvents = events.filter(e => !e.isPast && e.category === category?.name)
+    16	  const [showCount, setShowCount] = useState(6)
+    17	  const visible = filteredArticles.slice(0, showCount)
+    18	
+    19	  return (
+    20	    <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
+    21	      {/* Breadcrumb */}
+    22	      <nav className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-8">
+    23	        <button onClick={() => useStore.getState().goHome()} className="hover:text-foreground">Home</button>
+    24	        <span>/</span>
+    25	        <span style={{ color: category?.color }}>{category?.name || activeCategory}</span>
+    26	      </nav>
+    27	
+    28	      {/* Category Hero */}
+    29	      {category && (
+    30	        <div className="mb-10">
+    31	          <div className="flex items-center gap-3 mb-3">
+    32	            <div className="h-4 w-4 rounded-full" style={{ backgroundColor: category.color }} />
+    33	            <Badge style={{ backgroundColor: category.color + '15', color: category.color }} className="text-xs">
+    34	              {category.name}
+    35	            </Badge>
+    36	          </div>
+    37	          <h1 className="font-serif text-3xl md:text-5xl font-bold mb-3">{category.name}</h1>
+    38	          <p className="text-lg text-muted-foreground max-w-2xl leading-relaxed">{category.description}</p>
+    39	          <p className="font-mono text-sm text-muted-foreground mt-2">
+    40	            {filteredArticles.length} stor{filteredArticles.length === 1 ? 'y' : 'ies'}
+    41	          </p>
+    42	        </div>
+    43	      )}
+    44	
+    45	      {/* Articles */}
+    46	      <section className="mb-12">
+    47	        {visible.length > 0 ? (
+    48	          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    49	            {visible.map(article => (
+    50	              <ArticleCard key={article.id} article={article} />
+    51	            ))}
+    52	          </div>
+    53	        ) : (
+    54	          <div className="text-center py-16">
+    55	            <p className="font-serif text-lg text-muted-foreground">No stories in this category yet</p>
+    56	            <Button
+    57	              variant="outline"
+    58	              onClick={() => useStore.getState().goHome()}
+    59	              className="mt-4 font-mono text-xs"
+    60	            >
+    61	              <ArrowLeft className="h-3 w-3 mr-1" /> Back to all stories
+    62	            </Button>
+    63	          </div>
+    64	        )}
+    65	
+    66	        {visible.length < filteredArticles.length && (
+    67	          <div className="text-center mt-8">
+    68	            <Button
+    69	              variant="outline"
+    70	              onClick={() => setShowCount(p => p + 6)}
+    71	              className="font-mono text-xs"
+    72	            >
+    73	              Load More
+    74	            </Button>
+    75	          </div>
+    76	        )}
+    77	      </section>
+    78	
+    79	      {/* Related Events */}
+    80	      {relatedEvents.length > 0 && (
+    81	        <section>
+    82	          <div className="flex items-center gap-3 mb-6">
+    83	            <h2 className="font-serif text-xl font-bold">Upcoming Events</h2>
+    84	            <div className="flex-1 h-px bg-border" />
+    85	          </div>
+    86	          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    87	            {relatedEvents.slice(0, 3).map(event => (
+    88	              <div key={event.id} className="flex gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors">
+    89	                <div className="text-center shrink-0">
+    90	                  <div className="font-mono text-xs text-primary uppercase">
+    91	                    {new Date(event.date).toLocaleDateString('en-KE', { month: 'short' })}
+    92	                  </div>
+    93	                  <div className="font-serif text-2xl font-bold">{new Date(event.date).getDate()}</div>
+    94	                </div>
+    95	                <div className="flex-1 min-w-0">
+    96	                  <h3 className="font-serif font-semibold text-sm line-clamp-1">{event.title}</h3>
+    97	                  <p className="text-xs text-muted-foreground mt-1">{event.venue}, {event.city}</p>
+    98	                  <Badge variant="outline" className="mt-2 text-[10px]">{event.category}</Badge>
+    99	                </div>
+   100	              </div>
+   101	            ))}
+   102	          </div>
+   103	        </section>
+   104	      )}
+   105	
+   106	      {/* Other Categories */}
+   107	      <section className="mt-12">
+   108	        <div className="flex items-center gap-3 mb-6">
+   109	          <h2 className="font-serif text-xl font-bold">Explore Other Categories</h2>
+   110	          <div className="flex-1 h-px bg-border" />
+   111	        </div>
+   112	        <div className="flex flex-wrap gap-2">
+   113	          {categories
+   114	            .filter(c => c.slug !== activeCategory)
+   115	            .map(cat => (
+   116	              <Button
+   117	                key={cat.id}
+   118	                variant="outline"
+   119	                size="sm"
+   120	                onClick={() => { setActiveCategory(cat.slug); setShowCount(6); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+   121	                className="font-mono text-xs"
+   122	              >
+   123	                {cat.name}
+   124	              </Button>
+   125	            ))}
+   126	        </div>
+   127	      </section>
+   128	    </main>
+   129	  )
+   130	}
+
+===== src/components/sanaa/EventsPage.tsx =====
+     1	'use client'
+     2	
+     3	import { useState } from 'react'
+     4	import { useStore } from '@/store/useStore'
+     5	import { Badge } from '@/components/ui/badge'
+     6	import { Button } from '@/components/ui/button'
+     7	import { Calendar, MapPin, Clock, ArrowLeft, ExternalLink } from 'lucide-react'
+     8	
+     9	export function EventsPage() {
+    10	  const { events, categories, setView } = useStore()
+    11	  const [cityFilter, setCityFilter] = useState('all')
+    12	  const [catFilter, setCatFilter] = useState('all')
+    13	  const [showPast, setShowPast] = useState(false)
+    14	
+    15	  const cities = [...new Set(events.map(e => e.city))]
+    16	  const eventCategories = [...new Set(events.map(e => e.category))]
+    17	
+    18	  const filtered = events.filter(e => {
+    19	    if (!showPast && e.isPast) return false
+    20	    if (cityFilter !== 'all' && e.city !== cityFilter) return false
+    21	    if (catFilter !== 'all' && e.category !== catFilter) return false
+    22	    return true
+    23	  })
+    24	
+    25	  const upcoming = filtered.filter(e => !e.isPast)
+    26	  const past = filtered.filter(e => e.isPast)
+    27	  const featuredEvents = upcoming.filter(e => e.isFeatured)
+    28	
+    29	  return (
+    30	    <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
+    31	      {/* Breadcrumb */}
+    32	      <nav className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-8">
+    33	        <button onClick={() => useStore.getState().goHome()} className="hover:text-foreground">Home</button>
+    34	        <span>/</span>
+    35	        <span>Events</span>
+    36	      </nav>
+    37	
+    38	      {/* Header */}
+    39	      <div className="mb-8">
+    40	        <h1 className="font-serif text-3xl md:text-5xl font-bold mb-3">Events</h1>
+    41	        <p className="text-lg text-muted-foreground max-w-2xl">
+    42	          Art exhibitions, festivals, concerts, launches and cultural happenings in Kenya and East Africa
+    43	        </p>
+    44	      </div>
+    45	
+    46	      {/* Featured Events */}
+    47	      {featuredEvents.length > 0 && (
+    48	        <section className="mb-10">
+    49	          <h2 className="font-serif text-xl font-bold mb-4">Featured Events</h2>
+    50	          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    51	            {featuredEvents.map(event => (
+    52	              <div key={event.id} className="relative rounded-xl overflow-hidden group cursor-pointer" style={{ minHeight: '220px' }}>
+    53	                <img
+    54	                  src={event.imageUrl}
+    55	                  alt={event.title}
+    56	                  className="w-full h-full object-cover absolute inset-0 group-hover:scale-105 transition-transform duration-500"
+    57	                  loading="lazy"
+    58	                />
+    59	                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+    60	                <div className="absolute bottom-0 left-0 right-0 p-5">
+    61	                  <Badge variant="secondary" className="bg-white/20 text-white backdrop-blur-sm border-0 text-[10px] mb-2">
+    62	                    {event.category}
+    63	                  </Badge>
+    64	                  <h3 className="font-serif font-bold text-lg text-white">{event.title}</h3>
+    65	                  <div className="flex flex-wrap items-center gap-3 mt-2 text-white/70 text-xs">
+    66	                    <span className="flex items-center gap-1">
+    67	                      <Calendar className="h-3 w-3" />
+    68	                      {new Date(event.date).toLocaleDateString('en-KE', { day: 'numeric', month: 'long', year: 'numeric' })}
+    69	                    </span>
+    70	                    <span className="flex items-center gap-1">
+    71	                      <MapPin className="h-3 w-3" />
+    72	                      {event.venue}, {event.city}
+    73	                    </span>
+    74	                    {event.ticketUrl && (
+    75	                      <span className="flex items-center gap-1 ml-auto">
+    76	                        <ExternalLink className="h-3 w-3" />
+    77	                        Tickets
+    78	                      </span>
+    79	                    )}
+    80	                  </div>
+    81	                </div>
+    82	              </div>
+    83	            ))}
+    84	          </div>
+    85	        </section>
+    86	      )}
+    87	
+    88	      {/* Filters */}
+    89	      <section className="mb-8 flex flex-wrap items-center gap-3">
+    90	        <div className="flex items-center gap-2 flex-wrap">
+    91	          <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Category:</span>
+    92	          <Button
+    93	            size="sm"
+    94	            variant={catFilter === 'all' ? 'default' : 'outline'}
+    95	            onClick={() => setCatFilter('all')}
+    96	            className="font-mono text-xs h-7"
+    97	          >
+    98	            All
+    99	          </Button>
+   100	          {eventCategories.map(cat => (
+   101	            <Button
+   102	              key={cat}
+   103	              size="sm"
+   104	              variant={catFilter === cat ? 'default' : 'outline'}
+   105	              onClick={() => setCatFilter(cat)}
+   106	              className="font-mono text-xs h-7"
+   107	            >
+   108	              {cat}
+   109	            </Button>
+   110	          ))}
+   111	        </div>
+   112	        <div className="flex items-center gap-2">
+   113	          <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">City:</span>
+   114	          <Button
+   115	            size="sm"
+   116	            variant={cityFilter === 'all' ? 'default' : 'outline'}
+   117	            onClick={() => setCityFilter('all')}
+   118	            className="font-mono text-xs h-7"
+   119	          >
+   120	            All
+   121	          </Button>
+   122	          {cities.map(city => (
+   123	            <Button
+   124	              key={city}
+   125	              size="sm"
+   126	              variant={cityFilter === city ? 'default' : 'outline'}
+   127	              onClick={() => setCityFilter(city)}
+   128	              className="font-mono text-xs h-7"
+   129	            >
+   130	              {city}
+   131	            </Button>
+   132	          ))}
+   133	        </div>
+   134	        <Button
+   135	          size="sm"
+   136	          variant={showPast ? 'default' : 'ghost'}
+   137	          onClick={() => setShowPast(!showPast)}
+   138	          className="font-mono text-xs h-7 ml-auto"
+   139	        >
+   140	          {showPast ? 'Hide Past' : 'Show Past'}
+   141	        </Button>
+   142	      </section>
+   143	
+   144	      {/* Upcoming Events */}
+   145	      <section className="mb-10">
+   146	        <h2 className="font-serif text-xl font-bold mb-4">
+   147	          Upcoming Events
+   148	          <span className="text-muted-foreground font-mono text-sm font-normal ml-3">
+   149	            ({upcoming.length})
+   150	          </span>
+   151	        </h2>
+   152	        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   153	          {upcoming.map(event => (
+   154	            <div
+   155	              key={event.id}
+   156	              className="flex gap-4 p-5 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors cursor-pointer group"
+   157	            >
+   158	              <div className="text-center shrink-0">
+   159	                <div className="font-mono text-xs text-primary uppercase">
+   160	                  {new Date(event.date).toLocaleDateString('en-KE', { month: 'short' })}
+   161	                </div>
+   162	                <div className="font-serif text-3xl font-bold leading-none">{new Date(event.date).getDate()}</div>
+   163	                <div className="font-mono text-[10px] text-muted-foreground mt-0.5">
+   164	                  {new Date(event.date).toLocaleDateString('en-KE', { weekday: 'short' })}
+   165	                </div>
+   166	              </div>
+   167	              <div className="flex-1 min-w-0">
+   168	                <h3 className="font-serif font-semibold text-sm group-hover:text-primary transition-colors line-clamp-1">
+   169	                  {event.title}
+   170	                </h3>
+   171	                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{event.description}</p>
+   172	                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+   173	                  <MapPin className="h-3 w-3 shrink-0" />
+   174	                  <span className="truncate">{event.venue}, {event.city}</span>
+   175	                </div>
+   176	                <Badge variant="outline" className="mt-2 text-[10px]">{event.category}</Badge>
+   177	                {event.ticketUrl && (
+   178	                  <a
+   179	                    href={event.ticketUrl}
+   180	                    className="inline-flex items-center gap-1 text-[10px] text-primary font-mono mt-2 hover:underline"
+   181	                    onClick={e => e.stopPropagation()}
+   182	                    target="_blank"
+   183	                    rel="noopener noreferrer"
+   184	                  >
+   185	                    <ExternalLink className="h-2.5 w-2.5" /> Get Tickets
+   186	                  </a>
+   187	                )}
+   188	              </div>
+   189	            </div>
+   190	          ))}
+   191	        </div>
+   192	      </section>
+   193	
+   194	      {/* Past Events */}
+   195	      {showPast && past.length > 0 && (
+   196	        <section>
+   197	          <h2 className="font-serif text-xl font-bold mb-4">
+   198	            Past Events
+   199	            <span className="text-muted-foreground font-mono text-sm font-normal ml-3">
+   200	              ({past.length})
+   201	            </span>
+   202	          </h2>
+   203	          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   204	            {past.map(event => (
+   205	              <div
+   206	                key={event.id}
+   207	                className="flex gap-4 p-5 rounded-xl border border-border bg-muted/30 opacity-70 cursor-pointer group"
+   208	              >
+   209	                <div className="text-center shrink-0">
+   210	                  <div className="font-mono text-xs text-muted-foreground uppercase">
+   211	                    {new Date(event.date).toLocaleDateString('en-KE', { month: 'short' })}
+   212	                  </div>
+   213	                  <div className="font-serif text-3xl font-bold leading-none text-muted-foreground">{new Date(event.date).getDate()}</div>
+   214	                </div>
+   215	                <div className="flex-1 min-w-0">
+   216	                  <h3 className="font-serif font-semibold text-sm text-muted-foreground group-hover:text-foreground transition-colors line-clamp-1">
+   217	                    {event.title}
+   218	                  </h3>
+   219	                  <p className="text-xs text-muted-foreground mt-1">
+   220	                    {event.venue}, {event.city}
+   221	                  </p>
+   222	                </div>
+   223	              </div>
+   224	            ))}
+   225	          </div>
+   226	        </section>
+   227	      )}
+   228	
+   229	      {filtered.length === 0 && (
+   230	        <div className="text-center py-16">
+   231	          <p className="font-serif text-lg text-muted-foreground">No events match your filters</p>
+   232	          <Button variant="outline" onClick={() => { setCatFilter('all'); setCityFilter('all'); setShowPast(false) }} className="mt-4 font-mono text-xs">
+   233	            Clear Filters
+   234	          </Button>
+   235	        </div>
+   236	      )}
+   237	    </main>
+   238	  )
+   239	}
+
+===== src/components/sanaa/EventsSection.tsx =====
+     1	'use client'
+     2	
+     3	import { useStore } from '@/store/useStore'
+     4	import { Badge } from '@/components/ui/badge'
+     5	import { Calendar, MapPin } from 'lucide-react'
+     6	
+     7	export function EventsSection() {
+     8	  const { events } = useStore()
+     9	  const upcoming = events.filter(e => !e.isPast).slice(0, 4)
+    10	  const past = events.filter(e => e.isPast).slice(0, 3)
+    11	
+    12	  if (events.length === 0) return null
+    13	
+    14	  return (
+    15	    <section className="max-w-7xl mx-auto px-4 md:px-6">
+    16	      <div className="flex items-center justify-between mb-6">
+    17	        <h2 className="font-serif text-2xl md:text-3xl font-bold">Events This Week</h2>
+    18	      </div>
+    19	      <p className="text-muted-foreground mb-6 text-sm">
+    20	        Art exhibitions, festivals, concerts, and cultural happenings
+    21	      </p>
+    22	
+    23	      {/* Featured Events */}
+    24	      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+    25	        {upcoming.filter(e => e.isFeatured).map(event => (
+    26	          <div
+    27	            key={event.id}
+    28	            className="relative rounded-xl overflow-hidden group cursor-pointer"
+    29	          >
+    30	            <div className="aspect-[16/9]">
+    31	              <img
+    32	                src={event.imageUrl}
+    33	                alt={event.title}
+    34	                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+    35	                loading="lazy"
+    36	              />
+    37	              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+    38	            </div>
+    39	            <div className="absolute bottom-0 left-0 right-0 p-4">
+    40	              <Badge variant="secondary" className="bg-white/20 text-white backdrop-blur-sm border-0 text-[10px] mb-2">
+    41	                {event.category}
+    42	              </Badge>
+    43	              <h3 className="font-serif font-bold text-lg text-white">{event.title}</h3>
+    44	              <div className="flex items-center gap-3 mt-2 text-white/70 text-xs">
+    45	                <span className="flex items-center gap-1">
+    46	                  <Calendar className="h-3 w-3" />
+    47	                  {new Date(event.date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
+    48	                </span>
+    49	                <span className="flex items-center gap-1">
+    50	                  <MapPin className="h-3 w-3" />
+    51	                  {event.venue}, {event.city}
+    52	                </span>
+    53	              </div>
+    54	            </div>
+    55	          </div>
+    56	        ))}
+    57	      </div>
+    58	
+    59	      {/* Event List */}
+    60	      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    61	        {upcoming.map(event => (
+    62	          <div
+    63	            key={event.id}
+    64	            className="flex gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors cursor-pointer group"
+    65	          >
+    66	            <div className="text-center shrink-0">
+    67	              <div className="font-mono text-xs text-primary uppercase">
+    68	                {new Date(event.date).toLocaleDateString('en-KE', { month: 'short' })}
+    69	              </div>
+    70	              <div className="font-serif text-2xl font-bold">{new Date(event.date).getDate()}</div>
+    71	              <div className="font-mono text-[10px] text-muted-foreground">
+    72	                {new Date(event.date).toLocaleDateString('en-KE', { weekday: 'short' })}
+    73	              </div>
+    74	            </div>
+    75	            <div className="flex-1 min-w-0">
+    76	              <h3 className="font-serif font-semibold text-sm group-hover:text-primary transition-colors line-clamp-1">
+    77	                {event.title}
+    78	              </h3>
+    79	              <p className="text-xs text-muted-foreground mt-1">
+    80	                {event.venue}, {event.city}
+    81	              </p>
+    82	              <Badge variant="outline" className="mt-2 text-[10px]">{event.category}</Badge>
+    83	            </div>
+    84	          </div>
+    85	        ))}
+    86	      </div>
+    87	    </section>
+    88	  )
+    89	}
+
+===== src/components/sanaa/OpinionSection.tsx =====
+     1	'use client'
+     2	
+     3	import { useStore } from '@/store/useStore'
+     4	import { ArticleCard } from './ArticleCard'
+     5	
+     6	export function OpinionSection() {
+     7	  const { articles, openArticle } = useStore()
+     8	
+     9	  const opinions = articles.filter(a =>
+    10	    a.category.slug === 'opinion-commentary'
+    11	  ).slice(0, 3)
+    12	
+    13	  if (opinions.length === 0) return null
+    14	
+    15	  return (
+    16	    <section className="max-w-7xl mx-auto px-4 md:px-6">
+    17	      <div className="flex items-center gap-3 mb-6">
+    18	        <h2 className="font-serif text-2xl md:text-3xl font-bold">
+    19	          Opinion <span className="text-muted-foreground">&</span> Commentary
+    20	        </h2>
+    21	        <div className="flex-1 h-px bg-border" />
+    22	      </div>
+    23	
+    24	      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    25	        {/* Featured opinion */}
+    26	        <div className="lg:col-span-2">
+    27	          <button
+    28	            onClick={() => openArticle(opinions[0])}
+    29	            className="w-full text-left group"
+    30	          >
+    31	            <div className="relative rounded-xl overflow-hidden mb-4 aspect-[16/9]">
+    32	              <img
+    33	                src={opinions[0].coverImage}
+    34	                alt=""
+    35	                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+    36	              />
+    37	              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+    38	              <div className="absolute bottom-0 left-0 right-0 p-5">
+    39	                <p className="font-serif font-bold text-xl md:text-2xl text-white leading-tight">
+    40	                  {opinions[0].title}
+    41	                </p>
+    42	                <p className="text-white/70 text-sm mt-2 line-clamp-2">{opinions[0].excerpt}</p>
+    43	                <p className="text-white/50 text-xs mt-3 font-mono">
+    44	                  By {opinions[0].author.name} &middot; {opinions[0].readTime} min read
+    45	                </p>
+    46	              </div>
+    47	            </div>
+    48	          </button>
+    49	        </div>
+    50	
+    51	        {/* Side opinions */}
+    52	        <div className="space-y-5">
+    53	          {opinions.slice(1).map(article => (
+    54	            <button
+    55	              key={article.id}
+    56	              onClick={() => openArticle(article)}
+    57	              className="w-full text-left group"
+    58	            >
+    59	              <ArticleCard article={article} variant="horizontal" />
+    60	            </button>
+    61	          ))}
+    62	        </div>
+    63	      </div>
+    64	    </section>
+    65	  )
+    66	}
+
+===== src/components/sanaa/NewsletterCTA.tsx =====
+     1	'use client'
+     2	
+     3	import { useState } from 'react'
+     4	import { Input } from '@/components/ui/input'
+     5	import { Button } from '@/components/ui/button'
+     6	import { Check, Mail } from 'lucide-react'
+     7	
+     8	export function NewsletterCTA({ variant = 'inline' }: { variant?: 'inline' | 'hero' }) {
+     9	  const [name, setName] = useState('')
+    10	  const [email, setEmail] = useState('')
+    11	  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+    12	
+    13	  async function handleSubmit(e: React.FormEvent) {
+    14	    e.preventDefault()
+    15	    if (!email.trim()) return
+    16	    setStatus('loading')
+    17	    try {
+    18	      const res = await fetch('/api/newsletter', {
+    19	        method: 'POST',
+    20	        headers: { 'Content-Type': 'application/json' },
+    21	        body: JSON.stringify({ name: name || '', email }),
+    22	      })
+    23	      if (res.ok) {
+    24	        setStatus('success')
+    25	        setName('')
+    26	        setEmail('')
+    27	      } else {
+    28	        setStatus('error')
+    29	      }
+    30	    } catch {
+    31	      setStatus('error')
+    32	    }
+    33	  }
+    34	
+    35	  if (status === 'success') {
+    36	    return (
+    37	      <div className={`rounded-2xl p-8 md:p-12 text-center ${variant === 'hero' ? 'bg-primary text-primary-foreground' : 'bg-primary/5 border border-primary/20'}`}>
+    38	        <div className="flex items-center justify-center gap-2 mb-3">
+    39	          <Check className="h-5 w-5" />
+    40	          <span className="font-serif text-xl font-bold">You&rsquo;re subscribed!</span>
+    41	        </div>
+    42	        <p className="text-sm opacity-80 max-w-md mx-auto">
+    43	          Welcome to the Sanaa community. Look out for our next edition in your inbox.
+    44	        </p>
+    45	      </div>
+    46	    )
+    47	  }
+    48	
+    49	  if (variant === 'hero') {
+    50	    return (
+    51	      <div className="bg-primary text-primary-foreground rounded-2xl p-8 md:p-12 text-center">
+    52	        <h2 className="font-serif text-2xl md:text-3xl font-bold mb-3">This Week in East African Arts</h2>
+    53	        <p className="text-primary-foreground/80 max-w-lg mx-auto mb-6 text-sm md:text-base">
+    54	          Get our weekly newsletter with curated event picks, new reviews, and exclusive content from the East African art scene.
+    55	        </p>
+    56	        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+    57	          <input
+    58	            placeholder="Your name (optional)"
+    59	            value={name}
+    60	            onChange={e => setName(e.target.value)}
+    61	            className="flex-1 px-4 py-2.5 rounded-lg bg-primary-foreground/10 border border-primary-foreground/20 text-sm text-primary-foreground placeholder:text-primary-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary-foreground/50"
+    62	          />
+    63	          <input
+    64	            placeholder="Your email address"
+    65	            required
+    66	            value={email}
+    67	            onChange={e => setEmail(e.target.value)}
+    68	            className="flex-1 px-4 py-2.5 rounded-lg bg-primary-foreground/10 border border-primary-foreground/20 text-sm text-primary-foreground placeholder:text-primary-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary-foreground/50"
+    69	          />
+    70	          <button
+    71	            type="submit"
+    72	            disabled={status === 'loading'}
+    73	            className="px-6 py-2.5 rounded-lg bg-primary-foreground text-primary font-mono text-xs font-semibold hover:bg-primary-foreground/90 transition-colors shrink-0 disabled:opacity-50"
+    74	          >
+    75	            {status === 'loading' ? 'Subscribing...' : 'Subscribe'}
+    76	          </button>
+    77	        </form>
+    78	      </div>
+    79	    )
+    80	  }
+    81	
+    82	  return (
+    83	    <div className="mt-12 p-6 rounded-xl bg-primary/5 border border-primary/20">
+    84	      <h3 className="font-serif font-bold text-lg mb-2 flex items-center gap-2">
+    85	        <Mail className="h-4 w-4 text-primary" />
+    86	        Enjoyed this story?
+    87	      </h3>
+    88	      <p className="text-sm text-muted-foreground mb-4">Get more like this delivered to your inbox every week.</p>
+    89	      <form onSubmit={handleSubmit} className="flex gap-2">
+    90	        <Input
+    91	          placeholder="Your name (optional)"
+    92	          value={name}
+    93	          onChange={e => setName(e.target.value)}
+    94	          className="max-w-[200px] h-9 text-sm"
+    95	        />
+    96	        <Input
+    97	          placeholder="Your email address"
+    98	          required
+    99	          value={email}
+   100	          onChange={e => setEmail(e.target.value)}
+   101	          className="flex-1 h-9 text-sm"
+   102	        />
+   103	        <Button
+   104	          type="submit"
+   105	          size="sm"
+   106	          disabled={status === 'loading'}
+   107	          className="bg-primary text-primary-foreground h-9 px-4 text-xs font-mono"
+   108	        >
+   109	          {status === 'loading' ? '...' : 'Subscribe'}
+   110	        </Button>
+   111	      </form>
+   112	      {status === 'error' && (
+   113	        <p className="text-xs text-destructive mt-2">Something went wrong. Please try again.</p>
+   114	      )}
+   115	    </div>
+   116	  )
+   117	}
+
+===== src/components/sanaa/SearchModal.tsx =====
+     1	'use client'
+     2	
+     3	import { useState, useEffect, useCallback } from 'react'
+     4	import { useStore } from '@/store/useStore'
+     5	import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+     6	import { Input } from '@/components/ui/input'
+     7	import { Badge } from '@/components/ui/badge'
+     8	import { Search, X, Clock, ArrowRight } from 'lucide-react'
+     9	import Link from 'next/link'
+    10	
+    11	export function SearchModal() {
+    12	  const { isSearchOpen, toggleSearch, articles, categories, openArticle } = useStore()
+    13	  const [query, setQuery] = useState('')
+    14	
+    15	  const filtered = query.length > 1
+    16	    ? articles.filter(a =>
+    17	        a.title.toLowerCase().includes(query.toLowerCase()) ||
+    18	        a.excerpt.toLowerCase().includes(query.toLowerCase()) ||
+    19	        a.tags.toLowerCase().includes(query.toLowerCase())
+    20	      ).slice(0, 8)
+    21	    : []
+    22	
+    23	  useEffect(() => {
+    24	    const handleKeyDown = (e: KeyboardEvent) => {
+    25	      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+    26	        e.preventDefault()
+    27	        toggleSearch()
+    28	      }
+    29	      if (e.key === 'Escape' && isSearchOpen) {
+    30	        toggleSearch()
+    31	      }
+    32	    }
+    33	    window.addEventListener('keydown', handleKeyDown)
+    34	    return () => window.removeEventListener('keydown', handleKeyDown)
+    35	  }, [isSearchOpen, toggleSearch])
+    36	
+    37	  return (
+    38	    <Sheet open={isSearchOpen} onOpenChange={toggleSearch}>
+    39	      <SheetContent className="w-full sm:max-w-lg bg-background border-l border-border p-0">
+    40	        <SheetHeader className="p-6 pb-4 border-b border-border">
+    41	          <SheetTitle className="font-serif text-2xl">Search Stories</SheetTitle>
+    42	        </SheetHeader>
+    43	        <div className="p-6">
+    44	          <div className="relative">
+    45	            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+    46	            <Input
+    47	              placeholder="Search articles, topics, tags..."
+    48	              value={query}
+    49	              onChange={(e) => setQuery(e.target.value)}
+    50	              className="pl-10 h-12 text-lg bg-secondary/50 border-border font-sans"
+    51	              autoFocus
+    52	            />
+    53	            {query && (
+    54	              <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+    55	                <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+    56	              </button>
+    57	            )}
+    58	          </div>
+    59	
+    60	          {!query && (
+    61	            <div className="mt-6">
+    62	              <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">Browse Categories</p>
+    63	              <div className="flex flex-wrap gap-2">
+    64	                {categories.map(c => (
+    65	                  <Badge key={c.id} variant="secondary" className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors px-3 py-1">
+    66	                    {c.name}
+    67	                  </Badge>
+    68	                ))}
+    69	              </div>
+    70	            </div>
+    71	          )}
+    72	
+    73	          {filtered.length > 0 && (
+    74	            <div className="mt-6">
+    75	              <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
+    76	                {filtered.length} result{filtered.length > 1 ? 's' : ''}
+    77	              </p>
+    78	              <div className="space-y-2">
+    79	                {filtered.map(article => (
+    80	                  <button
+    81	                    key={article.id}
+    82	                    onClick={() => { openArticle(article); toggleSearch(); setQuery('') }}
+    83	                    className="w-full text-left p-3 rounded-lg hover:bg-secondary/50 transition-colors group"
+    84	                  >
+    85	                    <div className="flex items-start gap-3">
+    86	                      <div className="flex-1 min-w-0">
+    87	                        <p className="font-serif font-semibold text-sm group-hover:text-primary transition-colors line-clamp-1">
+    88	                          {article.title}
+    89	                        </p>
+    90	                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
+    91	                          <span style={{ color: article.category.color }}>{article.category.name}</span>
+    92	                          <span className="text-border">|</span>
+    93	                          <Clock className="h-3 w-3" />
+    94	                          <span>{article.readTime} min</span>
+    95	                        </p>
+    96	                      </div>
+    97	                      <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+    98	                    </div>
+    99	                  </button>
+   100	                ))}
+   101	              </div>
+   102	            </div>
+   103	          )}
+   104	
+   105	          {query.length > 1 && filtered.length === 0 && (
+   106	            <div className="mt-12 text-center">
+   107	              <p className="text-muted-foreground font-serif">No stories found for &ldquo;{query}&rdquo;</p>
+   108	              <p className="text-sm text-muted-foreground mt-2">Try different keywords or browse categories</p>
+   109	            </div>
+   110	          )}
+   111	        </div>
+   112	      </SheetContent>
+   113	    </Sheet>
+   114	  )
+   115	}
+
+===== src/components/sanaa/ThemeProvider.tsx =====
+     1	'use client'
+     2	
+     3	import { ThemeProvider as NextThemesProvider } from 'next-themes'
+     4	
+     5	export function ThemeProvider({
+     6	  children,
+     7	  ...props
+     8	}: React.ComponentProps<typeof NextThemesProvider>) {
+     9	  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+    10	}
+
+===== src/components/sanaa/TrendingTicker.tsx =====
+     1	'use client'
+     2	
+     3	import { useStore } from '@/store/useStore'
+     4	
+     5	export function TrendingTicker() {
+     6	  const { articles } = useStore()
+     7	
+     8	  const trending = articles
+     9	    .filter(a => a.isPinned || a.isFeatured)
+    10	    .slice(0, 5)
+    11	
+    12	  if (trending.length === 0) return null
+    13	
+    14	  const items = [...trending, ...trending]
+    15	
+    16	  return (
+    17	    <div className="bg-primary text-primary-foreground overflow-hidden">
+    18	      <div className="max-w-7xl mx-auto flex items-center">
+    19	        <div className="shrink-0 px-4 py-2 bg-primary-foreground/10 font-mono text-xs font-semibold uppercase tracking-wider border-r border-primary-foreground/20">
+    20	          Trending
+    21	        </div>
+    22	        <div className="overflow-hidden flex-1">
+    23	          <div className="animate-ticker flex whitespace-nowrap">
+    24	            {items.map((article, i) => (
+    25	              <button
+    26	                key={`${article.id}-${i}`}
+    27	                onClick={() => useStore.getState().openArticle(article)}
+    28	                className="px-4 md:px-6 py-2 hover:bg-primary-foreground/10 transition-colors flex items-center gap-2 text-sm"
+    29	              >
+    30	                <span className="font-serif font-medium">{article.title}</span>
+    31	                <span className="text-primary-foreground/40">•</span>
+    32	              </button>
+    33	            ))}
+    34	          </div>
+    35	        </div>
+    36	      </div>
+    37	    </div>
+    38	  )
+    39	}
+
+===== src/components/sanaa/ArticleCardUpdated.tsx =====
+     1	'use client'
+     2	
+     3	import { Badge } from '@/components/ui/badge'
+     4	import { Button } from '@/components/ui/button'
+     5	import { Clock, Bookmark, BookmarkCheck, User } from 'lucide-react'
+     6	import { useStore } from '@/store/useStore'
+     7	import type { Article } from '@/store/useStore'
+     8	import Link from 'next/link'
+     9	
+    10	interface ArticleCardProps {
+    11	  article: Article
+    12	  variant?: 'default' | 'compact' | 'horizontal'
+    13	}
+    14	
+    15	export function ArticleCard({ article, variant = 'default' }: ArticleCardProps) {
+    16	  const { openArticle, bookmarks, toggleBookmark } = useStore()
+    17	  const isBookmarked = bookmarks.includes(article.id)
+    18	
+    19	  const handleBookmark = (e: React.MouseEvent) => {
+    20	    e.preventDefault()
+    21	    e.stopPropagation()
+    22	    toggleBookmark(article.id)
+    23	  }
+    24	
+    25	  if (variant === 'horizontal') {
+    26	    return (
+    27	      <Link href={`/articles/${article.slug}`} onClick={() => openArticle(article)} className="w-full flex gap-4 text-left group">
+    28	        <div className="w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden shrink-0 bg-secondary">
+    29	          <img src={article.coverImage} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+    30	        </div>
+    31	        <div className="flex-1 min-w-0 py-1">
+    32	          <Badge className="text-[10px] px-1.5 py-0 mb-1.5" style={{ backgroundColor: article.category.color + '20', color: article.category.color }}>
+    33	            {article.category.name}
+    34	          </Badge>
+    35	          <h3 className="font-serif font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+    36	            {article.title}
+    37	          </h3>
+    38	          <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-2 font-mono">
+    39	            <span>{article.author.name}</span>
+    40	            <span className="text-border">·</span>
+    41	            <span>{new Date(article.publishedAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+    42	          </p>
+    43	        </div>
+    44	      </Link>
+    45	    )
+    46	  }
+    47	
+    48	  if (variant === 'compact') {
+    49	    return (
+    50	      <Link href={`/articles/${article.slug}`} onClick={() => openArticle(article)} className="w-full text-left p-3 rounded-lg hover:bg-secondary/50 transition-colors group">
+    51	        <div className="flex items-start gap-3">
+    52	          <span className="font-mono text-xs text-muted-foreground mt-0.5">{article.category.name}</span>
+    53	          <div className="flex-1 min-w-0">
+    54	            <p className="font-serif font-semibold text-sm group-hover:text-primary transition-colors line-clamp-1">{article.title}</p>
+    55	            <p className="text-xs text-muted-foreground mt-1 font-mono">{article.readTime} min read</p>
+    56	          </div>
+    57	        </div>
+    58	      </Link>
+    59	    )
+    60	  }
+    61	
+    62	  return (
+    63	    <article className="group cursor-pointer" onClick={() => openArticle(article)}>
+    64	      <div className="relative rounded-xl overflow-hidden mb-3 aspect-[16/10] bg-secondary">
+    65	        <img src={article.coverImage} alt={article.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+    66	        <Badge className="absolute top-3 left-3 text-xs" style={{ backgroundColor: article.category.color, color: '#fff' }}>
+    67	          {article.category.name}
+    68	        </Badge>
+    69	        <Button
+    70	          variant="ghost"
+    71	          size="icon"
+    72	          className="absolute top-3 right-3 bg-black/30 hover:bg-black/50 text-white rounded-full h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+    73	          onClick={handleBookmark}
+    74	        >
+    75	          {isBookmarked ? <BookmarkCheck className="h-3.5 w-3.5 text-gold" /> : <Bookmark className="h-3.5 w-3.5" />}
+    76	        </Button>
+    77	      </div>
+    78	      <h3 className="font-serif font-bold text-lg leading-snug group-hover:text-primary transition-colors line-clamp-2 mb-2">
+    79	        {article.title}
+    80	      </h3>
+    81	      <p className="text-sm text-muted-foreground line-clamp-2 mb-3 leading-relaxed">{article.excerpt}</p>
+    82	      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+    83	        <span className="font-medium text-foreground hover:text-primary transition-colors">{article.author.name}</span>
+    84	        <span className="text-border">·</span>
+    85	        <span>{new Date(article.publishedAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+    86	        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{article.readTime}</span>
+    87	      </div>
+    88	    </article>
+    89	  )
+    90	}

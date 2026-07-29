@@ -1,47 +1,40 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useStore, type Comment } from '@/store/useStore'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { ArticleCard } from './ArticleCard'
-import { ReadingProgress } from './ReadingProgress'
+import { ArticleCard } from '@/components/sanaa/ArticleCard'
+import { ReadingProgress } from '@/components/sanaa/ReadingProgress'
+import { NewsletterCTA } from '@/components/sanaa/NewsletterCTA'
 import {
-  X, Clock, Eye, Share2, Bookmark, BookmarkCheck, ChevronRight,
-  User, Calendar, ArrowLeft, Send,
-  MessageSquare, Twitter, Facebook, Linkedin, Copy, Check
+  Clock, Eye, Bookmark, BookmarkCheck, ChevronRight,
+  User, Calendar, Send,
+  MessageSquare, Twitter, Facebook, Linkedin, Copy, Check,
+  ArrowLeft
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import Link from 'next/link'
+import { useStore, type Comment } from '@/store/useStore'
 
-export function ArticleModal() {
-  const { selectedArticle: article, isArticleOpen, closeArticle, bookmarks, toggleBookmark } = useStore()
-  const [comments, setComments] = useState<Comment[]>([])
+interface ArticlePageProps {
+  article: any
+  related: any[]
+}
+
+export function ArticlePageClient({ article, related }: ArticlePageProps) {
+  const { bookmarks, toggleBookmark } = useStore()
+  const [comments, setComments] = useState<Comment[]>(article.comments || [])
   const [commentText, setCommentText] = useState('')
   const [commentName, setCommentName] = useState('')
-  const [related, setRelated] = useState<any[]>([])
   const [copied, setCopied] = useState(false)
 
-  useEffect(() => {
-    if (isArticleOpen && article) {
-      fetch(`/api/articles/${article.slug}`)
-        .then(r => r.json())
-        .then(data => {
-          setComments(data.article?.comments || [])
-          setRelated(data.related || [])
-        })
-        .catch(() => {})
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => { document.body.style.overflow = '' }
-  }, [isArticleOpen, article])
+  const isBookmarked = bookmarks.includes(article.id)
+  const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/articles/${article.slug}` : ''
 
   const handleComment = async () => {
-    if (!article || !commentText.trim() || !commentName.trim()) return
+    if (!commentText.trim() || !commentName.trim()) return
     try {
       const res = await fetch('/api/comments', {
         method: 'POST',
@@ -55,70 +48,30 @@ export function ArticleModal() {
   }
 
   const handleCopyLink = async () => {
-    if (!article) return
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/articles/${article.slug}`)
+      await navigator.clipboard.writeText(shareUrl)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {}
   }
 
-  const shareUrl = article ? `${typeof window !== 'undefined' ? window.location.origin : ''}/articles/${article.slug}` : ''
-
-  if (!isArticleOpen || !article) return null
-
-  const isBookmarked = bookmarks.includes(article.id)
-
   return (
-    <div className="fixed inset-0 z-[100] bg-background/95 overflow-y-auto">
+    <>
       <ReadingProgress />
 
-      {/* Top bar */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="max-w-4xl mx-auto px-4 h-12 flex items-center justify-between">
-          <Link href="/" onClick={closeArticle} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-            <span className="font-mono text-xs">Back</span>
-          </Link>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => toggleBookmark(article.id)}
-            >
-              {isBookmarked ? <BookmarkCheck className="h-4 w-4 fill-gold text-gold" /> : <Bookmark className="h-4 w-4" />}
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopyLink}>
-              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Share2 className="h-4 w-4" />
-            </Button>
-            <button onClick={closeArticle} className="p-2 hover:bg-secondary rounded-md transition-colors">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Article Content */}
-      <article className="max-w-4xl mx-auto px-4 md:px-6 py-8">
+      <div className="max-w-4xl mx-auto px-4 md:px-6 py-8 animate-fadeIn">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-6">
-          <Link href="/" onClick={closeArticle} className="hover:text-foreground">Home</Link>
+          <Link href="/" className="hover:text-foreground">Home</Link>
           <ChevronRight className="h-3 w-3" />
-          <Link href={`/category/${article.category.slug}`} onClick={closeArticle} className="hover:text-foreground" style={{ color: article.category.color }}>
+          <Link href={`/category/${article.category.slug}`} className="hover:text-foreground" style={{ color: article.category.color }}>
             {article.category.name}
           </Link>
         </nav>
 
         {/* Header */}
         <header className="mb-8">
-          <Badge
-            className="mb-4"
-            style={{ backgroundColor: article.category.color + '15', color: article.category.color }}
-          >
+          <Badge className="mb-4" style={{ backgroundColor: article.category.color + '15', color: article.category.color }}>
             {article.category.name}
           </Badge>
           <h1 className="font-serif text-3xl md:text-4xl lg:text-5xl font-bold leading-tight mb-4">
@@ -130,7 +83,7 @@ export function ArticleModal() {
 
           {/* Author + Meta */}
           <div className="flex flex-wrap items-center gap-4 mt-6 pt-6 border-t border-border">
-            <Link href={`/authors/${article.author.slug}`} onClick={(e) => e.preventDefault()} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <Link href={`/authors/${article.author.slug}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <User className="h-4 w-4 text-primary" />
               </div>
@@ -158,6 +111,39 @@ export function ArticleModal() {
           </div>
         </header>
 
+        {/* Action Bar */}
+        <div className="flex items-center gap-2 mb-8 pb-6 border-b border-border">
+          <Button
+            variant={isBookmarked ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => toggleBookmark(article.id)}
+            className="gap-1.5 text-xs font-mono"
+          >
+            {isBookmarked ? <BookmarkCheck className="h-3 w-3 fill-gold text-gold" /> : <Bookmark className="h-3 w-3" />}
+            {isBookmarked ? 'Bookmarked' : 'Bookmark'}
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs font-mono" onClick={handleCopyLink}>
+            {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+            {copied ? 'Copied!' : 'Copy Link'}
+          </Button>
+          <div className="flex-1" />
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" asChild>
+            <a href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(article.title)}`} target="_blank" rel="noopener noreferrer">
+              <Twitter className="h-3 w-3" />
+            </a>
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" asChild>
+            <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`} target="_blank" rel="noopener noreferrer">
+              <Facebook className="h-3 w-3" />
+            </a>
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" asChild>
+            <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`} target="_blank" rel="noopener noreferrer">
+              <Linkedin className="h-3 w-3" />
+            </a>
+          </Button>
+        </div>
+
         {/* Cover Image */}
         <div className="rounded-xl overflow-hidden mb-10 aspect-[16/9]">
           <img src={article.coverImage} alt={article.title} className="w-full h-full object-cover" />
@@ -176,9 +162,11 @@ export function ArticleModal() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-mono text-[10px] uppercase tracking-wider text-primary mb-1">Written by</p>
-              <h3 className="font-serif font-bold text-lg">{article.author.name}</h3>
+              <Link href={`/authors/${article.author.slug}`} className="font-serif font-bold text-lg hover:text-primary transition-colors">
+                {article.author.name}
+              </Link>
               <p className="text-sm text-muted-foreground mt-1 leading-relaxed line-clamp-3">{article.author.bio}</p>
-              <Link href={`/authors/${article.author.slug}`} onClick={(e) => e.preventDefault()} className="inline-block mt-3 text-sm text-primary font-mono hover:underline">
+              <Link href={`/authors/${article.author.slug}`} className="inline-block mt-3 text-sm text-primary font-mono hover:underline">
                 Read more by {article.author.name} &rarr;
               </Link>
             </div>
@@ -195,28 +183,9 @@ export function ArticleModal() {
           </div>
         )}
 
-        {/* Share */}
-        <div className="max-w-3xl flex items-center gap-3 mt-6">
-          <span className="text-sm font-mono text-muted-foreground">Share:</span>
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs" asChild>
-            <a href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(article.title)}`} target="_blank" rel="noopener noreferrer">
-              <Twitter className="h-3 w-3" /> Twitter
-            </a>
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs" asChild>
-            <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`} target="_blank" rel="noopener noreferrer">
-              <Facebook className="h-3 w-3" /> Facebook
-            </a>
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs" asChild>
-            <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`} target="_blank" rel="noopener noreferrer">
-              <Linkedin className="h-3 w-3" /> LinkedIn
-            </a>
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleCopyLink}>
-            {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-            {copied ? 'Copied' : 'Copy Link'}
-          </Button>
+        {/* Newsletter Inline */}
+        <div className="max-w-3xl mt-12">
+          <NewsletterCTA variant="inline" />
         </div>
 
         {/* Comments */}
@@ -226,33 +195,16 @@ export function ArticleModal() {
             Comments ({comments.length})
           </h3>
 
-          {/* Add Comment */}
           <div className="space-y-3 mb-8 p-4 rounded-xl border border-border bg-card">
-            <Input
-              placeholder="Your name"
-              value={commentName}
-              onChange={e => setCommentName(e.target.value)}
-              className="h-9 text-sm"
-            />
-            <Textarea
-              placeholder="Share your thoughts..."
-              value={commentText}
-              onChange={e => setCommentText(e.target.value)}
-              className="min-h-[80px] text-sm"
-            />
+            <Input placeholder="Your name" value={commentName} onChange={e => setCommentName(e.target.value)} className="h-9 text-sm" />
+            <Textarea placeholder="Share your thoughts..." value={commentText} onChange={e => setCommentText(e.target.value)} className="min-h-[80px] text-sm" />
             <div className="flex justify-end">
-              <Button
-                size="sm"
-                onClick={handleComment}
-                disabled={!commentText.trim() || !commentName.trim()}
-                className="gap-1.5 text-xs font-mono"
-              >
+              <Button size="sm" onClick={handleComment} disabled={!commentText.trim() || !commentName.trim()} className="gap-1.5 text-xs font-mono">
                 <Send className="h-3 w-3" /> Post Comment
               </Button>
             </div>
           </div>
 
-          {/* Comments List */}
           <div className="space-y-4">
             {comments.map(comment => (
               <div key={comment.id} className="p-4 rounded-xl border border-border bg-card">
@@ -263,9 +215,7 @@ export function ArticleModal() {
                   <div>
                     <p className="text-sm font-medium">{comment.author}</p>
                     <p className="text-[10px] font-mono text-muted-foreground">
-                      {new Date(comment.createdAt).toLocaleDateString('en-KE', {
-                        day: 'numeric', month: 'short', year: 'numeric'
-                      })}
+                      {new Date(comment.createdAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
                   </div>
                 </div>
@@ -285,13 +235,21 @@ export function ArticleModal() {
           <div className="mt-12">
             <h3 className="font-serif font-bold text-xl mb-6">You Might Also Like</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {related.slice(0, 4).map(r => (
+              {related.map(r => (
                 <ArticleCard key={r.id} article={r} />
               ))}
             </div>
           </div>
         )}
-      </article>
-    </div>
+
+        {/* Back to Home */}
+        <div className="mt-12 pt-8 border-t border-border">
+          <Link href="/" className="inline-flex items-center gap-2 text-sm font-mono text-muted-foreground hover:text-primary transition-colors">
+            <ArrowLeft className="h-4 w-4" />
+            Back to all stories
+          </Link>
+        </div>
+      </div>
+    </>
   )
 }

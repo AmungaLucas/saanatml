@@ -1,14 +1,15 @@
 'use client'
 
 import { useStore } from '@/store/useStore'
-import { Search, Moon, Sun, Menu } from 'lucide-react'
+import { Search, Moon, Sun, Menu, BookmarkCheck } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import Link from 'next/link'
 
 export function Header() {
-  const { toggleSearch, categories, activeCategory, currentView, setActiveCategory, setView, goHome } = useStore()
+  const { toggleSearch, categories, activeCategory, currentView, setActiveCategory, setView, goHome, bookmarks } = useStore()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -18,10 +19,10 @@ export function Header() {
   }
 
   const navItems = [
-    { label: 'Home', slug: 'all', view: 'home' as const },
-    ...categories.slice(0, 6).map(c => ({ label: c.name, slug: c.slug, view: 'category' as const })),
-    { label: 'Events', slug: 'events', view: 'events' as const },
-    { label: 'About', slug: 'about', view: 'about' as const },
+    { label: 'Home', slug: 'all', href: '/', view: 'home' as const },
+    ...categories.slice(0, 6).map(c => ({ label: c.name, slug: c.slug, href: `/category/${c.slug}`, view: 'category' as const })),
+    { label: 'Events', slug: 'events', href: '/events', view: 'events' as const },
+    { label: 'About', slug: 'about', href: '/about', view: 'about' as const },
   ]
 
   function handleNav(item: typeof navItems[number]) {
@@ -49,21 +50,22 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2 shrink-0">
-            <button onClick={goHome} className="flex flex-col items-start">
+            <Link href="/" onClick={goHome} className="flex flex-col items-start">
               <span className="font-serif text-xl md:text-2xl font-bold tracking-tight text-foreground leading-none">
                 SANAATHRUMYLENS
               </span>
               <span className="font-mono text-[10px] tracking-[0.25em] text-muted-foreground uppercase hidden sm:block">
                 Art Through My Lens
               </span>
-            </button>
+            </Link>
           </div>
 
           <nav className="hidden lg:flex items-center gap-1">
             {navItems.map(item => (
-              <button
+              <Link
                 key={item.slug}
-                onClick={() => handleNav(item)}
+                href={item.href}
+                onClick={(e) => { e.preventDefault(); handleNav(item) }}
                 className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
                   isActive(item)
                     ? 'text-primary bg-primary/10'
@@ -71,11 +73,18 @@ export function Header() {
                 }`}
               >
                 {item.label}
-              </button>
+              </Link>
             ))}
           </nav>
 
           <div className="flex items-center gap-1">
+            {bookmarks.length > 0 && (
+              <Link href="/" className="p-2 rounded-md hover:bg-secondary transition-colors hidden sm:flex items-center gap-1 text-xs text-muted-foreground" title={`${bookmarks.length} bookmarked`}>
+                <BookmarkCheck className="h-4 w-4 text-gold" />
+                <span className="font-mono">{bookmarks.length}</span>
+              </Link>
+            )}
+
             <button
               onClick={toggleSearch}
               className="p-2 rounded-md hover:bg-secondary transition-colors"
@@ -106,17 +115,18 @@ export function Header() {
                 </div>
                 <nav className="p-4 space-y-1">
                   {navItems.map(item => (
-                    <button
+                    <Link
                       key={item.slug}
-                      onClick={() => handleNav(item)}
-                      className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      href={item.href}
+                      onClick={(e) => { e.preventDefault(); handleNav(item) }}
+                      className={`block w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                         isActive(item)
                           ? 'text-primary bg-primary/10'
                           : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                       }`}
                     >
                       {item.label}
-                    </button>
+                    </Link>
                   ))}
                 </nav>
               </SheetContent>

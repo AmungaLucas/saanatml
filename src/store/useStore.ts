@@ -65,6 +65,26 @@ export interface Author {
 
 export type ViewType = 'home' | 'about' | 'events' | 'category' | 'author'
 
+// Load bookmarks from localStorage
+function loadBookmarks(): string[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const saved = localStorage.getItem('sanaa-bookmarks')
+    return saved ? JSON.parse(saved) : []
+  } catch {
+    return []
+  }
+}
+
+function saveBookmarks(bookmarks: string[]) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem('sanaa-bookmarks', JSON.stringify(bookmarks))
+  } catch {
+    // ignore
+  }
+}
+
 interface AppState {
   // Data
   articles: Article[]
@@ -72,6 +92,7 @@ interface AppState {
   categories: Category[]
   events: Event[]
   authors: Author[]
+  dataLoaded: boolean
 
   // UI State
   selectedArticle: Article | null
@@ -82,12 +103,16 @@ interface AppState {
   currentView: ViewType
   selectedAuthor: Author | null
 
+  // Bookmarks
+  bookmarks: string[]
+
   // Actions
   setArticles: (articles: Article[]) => void
   setFeaturedArticles: (articles: Article[]) => void
   setCategories: (categories: Category[]) => void
   setEvents: (events: Event[]) => void
   setAuthors: (authors: Author[]) => void
+  setDataLoaded: (loaded: boolean) => void
   openArticle: (article: Article) => void
   closeArticle: () => void
   toggleSearch: () => void
@@ -95,14 +120,17 @@ interface AppState {
   setSearchQuery: (query: string) => void
   setView: (view: ViewType, payload?: Author | null) => void
   goHome: () => void
+  toggleBookmark: (articleId: string) => void
+  isBookmarked: (articleId: string) => boolean
 }
 
-export const useStore = create<AppState>((set) => ({
+export const useStore = create<AppState>((set, get) => ({
   articles: [],
   featuredArticles: [],
   categories: [],
   events: [],
   authors: [],
+  dataLoaded: false,
   selectedArticle: null,
   isArticleOpen: false,
   isSearchOpen: false,
@@ -110,12 +138,14 @@ export const useStore = create<AppState>((set) => ({
   searchQuery: '',
   currentView: 'home',
   selectedAuthor: null,
+  bookmarks: loadBookmarks(),
 
   setArticles: (articles) => set({ articles }),
   setFeaturedArticles: (featuredArticles) => set({ featuredArticles }),
   setCategories: (categories) => set({ categories }),
   setEvents: (events) => set({ events }),
   setAuthors: (authors) => set({ authors }),
+  setDataLoaded: (loaded) => set({ dataLoaded: loaded }),
   openArticle: (article) => set({ selectedArticle: article, isArticleOpen: true }),
   closeArticle: () => set({ selectedArticle: null, isArticleOpen: false }),
   toggleSearch: () => set((s) => ({ isSearchOpen: !s.isSearchOpen })),
@@ -123,4 +153,15 @@ export const useStore = create<AppState>((set) => ({
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setView: (view, payload) => set({ currentView: view, selectedAuthor: payload || null }),
   goHome: () => set({ currentView: 'home', activeCategory: 'all', selectedAuthor: null }),
+
+  toggleBookmark: (articleId) => {
+    const current = get().bookmarks
+    const next = current.includes(articleId)
+      ? current.filter(id => id !== articleId)
+      : [...current, articleId]
+    set({ bookmarks: next })
+    saveBookmarks(next)
+  },
+
+  isBookmarked: (articleId) => get().bookmarks.includes(articleId),
 }))
