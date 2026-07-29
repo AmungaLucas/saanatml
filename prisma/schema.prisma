@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String
+  color       String    @default("#8B2252")
+  articles    Article[]
+  events      Event[]
+  createdAt   DateTime  @default(now())
+}
+
+model Author {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  bio       String
+  avatar    String
+  role      String
+  articles  Article[]
+  createdAt DateTime  @default(now())
+}
+
+model Article {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  excerpt     String
+  content     String
+  coverImage  String
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  authorId    String
+  author      Author   @relation(fields: [authorId], references: [id])
+  publishedAt DateTime
+  readTime    Int
+  views       Int      @default(0)
+  tags        String   @default("")
+  isFeatured  Boolean  @default(false)
+  isPinned    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  comments    Comment[]
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  date        DateTime
+  endDate     DateTime?
+  venue       String
+  city        String
+  category    String
+  categoryId  String?
+  categoryRef Category? @relation(fields: [categoryId], references: [id])
+  imageUrl    String    @default("")
+  ticketUrl   String    @default("")
+  isFeatured  Boolean    @default(false)
+  isPast      Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  author    String
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model NewsletterSubscription {
+  id        String   @id @default(cuid())
+  name      String   @default("")
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
