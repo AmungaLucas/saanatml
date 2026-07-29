@@ -1,0 +1,124 @@
+{
+  "code": 200,
+  "data": {
+    "description": "WAKILISHA maps African music culture through charts, artists, releases, guides, and stories from the continent and diaspora.",
+    "external": {
+      "apple-touch-icon": {
+        "https://wakilisha.africa/assets/logos/wakilisha-logo-light.svg": {}
+      },
+      "canonical": {
+        "https://wakilisha.africa/": {}
+      },
+      "icon": {
+        "https://wakilisha.africa/assets/logos/wakilisha-logo-light.svg": {
+          "type": "image/svg+xml"
+        }
+      },
+      "modulepreload": {
+        "https://wakilisha.africa/assets/Icon-BlJVamUv.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/PlayerContext-CWrR-pb0.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/Portal-DMvP40Xw.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/accountVerification-DAEHLxu_.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/analytics-h-QQJfEN.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/briefingService-CE5utI0v.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/browser-CK4QjNs9.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/ch19-MeXWIbr-.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/chunk-Cyuzqnbw.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/client-Dy4XI7fU.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/community-ChSJjk54.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/decodeHtmlEntities-BF2mOkCi.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/jsx-runtime-Bk32lfnu.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/listeningHistory-zS1X_mdZ.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/preload-helper-zJ_50EbN.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/react-dom-BK2ne27K.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/settingsStore-BizC64pX.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/settingsTypes-CH3yTFPN.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/supabase-ChH64VaV.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/useAuthUser-BCr23MsX.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/useCommunityActions-tYuIA5iL.js": {
+          "crossorigin": ""
+        },
+        "https://wakilisha.africa/assets/wpImageRewrite-Dodwcxfn.js": {
+          "crossorigin": ""
+        }
+      },
+      "preconnect": {
+        "https://fonts.googleapis.com/": {},
+        "https://fonts.gstatic.com/": {
+          "crossorigin": ""
+        }
+      }
+    },
+    "html": "<html lang=\"en\"><head>\n    <meta charset=\"UTF-8\">\n    <meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'self'; script-src 'self' https://cdn.redoc.ly https://js-cdn.music.apple.com https://static.cloudflareinsights.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; media-src 'self' https://media.wakilisha.africa https://audio-ssl.itunes.apple.com https://*.itunes.apple.com https://*.mzstatic.com blob: data:; connect-src 'self' https://wakilisha.africa https://cdn.redoc.ly https://www.google-analytics.com https://region1.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://pgzizndxdyhqmtyywjmt.supabase.co https://api.music.apple.com https://amp-api.music.apple.com https://play.itunes.apple.com https://*.itunes.apple.com https://music.apple.com https://authorize.music.apple.com; frame-src 'self' https://authorize.music.apple.com https://music.apple.com https://www.youtube.com https://www.youtube-nocookie.com https://youtube.com https://youtu.be; child-src 'self' blob: https://authorize.music.apple.com https://music.apple.com https://www.youtube.com https://www.youtube-nocookie.com https://youtube.com https://youtu.be; worker-src 'self' blob:;\">\n    <meta http-equiv=\"X-Content-Type-Options\" content=\"nosniff\">\n    <meta name=\"referrer\" content=\"strict-origin-when-cross-origin\">\n    <meta http-equiv=\"Permissions-Policy\" content=\"camera=(), microphone=(), geolocation=()\">\n    <link rel=\"icon\" type=\"image/svg+xml\" href=\"/assets/logos/wakilisha-logo-light.svg\">\n    <link rel=\"apple-touch-icon\" href=\"/assets/logos/wakilisha-logo-light.svg\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>WAKILISHA</title>\n    <meta name=\"description\" content=\"WAKILISHA maps African music culture through charts, artists, releases, guides, and stories from the continent and diaspora.\">\n    <meta name=\"robots\" content=\"index, follow\">\n    <link rel=\"canonical\" href=\"https://wakilisha.africa/\">\n    <meta property=\"og:site_name\" content=\"WAKILISHA\">\n    <meta property=\"og:title\" content=\"WAKILISHA\">\n    <meta property=\"og:description\" content=\"WAKILISHA maps African music culture through charts, artists, releases, guides, and stories from the continent and diaspora.\">\n    <meta property=\"og:type\" content=\"website\">\n    <meta property=\"og:url\" content=\"https://wakilisha.africa/\">\n    <meta property=\"og:image\" content=\"https://wakilisha.africa/assets/logos/wakilisha-logo-dark.svg\">\n    <meta name=\"twitter:card\" content=\"summary_large_image\">\n    <meta name=\"twitter:title\" content=\"WAKILISHA\">\n    <meta name=\"twitter:description\" content=\"WAKILISHA maps African music culture through charts, artists, releases, guides, and stories from the continent and diaspora.\">\n    <meta name=\"twitter:image\" content=\"https://wakilisha.africa/assets/logos/wakilisha-logo-dark.svg\">\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin=\"\">\n    <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&amp;family=DM+Mono:wght@400;500&amp;display=swap\" rel=\"stylesheet\">\n    <link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.5.0/remixicon.min.css\">\n    <script type=\"module\" crossorigin=\"\" src=\"/assets/index-zcBtlG44.js\"></script>\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/chunk-Cyuzqnbw.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/preload-helper-zJ_50EbN.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/browser-CK4QjNs9.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/supabase-ChH64VaV.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/jsx-runtime-Bk32lfnu.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/Icon-BlJVamUv.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/react-dom-BK2ne27K.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/Portal-DMvP40Xw.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/analytics-h-QQJfEN.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/listeningHistory-zS1X_mdZ.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/PlayerContext-CWrR-pb0.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/useAuthUser-BCr23MsX.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/accountVerification-DAEHLxu_.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/community-ChSJjk54.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/useCommunityActions-tYuIA5iL.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/client-Dy4XI7fU.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/settingsTypes-CH3yTFPN.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/settingsStore-BizC64pX.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/briefingService-CE5utI0v.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/wpImageRewrite-Dodwcxfn.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/ch19-MeXWIbr-.js\">\n    <link rel=\"modulepreload\" crossorigin=\"\" href=\"/assets/decodeHtmlEntities-BF2mOkCi.js\">\n    <link rel=\"stylesheet\" crossorigin=\"\" href=\"/assets/index-Ck4t_Obo.css\">\n  </head>\n  <body>\n    <div id=\"root\"></div>\n  <script type=\"module\" src=\"https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496\" integrity=\"sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==\" data-cf-beacon=\"{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;a1ab5664906b4ee38af560761e2ed460&quot;,&quot;r&quot;:1}\" crossorigin=\"anonymous\"></script>\n\n\n</body></html>",
+    "httpStatus": 200,
+    "httpStatusText": "OK",
+    "metadata": {
+      "description": "WAKILISHA maps African music culture through charts, artists, releases, guides, and stories from the continent and diaspora.",
+      "lang": "en",
+      "og:description": "WAKILISHA maps African music culture through charts, artists, releases, guides, and stories from the continent and diaspora.",
+      "og:image": "https://wakilisha.africa/assets/logos/wakilisha-logo-dark.svg",
+      "og:site_name": "WAKILISHA",
+      "og:title": "WAKILISHA",
+      "og:type": "website",
+      "og:url": "https://wakilisha.africa/",
+      "referrer": "strict-origin-when-cross-origin",
+      "robots": "index, follow",
+      "twitter:card": "summary_large_image",
+      "twitter:description": "WAKILISHA maps African music culture through charts, artists, releases, guides, and stories from the continent and diaspora.",
+      "twitter:image": "https://wakilisha.africa/assets/logos/wakilisha-logo-dark.svg",
+      "twitter:title": "WAKILISHA",
+      "viewport": "width=device-width, initial-scale=1.0"
+    },
+    "title": "WAKILISHA",
+    "url": "https://wakilisha.africa/magazine/ep-review-the-lick-back-by-nikita-kering",
+    "usage": {
+      "tokens": 1737
+    }
+  },
+  "meta": {
+    "usage": {
+      "tokens": 1737
+    }
+  },
+  "status": 20000
+}
