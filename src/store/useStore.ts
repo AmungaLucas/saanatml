@@ -78,26 +78,42 @@ export interface Maker {
 
 export type ViewType = 'home' | 'about' | 'events' | 'category' | 'author'
 
-// Load bookmarks from localStorage
-function loadBookmarks(): string[] {
-  if (typeof window === 'undefined') return []
+// ========== localStorage helpers ==========
+function loadFromStorage<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback
   try {
-    const saved = localStorage.getItem('sanaa-bookmarks')
-    return saved ? JSON.parse(saved) : []
+    const saved = localStorage.getItem(key)
+    return saved ? JSON.parse(saved) : fallback
   } catch {
-    return []
+    return fallback
   }
 }
 
-function saveBookmarks(bookmarks: string[]) {
+function saveToStorage<T>(key: string, data: T) {
   if (typeof window === 'undefined') return
   try {
-    localStorage.setItem('sanaa-bookmarks', JSON.stringify(bookmarks))
+    localStorage.setItem(key, JSON.stringify(data))
   } catch {
-    // ignore
+    // ignore quota errors
   }
 }
 
+const BOOKMARKS_KEY = 'sanaa-bookmarks'
+const LIKES_KEY = 'sanaa-likes'
+const HISTORY_KEY = 'sanaa-reading-history'
+
+interface ReadingHistoryEntry {
+  articleId: string
+  slug: string
+  title: string
+  coverImage: string
+  categoryName: string
+  categoryColor: string
+  readAt: string
+  progress: number
+}
+
+// ========== Store Interface ==========
 interface AppState {
   // Data
   articles: Article[]
@@ -120,6 +136,12 @@ interface AppState {
   // Bookmarks
   bookmarks: string[]
 
+  // Likes
+  likes: Record<string, number> // articleId -> like count (1 or 0)
+
+  // Reading History
+  readingHistory: ReadingHistoryEntry[]
+
   // Actions
   setArticles: (articles: Article[]) => void
   setFeaturedArticles: (articles: Article[]) => void
@@ -137,6 +159,11 @@ interface AppState {
   goHome: () => void
   toggleBookmark: (articleId: string) => void
   isBookmarked: (articleId: string) => boolean
+  toggleLike: (articleId: string) => void
+  isLiked: (articleId: string) => boolean
+  addToHistory: (article: Article, progress?: number) => void
+  updateHistoryProgress: (articleId: string, progress: number) => void
+  clearHistory: () => void
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -154,7 +181,9 @@ export const useStore = create<AppState>((set, get) => ({
   searchQuery: '',
   currentView: 'home',
   selectedAuthor: null,
-  bookmarks: loadBookmarks(),
+  bookmarks: loadFromStorage<string[]>(BOOKMARKS_KEY, []),
+  likes: loadFromStorage<Record<string, number>>(LIKES_KEY, {}),
+  readingHistory: loadFromStorage<ReadingHistoryEntry[]>(HISTORY_KEY, []),
 
   setArticles: (articles) => set({ articles }),
   setFeaturedArticles: (featuredArticles) => set({ featuredArticles }),
@@ -177,8 +206,55 @@ export const useStore = create<AppState>((set, get) => ({
       ? current.filter(id => id !== articleId)
       : [...current, articleId]
     set({ bookmarks: next })
-    saveBookmarks(next)
+    saveToStorage(BOOKMARKS_KEY, next)
   },
 
   isBookmarked: (articleId) => get().bookmarks.includes(articleId),
+
+  toggleLike: (articleId) => {
+    const current = get().likes
+    const next = { ...current }
+    if (next[articleId] === 1) {
+      delete next[articleId]
+    } else {
+      next[articleId] = 1
+    }
+    set({ likes: next })
+    saveToStorage(LIKES_KEY, next)
+  },
+
+  isLiked: (articleId) => (get().likes[articleId] || 0) === 1,
+
+  addToHistory: (article, progress = 0) => {
+    const history = [...get().readingHistory]
+    // Remove existing entry for this article
+    const filtered = history.filter(h => h.articleId !== article.id)
+    // Add new entry at the beginning
+    const entry: ReadingHistoryEntry = {
+      articleId: article.id,
+      slug: article.slug,
+      title: article.title,
+      coverImage: article.coverImage,
+      categoryName: article.category.name,
+      categoryColor: article.category.color,
+      readAt: new Date().toISOString(),
+      progress,
+    }
+    const updated = [entry, ...filtered].slice(0, 50) // Keep max 50 entries
+    set({ readingHistory: updated })
+    saveToStorage(HISTORY_KEY, updated)
+  },
+
+  updateHistoryProgress: (articleId, progress) => {
+    const history = get().readingHistory.map(h =>
+      h.articleId === articleId ? { ...h, progress } : h
+    )
+    set({ readingHistory: history })
+    saveToStorage(HISTORY_KEY, history)
+  },
+
+  clearHistory: () => {
+    set({ readingHistory: [] })
+    saveToStorage(HISTORY_KEY, [])
+  },
 }))

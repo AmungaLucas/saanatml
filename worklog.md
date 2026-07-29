@@ -27,31 +27,20 @@ Agent: Main Agent
 Task: Sanaa 2.0 Major Upgrade — File-system routing, reading progress, Lens Picks, skeletons, bookmarks
 
 Work Log:
-- Updated globals.css with fadeIn animation, reading progress bar styles, enhanced prose-article styles (ul, ol, li, img, hr, code, pre)
-- Updated Zustand store with bookmarks array, toggleBookmark action, isBookmarked helper, localStorage persistence
-- Created ReadingProgress component (fixed progress bar tracking scroll position)
-- Created LensPicks editorial section with featured + side picks layout, gold Editor's Pick badge
-- Created Skeletons component with StoryGridSkeleton, ArticlePageSkeleton, EventsPageSkeleton
-- Updated ArticleCard with bookmark toggle (filled/empty Bookmark icon), Link wrappers for deep-linking
-- Updated ArticleModal with bookmark toggle, copy link, LinkedIn/Twitter/Facebook share buttons, author bio card, ReadingProgress bar, Link-based breadcrumbs
-- Created /about server page with generateStaticParams, AboutContent client component with Link navigation
-- Created /events server page with EventsContent client component
-- Created /category/[slug] server page with dynamic metadata, CategoryContent client component
-- Created /articles/[slug] server page with full SEO metadata (OpenGraph, Twitter cards), ArticlePageClient with reading progress, share buttons, author bio, comments, newsletter CTA
-- Created /authors/[slug] server page with AuthorContent client component (author hero + article grid)
+- Updated globals.css with fadeIn animation, reading progress bar styles, enhanced prose-article styles
+- Updated Zustand store with bookmarks array, toggleBookmark action, localStorage persistence
+- Created ReadingProgress, LensPicks, Skeletons components
+- Updated ArticleCard with bookmark toggle, Link wrappers for deep-linking
+- Updated ArticleModal with bookmark, copy link, social sharing, author bio card, ReadingProgress bar
+- Created 5 SEO-friendly file-system routes: /about, /events, /category/[slug], /articles/[slug], /authors/[slug]
 - Created /api/authors/[slug] API route
-- Updated Header with Next.js Link components for all nav items, bookmark count indicator
-- Updated Footer with social media links (X, Instagram, Facebook, YouTube), back-to-top button
-- Updated page.tsx with LensPicks section, loading skeletons while data loads, animate-fadeIn on view changes
-- Removed unused imports from SearchModal
+- Updated Header with Next.js Link, bookmark count indicator
+- Updated Footer with social links, back-to-top button
 - Build verified: all 36 static pages generated cleanly
 
 Stage Summary:
-- 5 new SEO-friendly file-system routes: /about, /events, /category/[slug], /articles/[slug], /authors/[slug]
-- 1 new API route: /api/authors/[slug]
-- 3 new components: ReadingProgress, LensPicks, Skeletons
-- Enhanced features: bookmarks with localStorage, reading progress bar, social sharing, loading skeletons, page fade-in animations
-- All 36 pages statically generated (SSG + static), build passes cleanly
+- 5 new SSG routes, 1 new API route, 3 new components
+- Enhanced features: bookmarks, reading progress, social sharing, loading skeletons, fade-in animations
 
 ---
 Task ID: 3
@@ -59,26 +48,41 @@ Agent: Main Agent
 Task: Phase 3 — Cultural Makers, Admin CMS, SEO enhancements, From the Archive
 
 Work Log:
-- Configured next/image remote patterns for Unsplash domains
-- Added Maker model to Prisma schema (name, slug, discipline, bio, location, social links, isFeatured)
-- Ran prisma db push and seeded 8 cultural makers (Wangechi Mutu, Blinky Bill, Wanjiru Kinyanjui, Muthoni Drummer Queen, Peterson Kamwathi, Sitawa Namwalie, Sauti Sol, Lupita Nyong'o)
-- Created /api/makers API route
-- Created CulturalMakers homepage component with featured maker cards (gold accent borders, discipline badges)
-- Created /makers page with featured hero cards, discipline filter, full grid
-- Added makers to Zustand store, fetched in homepage data loading
-- Added "Makers" nav item to Header
-- Built /admin dashboard page with Overview (8 stat cards: articles, authors, categories, events, comments, makers, subscribers, views) and Articles tab (full CRUD table with create/edit dialog)
-- Created admin API routes: GET/POST /api/admin/articles, PATCH/DELETE /api/admin/articles/[id], GET /api/admin/stats
-- Added JSON-LD structured data to /articles/[slug] (Article + BreadcrumbList schemas)
-- Created FromTheArchive component (numbered archive cards)
-- Updated homepage layout order: Stories → Lens Picks → From the Archive → Opinion → Events → Cultural Makers → Newsletter
+- Added Maker model to Prisma schema, seeded 8 cultural makers
+- Created /api/makers API route, CulturalMakers component, /makers page
+- Built /admin dashboard with Overview stats and Articles CRUD
+- Created admin API routes: /api/admin/articles, /api/admin/articles/[id], /api/admin/stats
+- Added JSON-LD structured data to article pages
+- Created FromTheArchive component
+- 41 static pages generated, build passes cleanly
 
 Stage Summary:
-- 1 new page: /makers (cultural makers directory)
-- 1 new page: /admin (CMS dashboard with article CRUD)
-- 3 new admin API routes: /api/admin/articles, /api/admin/articles/[id], /api/admin/stats
-- 1 new public API route: /api/makers
-- 1 new Prisma model: Maker
-- 2 new components: CulturalMakers, FromTheArchive
-- JSON-LD structured data on article pages
-- 41 static pages generated, build passes cleanly
+- New pages: /makers, /admin
+- New components: CulturalMakers, FromTheArchive
+- JSON-LD structured data, admin CMS with article CRUD
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Phase 3 Upgrade — Animations, interactions, likes, reading history, enhanced UX
+
+Work Log:
+- Completely rewrote globals.css with: glass-morphism (.glass, .glass-subtle), scroll-reveal keyframes, Ken Burns animation, blur-up image loading, animated underline nav, gradient text, marquee, selection color, print styles, improved dark mode, table styles, figure/figcaption
+- Created ScrollReveal component (framer-motion useInView with directional reveals + StaggerContainer)
+- Created BackToTop component (AnimatePresence with motion button, scroll-aware visibility)
+- Upgraded ArticleCard: blur-up image loading, hover-card lift effect, Heart like button with popup animation, read time badge overlay, like count display, error fallback for images
+- Upgraded HeroCarousel: framer-motion AnimatePresence slide transitions, Ken Burns background zoom, auto-progress gold bar, pause-on-hover, directional slide variants
+- Upgraded SearchModal: keyboard navigation (ArrowUp/Down/Enter), recent searches with localStorage persistence, trending topics from article tags, keyboard shortcut hints, clear history
+- Enhanced Zustand store: likes Record<string,number> with toggleLike/isLiked, reading history ReadingHistoryEntry[] with addToHistory/updateHistoryProgress/clearHistory, all localStorage persisted
+- Upgraded ArticleModal: table of contents sidebar (scroll-spy with IntersectionObserver), heading anchors for smooth scroll, reactions sidebar (like + bookmark buttons), reading history tracking, reading progress tracking, glass-morphism top bar, AnimatePresence comments, improved markdown heading rendering with IDs
+- Enhanced Header: scroll-aware transparency (bg transition at 20px), animated-underline nav items, theme toggle rotation animation, reading history indicator, bookmarks count with AnimatePresence, mobile reading history section
+- Upgraded Footer: inline newsletter subscription form (email input + send button with loading spinner + success state), animated social icons (whileHover y lift), category color dots, glass-morphism admin header
+- Upgraded Admin CMS: Tabs component for Overview/Articles, recharts AreaChart (article views) + BarChart (category distribution), image URL preview, markdown write/preview tabs with word count, stat cards with colored icon backgrounds, hover-card effects
+- Updated homepage with ScrollReveal wrappers on each section, BackToTop component
+- Build: 41 static pages generated, zero errors
+
+Stage Summary:
+- 3 new components: ScrollReveal, BackToTop, StaggerContainer
+- 10 upgraded components with framer-motion animations
+- New features: likes/reactions, reading history, TOC sidebar, blur image loading, scroll-reveal sections, glass-morphism, keyboard search navigation, recharts admin stats
+- 41 SSG pages, zero build errors

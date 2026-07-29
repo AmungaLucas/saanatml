@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,11 +11,15 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   FileText, Users, Tag, Calendar, Eye, MessageSquare, Star, Pin, Trash2,
-  Plus, BarChart3, ArrowLeft, BookmarkCheck, BookOpen, Mail
+  Plus, BarChart3, ArrowLeft, BookmarkCheck, BookOpen, Mail,
+  TrendingUp, Image
 } from 'lucide-react'
 import Link from 'next/link'
+import ReactMarkdown from 'react-markdown'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
 
 interface Article {
   id: string
@@ -71,31 +75,38 @@ export default function AdminPage() {
     fetch('/api/authors').then(r => r.json()).then(setAuthors).catch(() => {})
   }, [])
 
+  // Views chart data
+  const viewsChartData = useMemo(() => {
+    if (!articles.length) return []
+    return articles.slice(0, 8).map(a => ({
+      name: a.title.length > 20 ? a.title.slice(0, 20) + '...' : a.title,
+      views: a.views,
+    }))
+  }, [articles])
+
+  // Category distribution
+  const categoryData = useMemo(() => {
+    const map: Record<string, number> = {}
+    articles.forEach(a => {
+      map[a.category.name] = (map[a.category.name] || 0) + 1
+    })
+    return Object.entries(map).map(([name, count]) => ({ name, count }))
+  }, [articles])
+
   const openCreateDialog = () => {
     setEditingArticle(null)
-    setFormTitle('')
-    setFormSlug('')
-    setFormExcerpt('')
-    setFormContent('')
-    setFormCoverImage('')
-    setFormCategory('')
-    setFormAuthor('')
-    setFormTags('')
-    setFormReadTime('5')
+    setFormTitle(''); setFormSlug(''); setFormExcerpt(''); setFormContent('')
+    setFormCoverImage(''); setFormCategory(''); setFormAuthor('')
+    setFormTags(''); setFormReadTime('5')
     setIsDialogOpen(true)
   }
 
   const openEditDialog = (article: Article) => {
     setEditingArticle(article)
-    setFormTitle(article.title)
-    setFormSlug(article.slug)
-    setFormExcerpt(article.excerpt)
-    setFormContent('')
-    setFormCoverImage(article.coverImage || '')
-    setFormCategory(article.category?.name || '')
-    setFormAuthor(article.author?.name || '')
-    setFormTags('')
-    setFormReadTime(String(5))
+    setFormTitle(article.title); setFormSlug(article.slug); setFormExcerpt(article.excerpt)
+    setFormContent(''); setFormCoverImage(article.coverImage || '')
+    setFormCategory(article.category?.name || ''); setFormAuthor(article.author?.name || '')
+    setFormTags(''); setFormReadTime(String(5))
     setIsDialogOpen(true)
   }
 
@@ -170,7 +181,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Admin Header */}
-      <header className="sticky top-0 z-50 bg-card border-b border-border">
+      <header className="sticky top-0 z-50 glass">
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
@@ -187,159 +198,191 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-8">
-        {/* Tabs */}
-        <div className="flex items-center gap-1 mb-8 border-b border-border pb-px">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'overview' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <BarChart3 className="h-4 w-4 inline mr-1.5" /> Overview
-          </button>
-          <button
-            onClick={() => setActiveTab('articles')}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'articles' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <FileText className="h-4 w-4 inline mr-1.5" /> Articles
-          </button>
-        </div>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+          <TabsList className="mb-8">
+            <TabsTrigger value="overview"><BarChart3 className="h-4 w-4 mr-1.5" />Overview</TabsTrigger>
+            <TabsTrigger value="articles"><FileText className="h-4 w-4 mr-1.5" />Articles</TabsTrigger>
+          </TabsList>
 
-        {/* Overview Tab */}
-        {activeTab === 'overview' && stats && (
-          <div className="animate-fadeIn">
-            <h2 className="font-serif text-2xl font-bold mb-6">Dashboard Overview</h2>
+          {/* Overview Tab */}
+          <TabsContent value="overview">
+            {stats && (
+              <div className="animate-fadeIn">
+                <h2 className="font-serif text-2xl font-bold mb-6">Dashboard Overview</h2>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              {[
-                { label: 'Articles', value: stats.articles, icon: FileText, color: 'text-primary' },
-                { label: 'Authors', value: stats.authors, icon: Users, color: 'text-gold' },
-                { label: 'Categories', value: stats.categories, icon: Tag, color: 'text-terracotta' },
-                { label: 'Events', value: stats.events, icon: Calendar, color: 'text-forest' },
-                { label: 'Comments', value: stats.comments, icon: MessageSquare, color: 'text-primary' },
-                { label: 'Makers', value: stats.makers, icon: Star, color: 'text-gold' },
-                { label: 'Subscribers', value: stats.subscribers, icon: Mail, color: 'text-terracotta' },
-                { label: 'Total Views', value: stats.totalViews.toLocaleString(), icon: Eye, color: 'text-forest' },
-              ].map(stat => (
-                <div key={stat.label} className="p-5 rounded-xl border border-border bg-card">
-                  <div className="flex items-center justify-between mb-3">
-                    <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                  </div>
-                  <p className="font-serif text-2xl md:text-3xl font-bold">{stat.value}</p>
-                  <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mt-1">{stat.label}</p>
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                  {[
+                    { label: 'Articles', value: stats.articles, icon: FileText, color: 'text-primary', bg: 'bg-primary/10' },
+                    { label: 'Authors', value: stats.authors, icon: Users, color: 'text-gold', bg: 'bg-gold/10' },
+                    { label: 'Categories', value: stats.categories, icon: Tag, color: 'text-terracotta', bg: 'bg-terracotta/10' },
+                    { label: 'Events', value: stats.events, icon: Calendar, color: 'text-forest', bg: 'bg-forest/10' },
+                    { label: 'Comments', value: stats.comments, icon: MessageSquare, color: 'text-primary', bg: 'bg-primary/10' },
+                    { label: 'Makers', value: stats.makers, icon: Star, color: 'text-gold', bg: 'bg-gold/10' },
+                    { label: 'Subscribers', value: stats.subscribers, icon: Mail, color: 'text-terracotta', bg: 'bg-terracotta/10' },
+                    { label: 'Total Views', value: stats.totalViews.toLocaleString(), icon: Eye, color: 'text-forest', bg: 'bg-forest/10' },
+                  ].map(stat => (
+                    <div key={stat.label} className="p-5 rounded-xl border border-border bg-card hover-card">
+                      <div className={`h-10 w-10 rounded-lg ${stat.bg} flex items-center justify-center mb-3`}>
+                        <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                      </div>
+                      <p className="font-serif text-2xl md:text-3xl font-bold">{stat.value}</p>
+                      <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mt-1">{stat.label}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            {/* Quick Actions */}
-            <div>
-              <h3 className="font-serif text-xl font-bold mb-4">Quick Actions</h3>
-              <div className="flex flex-wrap gap-3">
-                <Button onClick={() => { setActiveTab('articles'); openCreateDialog() }} className="gap-2">
+                {/* Charts Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                  {/* Views Chart */}
+                  <div className="p-6 rounded-xl border border-border bg-card">
+                    <h3 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-primary" /> Article Views
+                    </h3>
+                    {viewsChartData.length > 0 && (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <AreaChart data={viewsChartData}>
+                          <defs>
+                            <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="oklch(0.37 0.14 350)" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="oklch(0.37 0.14 350)" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                          <YAxis tick={{ fontSize: 10 }} />
+                          <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card)' }} />
+                          <Area type="monotone" dataKey="views" stroke="oklch(0.37 0.14 350)" fillOpacity={1} fill="url(#colorViews)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+
+                  {/* Category Distribution */}
+                  <div className="p-6 rounded-xl border border-border bg-card">
+                    <h3 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-gold" /> Category Distribution
+                    </h3>
+                    {categoryData.length > 0 && (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={categoryData}>
+                          <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                          <YAxis tick={{ fontSize: 10 }} />
+                          <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card)' }} />
+                          <Bar dataKey="count" fill="oklch(0.72 0.14 55)" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div>
+                  <h3 className="font-serif text-xl font-bold mb-4">Quick Actions</h3>
+                  <div className="flex flex-wrap gap-3">
+                    <Button onClick={() => { setActiveTab('articles'); openCreateDialog() }} className="gap-2">
+                      <Plus className="h-4 w-4" /> New Article
+                    </Button>
+                    <Button variant="outline" className="gap-2" asChild>
+                      <Link href="/makers"><BookmarkCheck className="h-4 w-4" /> Manage Makers</Link>
+                    </Button>
+                    <Button variant="outline" className="gap-2" asChild>
+                      <Link href="/events"><Calendar className="h-4 w-4" /> Manage Events</Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Articles Tab */}
+          <TabsContent value="articles">
+            <div className="animate-fadeIn">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="font-serif text-2xl font-bold">Articles ({articles.length})</h2>
+                <Button onClick={openCreateDialog} className="gap-2">
                   <Plus className="h-4 w-4" /> New Article
                 </Button>
-                <Button variant="outline" className="gap-2" asChild>
-                  <Link href="/makers"><BookmarkCheck className="h-4 w-4" /> Manage Makers</Link>
-                </Button>
-                <Button variant="outline" className="gap-2" asChild>
-                  <Link href="/events"><Calendar className="h-4 w-4" /> Manage Events</Link>
-                </Button>
               </div>
-            </div>
-          </div>
-        )}
 
-        {/* Articles Tab */}
-        {activeTab === 'articles' && (
-          <div className="animate-fadeIn">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="font-serif text-2xl font-bold">Articles ({articles.length})</h2>
-              <Button onClick={openCreateDialog} className="gap-2">
-                <Plus className="h-4 w-4" /> New Article
-              </Button>
-            </div>
-
-            {/* Articles Table */}
-            <div className="border border-border rounded-xl overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-secondary/50 border-b border-border">
-                      <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Title</th>
-                      <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hidden md:table-cell">Category</th>
-                      <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Author</th>
-                      <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Views</th>
-                      <th className="text-center px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Status</th>
-                      <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {articles.map(article => (
-                      <tr key={article.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
-                        <td className="px-4 py-3">
-                          <p className="font-serif font-semibold text-sm line-clamp-1">{article.title}</p>
-                          <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
-                            {new Date(article.publishedAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </p>
-                        </td>
-                        <td className="px-4 py-3 hidden md:table-cell">
-                          <Badge className="text-[10px]" style={{ backgroundColor: article.category.color + '20', color: article.category.color }}>
-                            {article.category.name}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">
-                          {article.author.name}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="font-mono text-sm">{article.views}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={() => handleToggleFeatured(article)}
-                              className={`p-1 rounded ${article.isFeatured ? 'text-gold' : 'text-muted-foreground/30 hover:text-gold/50'}`}
-                              title="Featured"
-                            >
-                              <Star className="h-3.5 w-3.5" fill={article.isFeatured ? 'currentColor' : 'none'} />
-                            </button>
-                            <button
-                              onClick={() => handleTogglePinned(article)}
-                              className={`p-1 rounded ${article.isPinned ? 'text-primary' : 'text-muted-foreground/30 hover:text-primary/50'}`}
-                              title="Pinned"
-                            >
-                              <Pin className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => openEditDialog(article)} className="p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground" title="Edit">
-                              <FileText className="h-3.5 w-3.5" />
-                            </button>
-                            <a href={`/articles/${article.slug}`} target="_blank" className="p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground" title="View">
-                              <BookOpen className="h-3.5 w-3.5" />
-                            </a>
-                            <button onClick={() => handleDelete(article.id)} className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive" title="Delete">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </td>
+              {/* Articles Table */}
+              <div className="border border-border rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-secondary/50 border-b border-border">
+                        <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Title</th>
+                        <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hidden md:table-cell">Category</th>
+                        <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Author</th>
+                        <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Views</th>
+                        <th className="text-center px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Status</th>
+                        <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {articles.map(article => (
+                        <tr key={article.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+                          <td className="px-4 py-3">
+                            <p className="font-serif font-semibold text-sm line-clamp-1">{article.title}</p>
+                            <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                              {new Date(article.publishedAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3 hidden md:table-cell">
+                            <Badge className="text-[10px]" style={{ backgroundColor: article.category.color + '20', color: article.category.color }}>
+                              {article.category.name}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">
+                            {article.author.name}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <span className="font-mono text-sm">{article.views}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => handleToggleFeatured(article)}
+                                className={`p-1 rounded ${article.isFeatured ? 'text-gold' : 'text-muted-foreground/30 hover:text-gold/50'}`}
+                                title="Featured"
+                              >
+                                <Star className="h-3.5 w-3.5" fill={article.isFeatured ? 'currentColor' : 'none'} />
+                              </button>
+                              <button
+                                onClick={() => handleTogglePinned(article)}
+                                className={`p-1 rounded ${article.isPinned ? 'text-primary' : 'text-muted-foreground/30 hover:text-primary/50'}`}
+                                title="Pinned"
+                              >
+                                <Pin className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <button onClick={() => openEditDialog(article)} className="p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground" title="Edit">
+                                <FileText className="h-3.5 w-3.5" />
+                              </button>
+                              <a href={`/articles/${article.slug}`} target="_blank" className="p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground" title="View">
+                                <BookOpen className="h-3.5 w-3.5" />
+                              </a>
+                              <button onClick={() => handleDelete(article.id)} className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive" title="Delete">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          </TabsContent>
+        </Tabs>
       </main>
 
       {/* Create/Edit Article Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-serif text-xl">
               {editingArticle ? 'Edit Article' : 'New Article'}
@@ -383,16 +426,53 @@ export default function AdminPage() {
               <label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">Excerpt</label>
               <Textarea value={formExcerpt} onChange={e => setFormExcerpt(e.target.value)} placeholder="Brief summary..." rows={2} />
             </div>
+
+            {/* Content with live preview */}
             {!editingArticle && (
               <div>
-                <label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">Content (Markdown)</label>
-                <Textarea value={formContent} onChange={e => setFormContent(e.target.value)} placeholder="Write your article in Markdown..." rows={8} className="font-mono text-sm" />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Content (Markdown)</label>
+                  {formContent && (
+                    <span className="font-mono text-[10px] text-muted-foreground">{formContent.split(/\s+/).filter(Boolean).length} words</span>
+                  )}
+                </div>
+                <Tabs defaultValue="write" className="mt-2">
+                  <TabsList className="mb-2">
+                    <TabsTrigger value="write" className="text-xs">Write</TabsTrigger>
+                    <TabsTrigger value="preview" className="text-xs">Preview</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="write">
+                    <Textarea value={formContent} onChange={e => setFormContent(e.target.value)} placeholder="Write your article in Markdown..." rows={8} className="font-mono text-sm" />
+                  </TabsContent>
+                  <TabsContent value="preview">
+                    <div className="border border-border rounded-xl p-4 min-h-[200px] prose-article">
+                      {formContent ? (
+                        <ReactMarkdown>{formContent}</ReactMarkdown>
+                      ) : (
+                        <p className="text-muted-foreground text-sm italic">Start writing to see a preview...</p>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
             )}
+
+            {/* Cover Image with preview */}
             <div>
               <label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">Cover Image URL</label>
-              <Input value={formCoverImage} onChange={e => setFormCoverImage(e.target.value)} placeholder="https://images.unsplash.com/..." className="font-mono text-sm" />
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <Image className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input value={formCoverImage} onChange={e => setFormCoverImage(e.target.value)} placeholder="https://images.unsplash.com/..." className="font-mono text-sm pl-10" />
+                </div>
+              </div>
+              {formCoverImage && (
+                <div className="mt-2 rounded-lg overflow-hidden border border-border aspect-video bg-secondary">
+                  <img src={formCoverImage} alt="Cover preview" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                </div>
+              )}
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">Tags</label>

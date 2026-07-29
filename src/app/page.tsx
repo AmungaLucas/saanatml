@@ -19,6 +19,8 @@ import { EventsPage } from '@/components/sanaa/EventsPage'
 import { CategoryPage } from '@/components/sanaa/CategoryPage'
 import { NewsletterCTA } from '@/components/sanaa/NewsletterCTA'
 import { StoryGridSkeleton } from '@/components/sanaa/Skeletons'
+import { BackToTop } from '@/components/sanaa/BackToTop'
+import { ScrollReveal } from '@/components/sanaa/ScrollReveal'
 
 function HomePage() {
   const makers = useStore(s => s.makers)
@@ -48,38 +50,50 @@ function HomePage() {
       </div>
 
       {/* Lens Picks Editorial Section */}
-      <div className="py-8 md:py-12">
-        <div className="max-w-7xl mx-auto px-4 md:px-6"><div className="h-px bg-border mb-8" /></div>
-        <LensPicks />
-      </div>
+      <ScrollReveal>
+        <div className="py-8 md:py-12">
+          <div className="max-w-7xl mx-auto px-4 md:px-6"><div className="h-px bg-border mb-8" /></div>
+          <LensPicks />
+        </div>
+      </ScrollReveal>
 
-      <div className="py-8 md:py-12">
-        <FromTheArchive />
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 md:px-6"><div className="h-px bg-border" /></div>
-
-      <div className="py-8 md:py-12">
-        <OpinionSection />
-      </div>
+      <ScrollReveal delay={0.1}>
+        <div className="py-8 md:py-12">
+          <FromTheArchive />
+        </div>
+      </ScrollReveal>
 
       <div className="max-w-7xl mx-auto px-4 md:px-6"><div className="h-px bg-border" /></div>
 
-      <div className="py-8 md:py-12">
-        <EventsSection />
-      </div>
+      <ScrollReveal delay={0.05}>
+        <div className="py-8 md:py-12">
+          <OpinionSection />
+        </div>
+      </ScrollReveal>
+
+      <div className="max-w-7xl mx-auto px-4 md:px-6"><div className="h-px bg-border" /></div>
+
+      <ScrollReveal delay={0.1}>
+        <div className="py-8 md:py-12">
+          <EventsSection />
+        </div>
+      </ScrollReveal>
 
       <div className="max-w-7xl mx-auto px-4 md:px-6"><div className="h-px bg-border" /></div>
 
       {/* Cultural Makers Spotlight */}
-      <div className="py-8 md:py-12">
-        <CulturalMakers makers={makers} />
-      </div>
+      <ScrollReveal delay={0.05}>
+        <div className="py-8 md:py-12">
+          <CulturalMakers makers={makers} />
+        </div>
+      </ScrollReveal>
 
       {/* Newsletter CTA */}
-      <section className="max-w-7xl mx-auto px-4 md:px-6 py-12">
-        <NewsletterCTA variant="hero" />
-      </section>
+      <ScrollReveal>
+        <section className="max-w-7xl mx-auto px-4 md:px-6 py-12">
+          <NewsletterCTA variant="hero" />
+        </section>
+      </ScrollReveal>
     </div>
   )
 }
@@ -150,6 +164,7 @@ export default function Home() {
       <Footer />
       <ArticleModal />
       <SearchModal />
+      <BackToTop />
     </div>
   )
 }
