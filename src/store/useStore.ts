@@ -63,6 +63,8 @@ export interface Author {
   role: string
 }
 
+export type ViewType = 'home' | 'about' | 'events' | 'category' | 'author'
+
 interface AppState {
   // Data
   articles: Article[]
@@ -77,6 +79,8 @@ interface AppState {
   isSearchOpen: boolean
   activeCategory: string
   searchQuery: string
+  currentView: ViewType
+  selectedAuthor: Author | null
 
   // Actions
   setArticles: (articles: Article[]) => void
@@ -89,6 +93,8 @@ interface AppState {
   toggleSearch: () => void
   setActiveCategory: (category: string) => void
   setSearchQuery: (query: string) => void
+  setView: (view: ViewType, payload?: Author | null) => void
+  goHome: () => void
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -102,6 +108,8 @@ export const useStore = create<AppState>((set) => ({
   isSearchOpen: false,
   activeCategory: 'all',
   searchQuery: '',
+  currentView: 'home',
+  selectedAuthor: null,
 
   setArticles: (articles) => set({ articles }),
   setFeaturedArticles: (featuredArticles) => set({ featuredArticles }),
@@ -111,6 +119,8 @@ export const useStore = create<AppState>((set) => ({
   openArticle: (article) => set({ selectedArticle: article, isArticleOpen: true }),
   closeArticle: () => set({ selectedArticle: null, isArticleOpen: false }),
   toggleSearch: () => set((s) => ({ isSearchOpen: !s.isSearchOpen })),
-  setActiveCategory: (activeCategory) => set({ activeCategory }),
+  setActiveCategory: (activeCategory) => set({ activeCategory, currentView: 'category' }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
+  setView: (view, payload) => set({ currentView: view, selectedAuthor: payload || null }),
+  goHome: () => set({ currentView: 'home', activeCategory: 'all', selectedAuthor: null }),
 }))

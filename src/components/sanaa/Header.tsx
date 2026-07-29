@@ -1,40 +1,55 @@
 'use client'
 
 import { useStore } from '@/store/useStore'
-import { Search, Moon, Sun, Menu, X } from 'lucide-react'
+import { Search, Moon, Sun, Menu } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 
 export function Header() {
-  const { toggleSearch, categories, setActiveCategory, activeCategory } = useStore()
+  const { toggleSearch, categories, activeCategory, currentView, setActiveCategory, setView, goHome } = useStore()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  // Detect client-side mount for theme toggle
   if (typeof window !== 'undefined' && !mounted) {
     setMounted(true)
   }
 
   const navItems = [
-    { label: 'Home', slug: 'all' },
-    ...categories.map(c => ({ label: c.name, slug: c.slug })),
-    { label: 'Events', slug: 'events' },
-    { label: 'About', slug: 'about' },
+    { label: 'Home', slug: 'all', view: 'home' as const },
+    ...categories.slice(0, 6).map(c => ({ label: c.name, slug: c.slug, view: 'category' as const })),
+    { label: 'Events', slug: 'events', view: 'events' as const },
+    { label: 'About', slug: 'about', view: 'about' as const },
   ]
+
+  function handleNav(item: typeof navItems[number]) {
+    if (item.view === 'home') {
+      goHome()
+    } else if (item.view === 'category') {
+      setActiveCategory(item.slug)
+    } else {
+      setView(item.view)
+    }
+    setMobileOpen(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const isActive = (item: typeof navItems[number]) => {
+    if (item.view === 'home' && currentView === 'home' && activeCategory === 'all') return true
+    if (item.view === 'category' && currentView === 'category' && activeCategory === item.slug) return true
+    if (item.view === 'events' && currentView === 'events') return true
+    if (item.view === 'about' && currentView === 'about') return true
+    return false
+  }
 
   return (
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => setActiveCategory('all')}
-              className="flex flex-col items-start"
-            >
+            <button onClick={goHome} className="flex flex-col items-start">
               <span className="font-serif text-xl md:text-2xl font-bold tracking-tight text-foreground leading-none">
                 SANAATHRUMYLENS
               </span>
@@ -44,14 +59,13 @@ export function Header() {
             </button>
           </div>
 
-          {/* Desktop Nav */}
           <nav className="hidden lg:flex items-center gap-1">
-            {navItems.slice(0, 7).map(item => (
+            {navItems.map(item => (
               <button
                 key={item.slug}
-                onClick={() => setActiveCategory(item.slug)}
+                onClick={() => handleNav(item)}
                 className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  activeCategory === item.slug
+                  isActive(item)
                     ? 'text-primary bg-primary/10'
                     : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                 }`}
@@ -61,7 +75,6 @@ export function Header() {
             ))}
           </nav>
 
-          {/* Actions */}
           <div className="flex items-center gap-1">
             <button
               onClick={toggleSearch}
@@ -81,7 +94,6 @@ export function Header() {
               </button>
             )}
 
-            {/* Mobile Menu */}
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild className="lg:hidden">
                 <Button variant="ghost" size="icon" className="p-2">
@@ -96,9 +108,9 @@ export function Header() {
                   {navItems.map(item => (
                     <button
                       key={item.slug}
-                      onClick={() => { setActiveCategory(item.slug); setMobileOpen(false) }}
+                      onClick={() => handleNav(item)}
                       className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                        activeCategory === item.slug
+                        isActive(item)
                           ? 'text-primary bg-primary/10'
                           : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                       }`}
