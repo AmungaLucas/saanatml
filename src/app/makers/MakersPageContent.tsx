@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useStore } from '@/store/useStore'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { MapPin, ArrowLeft, ExternalLink, Instagram } from 'lucide-react'
+import { MapPin, ExternalLink, Globe, Instagram, Twitter } from 'lucide-react'
 import Link from 'next/link'
 
 interface Maker {
@@ -24,6 +25,7 @@ interface MakersPageContentProps {
 }
 
 export function MakersPageContent({ makers }: MakersPageContentProps) {
+  const { openMaker } = useStore()
   const [disciplineFilter, setDisciplineFilter] = useState('all')
   const disciplines = ['all', ...new Set(makers.map(m => m.discipline))]
 
@@ -32,6 +34,11 @@ export function MakersPageContent({ makers }: MakersPageContentProps) {
     : makers.filter(m => m.discipline === disciplineFilter)
 
   const featured = makers.filter(m => m.isFeatured)
+
+  const handleMakerClick = (e: React.MouseEvent, maker: Maker) => {
+    if ((e.target as HTMLElement).closest('a')) return
+    openMaker(maker as any)
+  }
 
   return (
     <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12 animate-fadeIn">
@@ -67,7 +74,8 @@ export function MakersPageContent({ makers }: MakersPageContentProps) {
             {featured.slice(0, 4).map(maker => (
               <div
                 key={maker.id}
-                className="group relative rounded-xl border border-primary/20 bg-card overflow-hidden hover:border-primary/40 transition-all duration-300 hover:shadow-lg"
+                className="group relative rounded-xl border border-primary/20 bg-card overflow-hidden hover:border-primary/40 transition-all duration-300 hover:shadow-lg cursor-pointer"
+                onClick={(e) => handleMakerClick(e, maker)}
               >
                 <div className="h-1 bg-gradient-to-r from-primary via-gold to-primary" />
                 <div className="p-6">
@@ -95,15 +103,37 @@ export function MakersPageContent({ makers }: MakersPageContentProps) {
                   <p className="text-sm text-muted-foreground mt-4 leading-relaxed">{maker.bio}</p>
                   <div className="flex items-center gap-3 mt-4">
                     {maker.website && (
-                      <a href={maker.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-primary font-mono hover:underline">
-                        <ExternalLink className="h-2.5 w-2.5" /> Website
+                      <a
+                        href={maker.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 text-[10px] text-primary font-mono hover:underline"
+                      >
+                        <Globe className="h-2.5 w-2.5" /> Website
                       </a>
                     )}
                     {maker.instagram && (
-                      <span className="text-[10px] text-muted-foreground font-mono">{maker.instagram}</span>
+                      <a
+                        href={maker.instagram.startsWith('http') ? maker.instagram : `https://instagram.com/${maker.instagram.replace(/^@/, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 text-[10px] text-primary font-mono hover:underline"
+                      >
+                        <Instagram className="h-2.5 w-2.5" /> {maker.instagram.replace(/^@/, '')}
+                      </a>
                     )}
                     {maker.twitter && (
-                      <span className="text-[10px] text-muted-foreground font-mono">{maker.twitter}</span>
+                      <a
+                        href={maker.twitter.startsWith('http') ? maker.twitter : `https://x.com/${maker.twitter.replace(/^@/, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 text-[10px] text-primary font-mono hover:underline"
+                      >
+                        <Twitter className="h-2.5 w-2.5" /> {maker.twitter.replace(/^@/, '')}
+                      </a>
                     )}
                   </div>
                 </div>
@@ -135,12 +165,13 @@ export function MakersPageContent({ makers }: MakersPageContentProps) {
           {filtered.map(maker => (
             <div
               key={maker.id}
-              className="group rounded-xl border border-border bg-card overflow-hidden hover:border-primary/30 transition-all duration-300 hover:shadow-md"
+              className="group rounded-xl border border-border bg-card overflow-hidden hover:border-primary/30 transition-all duration-300 hover:shadow-md cursor-pointer"
+              onClick={(e) => handleMakerClick(e, maker)}
             >
               <div className="h-0.5 bg-gradient-to-r from-primary/60 to-gold/60" />
               <div className="p-5">
                 <div className="flex items-start gap-3">
-                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
                     <span className="font-serif text-lg font-bold text-primary">{maker.name.charAt(0)}</span>
                   </div>
                   <div className="flex-1 min-w-0">
@@ -156,13 +187,54 @@ export function MakersPageContent({ makers }: MakersPageContentProps) {
                     </p>
                   )}
                   <div className="flex items-center gap-2">
-                    {maker.instagram && <span className="text-[10px] text-muted-foreground">{maker.instagram}</span>}
+                    {maker.instagram && (
+                      <a
+                        href={maker.instagram.startsWith('http') ? maker.instagram : `https://instagram.com/${maker.instagram.replace(/^@/, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-primary hover:opacity-70 transition-opacity"
+                      >
+                        <Instagram className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                    {maker.twitter && (
+                      <a
+                        href={maker.twitter.startsWith('http') ? maker.twitter : `https://x.com/${maker.twitter.replace(/^@/, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-primary hover:opacity-70 transition-opacity"
+                      >
+                        <Twitter className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                    {maker.website && (
+                      <a
+                        href={maker.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-primary hover:opacity-70 transition-opacity"
+                      >
+                        <Globe className="h-3.5 w-3.5" />
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
           ))}
         </div>
+
+        {filtered.length === 0 && (
+          <div className="text-center py-16">
+            <p className="font-serif text-lg text-muted-foreground">No makers match this discipline</p>
+            <Button variant="outline" onClick={() => setDisciplineFilter('all')} className="mt-4 font-mono text-xs">
+              Clear Filter
+            </Button>
+          </div>
+        )}
       </section>
     </main>
   )

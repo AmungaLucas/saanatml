@@ -13,6 +13,7 @@ import { OpinionSection } from '@/components/sanaa/OpinionSection'
 import { EventsSection } from '@/components/sanaa/EventsSection'
 import { ArticleModal } from '@/components/sanaa/ArticleModal'
 import { EventModal } from '@/components/sanaa/EventModal'
+import { MakerModal } from '@/components/sanaa/MakerModal'
 import { SearchModal } from '@/components/sanaa/SearchModal'
 import { Footer } from '@/components/sanaa/Footer'
 import { AboutPage } from '@/components/sanaa/AboutPage'
@@ -24,7 +25,6 @@ import { BackToTop } from '@/components/sanaa/BackToTop'
 import { ScrollReveal } from '@/components/sanaa/ScrollReveal'
 
 function HomePage() {
-  const makers = useStore(s => s.makers)
 
   return (
     <div className="animate-fadeIn" key="home">
@@ -85,7 +85,7 @@ function HomePage() {
       {/* Cultural Makers Spotlight */}
       <ScrollReveal delay={0.05}>
         <div className="py-8 md:py-12">
-          <CulturalMakers makers={makers} />
+          <CulturalMakers />
         </div>
       </ScrollReveal>
 
@@ -165,6 +165,7 @@ export default function Home() {
       <Footer />
       <ArticleModal />
       <EventModal />
+      <MakerModal />
       <SearchModal />
       <BackToTop />
     </div>

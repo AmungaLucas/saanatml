@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
 import { db } from '@/lib/db'
 import { MakersPageContent } from './MakersPageContent'
+import { Header } from '@/components/sanaa/Header'
+import { Footer } from '@/components/sanaa/Footer'
+import { MakerModal } from '@/components/sanaa/MakerModal'
 
 export const metadata: Metadata = {
   title: 'Cultural Makers — Sanaa Through My Lens',
@@ -12,5 +15,14 @@ export default async function MakersPage() {
     orderBy: [{ isFeatured: 'desc' }, { name: 'asc' }],
   })
 
-  return <MakersPageContent makers={JSON.parse(JSON.stringify(makers))} />
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-1">
+        <MakersPageContent makers={JSON.parse(JSON.stringify(makers))} />
+      </main>
+      <Footer />
+      <MakerModal />
+    </div>
+  )
 }

@@ -2,30 +2,18 @@
 
 import { useStore } from '@/store/useStore'
 import { Badge } from '@/components/ui/badge'
-import { MapPin, ExternalLink, Instagram, ArrowRight } from 'lucide-react'
+import { MapPin, Instagram, ArrowRight } from 'lucide-react'
 
-interface Maker {
-  id: string
-  name: string
-  slug: string
-  discipline: string
-  bio: string
-  location: string
-  website: string
-  instagram: string
-  twitter: string
-  isFeatured: boolean
-}
-
-interface MakersSectionProps {
-  makers?: Maker[]
-}
-
-export function CulturalMakers({ makers: propsMakers }: MakersSectionProps) {
-  // Could be used server-side or client-side
-  const featured = propsMakers?.filter(m => m.isFeatured) || []
+export function CulturalMakers() {
+  const { makers, openMaker } = useStore()
+  const featured = makers.filter(m => m.isFeatured).slice(0, 4)
 
   if (featured.length === 0) return null
+
+  const handleMakerClick = (e: React.MouseEvent, maker: typeof makers[0]) => {
+    if ((e.target as HTMLElement).closest('a')) return
+    openMaker(maker)
+  }
 
   return (
     <section className="max-w-7xl mx-auto px-4 md:px-6">
@@ -46,10 +34,11 @@ export function CulturalMakers({ makers: propsMakers }: MakersSectionProps) {
 
       {/* Featured Makers Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {featured.slice(0, 4).map((maker, i) => (
+        {featured.map((maker) => (
           <div
             key={maker.id}
-            className="group relative rounded-xl border border-border bg-card overflow-hidden hover:border-primary/30 transition-all duration-300 hover:shadow-lg"
+            className="group relative rounded-xl border border-border bg-card overflow-hidden hover:border-primary/30 transition-all duration-300 hover:shadow-lg cursor-pointer"
+            onClick={(e) => handleMakerClick(e, maker)}
           >
             {/* Decorative top accent */}
             <div className="h-1 bg-gradient-to-r from-primary via-gold to-primary" />
@@ -84,7 +73,16 @@ export function CulturalMakers({ makers: propsMakers }: MakersSectionProps) {
               {/* Social Links */}
               <div className="flex items-center gap-2 mt-3">
                 {maker.instagram && (
-                  <span className="text-[10px] text-muted-foreground font-mono">{maker.instagram}</span>
+                  <a
+                    href={maker.instagram.startsWith('http') ? maker.instagram : `https://instagram.com/${maker.instagram.replace(/^@/, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 text-[10px] text-primary font-mono hover:underline"
+                  >
+                    <Instagram className="h-3 w-3" />
+                    {maker.instagram.replace(/^@/, '')}
+                  </a>
                 )}
               </div>
             </div>

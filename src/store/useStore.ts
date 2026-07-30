@@ -129,6 +129,8 @@ interface AppState {
   isArticleOpen: boolean
   selectedEvent: Event | null
   isEventOpen: boolean
+  selectedMaker: Maker | null
+  isMakerOpen: boolean
   isSearchOpen: boolean
   activeCategory: string
   searchQuery: string
@@ -156,6 +158,8 @@ interface AppState {
   closeArticle: () => void
   openEvent: (event: Event) => void
   closeEvent: () => void
+  openMaker: (maker: Maker) => void
+  closeMaker: () => void
   toggleSearch: () => void
   setActiveCategory: (category: string) => void
   setSearchQuery: (query: string) => void
@@ -182,6 +186,8 @@ export const useStore = create<AppState>((set, get) => ({
   isArticleOpen: false,
   selectedEvent: null,
   isEventOpen: false,
+  selectedMaker: null,
+  isMakerOpen: false,
   isSearchOpen: false,
   activeCategory: 'all',
   searchQuery: '',
@@ -202,6 +208,8 @@ export const useStore = create<AppState>((set, get) => ({
   closeArticle: () => set({ selectedArticle: null, isArticleOpen: false }),
   openEvent: (event) => set({ selectedEvent: event, isEventOpen: true }),
   closeEvent: () => set({ selectedEvent: null, isEventOpen: false }),
+  openMaker: (maker) => set({ selectedMaker: maker, isMakerOpen: true }),
+  closeMaker: () => set({ selectedMaker: null, isMakerOpen: false }),
   toggleSearch: () => set((s) => ({ isSearchOpen: !s.isSearchOpen })),
   setActiveCategory: (activeCategory) => set({ activeCategory, currentView: 'category' }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
