@@ -62,10 +62,10 @@ export function LensPicks() {
                 </h3>
                 <p className="text-white/70 text-sm line-clamp-2 mb-3">{featured.excerpt}</p>
                 <div className="flex items-center gap-3 text-white/50 text-xs font-mono">
-                  <span className="flex items-center gap-1">
+                  <a href={`/authors/${featured.author.slug}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 hover:text-white/80 transition-colors">
                     <User className="h-3 w-3" />
                     {featured.author.name}
-                  </span>
+                  </a>
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     {featured.readTime} min
@@ -105,7 +105,7 @@ export function LensPicks() {
                     {pick.title}
                   </h3>
                   <p className="text-xs text-muted-foreground mt-2 font-mono flex items-center gap-2">
-                    <User className="h-3 w-3" /> {pick.author.name}
+                    <User className="h-3 w-3" /> <a href={`/authors/${pick.author.slug}`} onClick={(e) => e.stopPropagation()} className="hover:text-foreground transition-colors">{pick.author.name}</a>
                     <span className="text-border">·</span>
                     <Clock className="h-3 w-3" /> {pick.readTime} min
                   </p>

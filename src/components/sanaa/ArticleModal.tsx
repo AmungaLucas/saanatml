@@ -143,10 +143,10 @@ export function ArticleModal() {
       {/* Top bar */}
       <div className="sticky top-0 z-10 glass">
         <div className="max-w-4xl mx-auto px-4 h-12 flex items-center justify-between">
-          <Link href="/" onClick={closeArticle} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <a href="/" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="h-4 w-4" />
             <span className="font-mono text-xs">Back</span>
-          </Link>
+          </a>
           <div className="flex items-center gap-1">
             {/* Like */}
             <Button
@@ -209,7 +209,7 @@ export function ArticleModal() {
 
           {/* Author + Meta */}
           <div className="flex flex-wrap items-center gap-4 mt-6 pt-6 border-t border-border">
-            <Link href={`/authors/${article.author.slug}`} onClick={(e) => e.preventDefault()} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <a href={`/authors/${article.author.slug}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <User className="h-4 w-4 text-primary" />
               </div>
@@ -217,7 +217,7 @@ export function ArticleModal() {
                 <p className="font-medium text-sm">{article.author.name}</p>
                 <p className="text-xs text-muted-foreground">{article.author.role}</p>
               </div>
-            </Link>
+            </a>
             <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono ml-auto">
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
@@ -345,9 +345,9 @@ export function ArticleModal() {
               <p className="font-mono text-[10px] uppercase tracking-wider text-primary mb-1">Written by</p>
               <h3 className="font-serif font-bold text-lg">{article.author.name}</h3>
               <p className="text-sm text-muted-foreground mt-1 leading-relaxed line-clamp-3">{article.author.bio}</p>
-              <Link href={`/authors/${article.author.slug}`} onClick={(e) => e.preventDefault()} className="inline-block mt-3 text-sm text-primary font-mono hover:underline">
+              <a href={`/authors/${article.author.slug}`} className="inline-block mt-3 text-sm text-primary font-mono hover:underline">
                 Read more by {article.author.name} &rarr;
-              </Link>
+              </a>
             </div>
           </div>
         </div>

@@ -41,7 +41,7 @@ export function OpinionSection() {
                 </p>
                 <p className="text-white/70 text-sm mt-2 line-clamp-2">{opinions[0].excerpt}</p>
                 <p className="text-white/50 text-xs mt-3 font-mono">
-                  By {opinions[0].author.name} &middot; {opinions[0].readTime} min read
+                  By <a href={`/authors/${opinions[0].author.slug}`} onClick={(e) => e.stopPropagation()} className="hover:text-white/70 transition-colors">{opinions[0].author.name}</a> &middot; {opinions[0].readTime} min read
                 </p>
               </div>
             </div>

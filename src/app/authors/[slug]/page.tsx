@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { db } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import { AuthorContent } from './AuthorContent'
+import { Header } from '@/components/sanaa/Header'
+import { Footer } from '@/components/sanaa/Footer'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -37,11 +39,17 @@ export default async function AuthorPage({ params }: Props) {
   if (!author) notFound()
 
   return (
-    <AuthorContent
-      author={JSON.parse(JSON.stringify({
-        ...author,
-        articles: author.articles.map(a => ({ ...a, commentCount: a.comments.length })),
-      }))}
-    />
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-1">
+        <AuthorContent
+          author={JSON.parse(JSON.stringify({
+            ...author,
+            articles: author.articles.map(a => ({ ...a, commentCount: a.comments.length })),
+          }))}
+        />
+      </main>
+      <Footer />
+    </div>
   )
 }

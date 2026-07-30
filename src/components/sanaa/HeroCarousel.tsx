@@ -107,10 +107,14 @@ export function HeroCarousel() {
                   {article.excerpt}
                 </p>
                 <div className="flex items-center gap-4 text-white/60 text-xs font-mono">
-                  <span className="flex items-center gap-1.5">
+                  <a
+                    href={`/authors/${article.author.slug}`}
+                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); window.location.href = `/authors/${article.author.slug}` }}
+                    className="flex items-center gap-1.5 hover:text-white transition-colors"
+                  >
                     <User className="h-3 w-3" />
                     {article.author.name}
-                  </span>
+                  </a>
                   <span>{new Date(article.publishedAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />

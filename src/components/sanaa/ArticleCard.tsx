@@ -62,7 +62,7 @@ export function ArticleCard({ article, variant = 'default' }: ArticleCardProps) 
             {article.title}
           </h3>
           <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-2 font-mono">
-            <span>{article.author.name}</span>
+            <a href={`/articles/${article.slug}`} onClick={(e) => e.stopPropagation()} className="hover:text-foreground">{article.author.name}</a>
             <span className="text-border">·</span>
             <span>{new Date(article.publishedAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </p>
@@ -178,10 +178,14 @@ export function ArticleCard({ article, variant = 'default' }: ArticleCardProps) 
       </p>
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <div className="flex items-center gap-3">
-          <span className="font-medium text-foreground hover:text-primary transition-colors flex items-center gap-1">
+          <a
+            href={`/authors/${article.author.slug}`}
+            onClick={(e) => e.stopPropagation()}
+            className="font-medium text-foreground hover:text-primary transition-colors flex items-center gap-1"
+          >
             <User className="h-3 w-3" />
             {article.author.name}
-          </span>
+          </a>
           <span className="text-border">·</span>
           <span>{new Date(article.publishedAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
         </div>
