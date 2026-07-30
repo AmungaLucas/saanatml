@@ -102,7 +102,7 @@ const BOOKMARKS_KEY = 'sanaa-bookmarks'
 const LIKES_KEY = 'sanaa-likes'
 const HISTORY_KEY = 'sanaa-reading-history'
 
-interface ReadingHistoryEntry {
+export interface ReadingHistoryEntry {
   articleId: string
   slug: string
   title: string

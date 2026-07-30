@@ -17,6 +17,7 @@ import {
 import ReactMarkdown from 'react-markdown'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useActionToast } from './ActionToast'
 
 export function ArticleModal() {
   const {
@@ -111,6 +112,7 @@ export function ArticleModal() {
       const newComment = await res.json()
       setComments(prev => [newComment, ...prev])
       setCommentText('')
+      showToast({ type: 'comment', message: 'Comment posted' })
     } catch {}
   }
 
@@ -119,6 +121,7 @@ export function ArticleModal() {
     try {
       await navigator.clipboard.writeText(`${window.location.origin}/articles/${article.slug}`)
       setCopied(true)
+      showToast({ type: 'copy', message: 'Link copied' })
       setTimeout(() => setCopied(false), 2000)
     } catch {}
   }
@@ -126,6 +129,8 @@ export function ArticleModal() {
   const shareUrl = article ? `${typeof window !== 'undefined' ? window.location.origin : ''}/articles/${article.slug}` : ''
 
   if (!isArticleOpen || !article) return null
+
+  const { showToast } = useActionToast()
 
   const isBookmarked = bookmarks.includes(article.id)
   const liked = isLiked(article.id)

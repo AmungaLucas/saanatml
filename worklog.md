@@ -86,3 +86,26 @@ Stage Summary:
 - 10 upgraded components with framer-motion animations
 - New features: likes/reactions, reading history, TOC sidebar, blur image loading, scroll-reveal sections, glass-morphism, keyboard search navigation, recharts admin stats
 - 41 SSG pages, zero build errors
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Phase 4 — Final polish: ActionToast, SSG feature parity, SEO (sitemap + RSS), reading history sidebar, enhanced metadata
+
+Work Log:
+- Created ActionToast context provider with 6 toast types (bookmark, unbookmark, like, unlike, comment, copy) — animated floating pills with auto-dismiss
+- Connected ActionToast to ArticleCard (bookmark), ArticleModal (comment, copy link), and ArticlePageClient (all actions)
+- Upgraded SSG ArticlePageClient to full feature parity: TOC sidebar with scroll-spy, reactions (like + save), reading history tracking, glass-morphism sticky bar, animated comment list, BackToTop, heading anchor rendering
+- Created sitemap.ts (Next.js native) with all article, category, author, and static page URLs with proper priorities
+- Created /rss/route.ts generating RSS 2.0 XML feed with atom:link self-reference and 20 latest articles
+- Added RSS alternate link and metadataBase to root layout metadata
+- Created ReadingHistoryPanel dropdown component (thumbnail cards, progress bars, time-ago, clear button)
+- Upgraded Sidebar: collapsible reading history panel with progress bars, hover-card effects on all panels
+- Exported ReadingHistoryEntry interface from store for use across components
+- Build: 43 routes (41 static + /sitemap.xml + /rss), zero errors
+
+Stage Summary:
+- 3 new components: ActionToast (context), ReadingHistoryPanel, sitemap + RSS routes
+- SSG article pages now have full feature parity with client-side modal
+- Complete SEO suite: sitemap.xml, RSS feed, JSON-LD, OpenGraph, Twitter cards
+- 43 total routes, zero build errors

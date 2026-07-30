@@ -8,6 +8,7 @@ import { Clock, Bookmark, BookmarkCheck, User, Heart } from 'lucide-react'
 import type { Article } from '@/store/useStore'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useActionToast } from './ActionToast'
 
 interface ArticleCardProps {
   article: Article
@@ -16,6 +17,7 @@ interface ArticleCardProps {
 
 export function ArticleCard({ article, variant = 'default' }: ArticleCardProps) {
   const { openArticle, bookmarks, toggleBookmark, likes, toggleLike, isLiked } = useStore()
+  const { showToast } = useActionToast()
   const isBookmarked = bookmarks.includes(article.id)
   const liked = isLiked(article.id)
   const [imgLoaded, setImgLoaded] = useState(false)
@@ -139,7 +141,7 @@ export function ArticleCard({ article, variant = 'default' }: ArticleCardProps) 
             variant="ghost"
             size="icon"
             className="bg-black/30 hover:bg-black/50 text-white rounded-full h-8 w-8"
-            onClick={(e) => { e.stopPropagation(); toggleBookmark(article.id) }}
+            onClick={(e) => { e.stopPropagation(); toggleBookmark(article.id); showToast({ type: isBookmarked ? 'unbookmark' : 'bookmark', message: isBookmarked ? 'Removed from bookmarks' : 'Added to bookmarks' }) }}
           >
             {isBookmarked ? <BookmarkCheck className="h-3.5 w-3.5 fill-gold text-gold" /> : <Bookmark className="h-3.5 w-3.5" />}
           </Button>
