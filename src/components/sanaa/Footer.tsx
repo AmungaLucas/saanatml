@@ -49,11 +49,14 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Brand */}
           <div>
-            <Link href="/" className="block group">
-              <span className="font-serif text-xl font-bold group-hover:text-primary transition-colors">SANAATHRUMYLENS</span>
-              <p className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase mt-1">
-                Art Through My Lens
-              </p>
+            <Link href="/" className="flex items-center gap-2.5 group">
+              <img src="/icon.png" alt="Sanaa Through My Lens" className="h-8 w-8 rounded-md" />
+              <div>
+                <span className="font-serif text-xl font-bold group-hover:text-primary transition-colors">SANAATHRUMYLENS</span>
+                <p className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase mt-0.5">
+                  Art Through My Lens
+                </p>
+              </div>
             </Link>
             <p className="text-sm text-muted-foreground mt-4 leading-relaxed">
               An arts &amp; culture opinion blog highlighting stories around the art scene in Kenya and East Africa &mdash; music, film, book reviews, commentary, events, and infortainment.
@@ -105,7 +108,7 @@ export function Footer() {
               <li><Link href="/about" className="text-sm text-foreground/70 hover:text-primary transition-colors">About Us</Link></li>
               <li><Link href="/events" className="text-sm text-foreground/70 hover:text-primary transition-colors">Events</Link></li>
               <li><Link href="/makers" className="text-sm text-foreground/70 hover:text-primary transition-colors">Cultural Makers</Link></li>
-              <li><button className="text-sm text-foreground/70 hover:text-primary transition-colors">Advertise with Us</button></li>
+              <li><Link href="/advertise" className="text-sm text-foreground/70 hover:text-primary transition-colors">Advertise with Us</Link></li>
               <li><button onClick={() => useStore.getState().toggleSearch()} className="text-sm text-foreground/70 hover:text-primary transition-colors">Search</button></li>
             </ul>
           </div>
@@ -153,7 +156,12 @@ export function Footer() {
         <Separator className="my-8" />
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Sanaa Through My Lens. All rights reserved.</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <p>&copy; {new Date().getFullYear()} Sanaa Through My Lens. All rights reserved.</p>
+            <Link href="/privacy" className="hover:text-primary transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-primary transition-colors">Terms</Link>
+            <Link href="/cookies" className="hover:text-primary transition-colors">Cookies</Link>
+          </div>
           <div className="flex items-center gap-4">
             <p className="font-mono">
               Arts &amp; Culture Opinion Blog &mdash; Kenya &amp; East Africa

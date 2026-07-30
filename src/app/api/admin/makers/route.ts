@@ -1,0 +1,42 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+
+// GET all makers
+export async function GET() {
+  const makers = await db.maker.findMany({
+    orderBy: { createdAt: 'desc' },
+  })
+  return NextResponse.json(makers)
+}
+
+// POST create new maker
+export async function POST(request: NextRequest) {
+  const body = await request.json()
+  const { name, slug, discipline, bio, location, website, instagram, twitter, isFeatured } = body
+
+  if (!name || !slug || !discipline) {
+    return NextResponse.json({ error: 'Missing required fields: name, slug, discipline' }, { status: 400 })
+  }
+
+  try {
+    const maker = await db.maker.create({
+      data: {
+        name,
+        slug,
+        discipline,
+        bio: bio || '',
+        location: location || '',
+        website: website || '',
+        instagram: instagram || '',
+        twitter: twitter || '',
+        isFeatured: isFeatured || false,
+      },
+    })
+    return NextResponse.json(maker, { status: 201 })
+  } catch (e: any) {
+    if (e.code === 'P2002') {
+      return NextResponse.json({ error: 'Slug already exists' }, { status: 409 })
+    }
+    return NextResponse.json({ error: 'Failed to create maker' }, { status: 500 })
+  }
+}

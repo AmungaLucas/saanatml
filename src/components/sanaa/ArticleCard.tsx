@@ -38,9 +38,8 @@ export function ArticleCard({ article, variant = 'default' }: ArticleCardProps) 
 
   if (variant === 'horizontal') {
     return (
-      <Link
-        href={`/articles/${article.slug}`}
-        onClick={(e) => { e.preventDefault(); openArticle(article) }}
+      <button
+        onClick={() => openArticle(article)}
         className="w-full flex gap-4 text-left group"
       >
         <div className="w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden shrink-0 bg-secondary">
@@ -62,20 +61,22 @@ export function ArticleCard({ article, variant = 'default' }: ArticleCardProps) 
             {article.title}
           </h3>
           <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-2 font-mono">
-            <a href={`/articles/${article.slug}`} onClick={(e) => e.stopPropagation()} className="hover:text-foreground">{article.author.name}</a>
+            <span
+              onClick={(e) => { e.stopPropagation(); window.location.href = `/authors/${article.author.slug}` }}
+              className="hover:text-foreground cursor-pointer"
+            >{article.author.name}</span>
             <span className="text-border">·</span>
             <span>{new Date(article.publishedAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </p>
         </div>
-      </Link>
+      </button>
     )
   }
 
   if (variant === 'compact') {
     return (
-      <Link
-        href={`/articles/${article.slug}`}
-        onClick={(e) => { e.preventDefault(); openArticle(article) }}
+      <button
+        onClick={() => openArticle(article)}
         className="w-full text-left p-3 rounded-lg hover:bg-secondary/50 transition-colors group"
       >
         <div className="flex items-start gap-3">
@@ -91,7 +92,7 @@ export function ArticleCard({ article, variant = 'default' }: ArticleCardProps) 
             </p>
           </div>
         </div>
-      </Link>
+      </button>
     )
   }
 

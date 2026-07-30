@@ -61,13 +61,16 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center gap-2 shrink-0">
-            <Link href="/" onClick={goHome} className="flex flex-col items-start group">
-              <span className="font-serif text-xl md:text-2xl font-bold tracking-tight text-foreground leading-none group-hover:text-primary transition-colors">
-                SANAATHRUMYLENS
-              </span>
-              <span className="font-mono text-[10px] tracking-[0.25em] text-muted-foreground uppercase hidden sm:block">
-                Art Through My Lens
-              </span>
+            <Link href="/" onClick={goHome} className="flex items-center gap-2.5 group">
+              <img src="/icon.png" alt="Sanaa Through My Lens" className="h-8 w-8 rounded-md" />
+              <div className="flex flex-col items-start">
+                <span className="font-serif text-lg md:text-xl font-bold tracking-tight text-foreground leading-none group-hover:text-primary transition-colors">
+                  SANAATHRUMYLENS
+                </span>
+                <span className="font-mono text-[10px] tracking-[0.25em] text-muted-foreground uppercase hidden sm:block">
+                  Art Through My Lens
+                </span>
+              </div>
             </Link>
           </div>
 
@@ -158,10 +161,15 @@ export function Header() {
               </SheetTrigger>
               <SheetContent className="w-72 bg-background border-l border-border p-0">
                 <div className="p-6 border-b border-border">
-                  <span className="font-serif text-lg font-bold">SANAATHRUMYLENS</span>
-                  <p className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase mt-1">
-                    Art Through My Lens
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <img src="/icon.png" alt="Sanaa Through My Lens" className="h-7 w-7 rounded-md" />
+                    <div>
+                      <span className="font-serif text-lg font-bold">SANAATHRUMYLENS</span>
+                      <p className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+                        Art Through My Lens
+                      </p>
+                    </div>
+                  </div>
                 </div>
                 <nav className="p-4 space-y-1">
                   {navItems.map(item => (

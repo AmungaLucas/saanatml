@@ -3,7 +3,6 @@
 import { useStore } from '@/store/useStore'
 import { Badge } from '@/components/ui/badge'
 import { Clock, User, ArrowRight, Sparkles } from 'lucide-react'
-import Link from 'next/link'
 
 export function LensPicks() {
   const { featuredArticles, articles, openArticle } = useStore()
@@ -62,10 +61,10 @@ export function LensPicks() {
                 </h3>
                 <p className="text-white/70 text-sm line-clamp-2 mb-3">{featured.excerpt}</p>
                 <div className="flex items-center gap-3 text-white/50 text-xs font-mono">
-                  <a href={`/authors/${featured.author.slug}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 hover:text-white/80 transition-colors">
+                  <span onClick={(e) => { e.stopPropagation(); window.location.href = `/authors/${featured.author.slug}` }} className="flex items-center gap-1 hover:text-white/80 transition-colors cursor-pointer">
                     <User className="h-3 w-3" />
                     {featured.author.name}
-                  </a>
+                  </span>
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     {featured.readTime} min
@@ -105,7 +104,7 @@ export function LensPicks() {
                     {pick.title}
                   </h3>
                   <p className="text-xs text-muted-foreground mt-2 font-mono flex items-center gap-2">
-                    <User className="h-3 w-3" /> <a href={`/authors/${pick.author.slug}`} onClick={(e) => e.stopPropagation()} className="hover:text-foreground transition-colors">{pick.author.name}</a>
+                    <User className="h-3 w-3" /> <span onClick={(e) => { e.stopPropagation(); window.location.href = `/authors/${pick.author.slug}` }} className="hover:text-foreground transition-colors cursor-pointer">{pick.author.name}</span>
                     <span className="text-border">·</span>
                     <Clock className="h-3 w-3" /> {pick.readTime} min
                   </p>

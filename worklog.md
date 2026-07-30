@@ -109,3 +109,83 @@ Stage Summary:
 - SSG article pages now have full feature parity with client-side modal
 - Complete SEO suite: sitemap.xml, RSS feed, JSON-LD, OpenGraph, Twitter cards
 - 43 total routes, zero build errors
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Phase 5 — Legal pages, AdPlaceholder component, Advertise page
+
+Work Log:
+- Created AdPlaceholder component (src/components/sanaa/AdPlaceholder.tsx) with 3 variants: banner (728x90), sidebar (300x250), in-feed (728x90, "Sponsored" label)
+- Created /privacy page with PrivacyPolicy content: info collection, cookies/localStorage, third-party services, data rights, contact (privacy@sanaathrumylens.co.ke)
+- Created /terms page with Terms of Service content: acceptance, user content, IP, disclaimer, limitation of liability, governing law (Kenya), contact (legal@sanaathrumylens.co.ke)
+- Created /cookies page with Cookie Policy content: cookie types, essential cookies, analytics cookies, localStorage usage (theme, bookmarks, reading history, likes, searches), management instructions
+- Created /advertise page with Advertise content: audience description, 3 ad formats (banner, sidebar, sponsored) with live AdPlaceholder demos, media kit placeholder, ad guidelines, contact (ads@sanaathrumylens.co.ke)
+- All pages follow Header+Footer wrapper pattern, ScrollReveal animations, design system typography (font-serif headings, font-mono metadata), max-w-3xl container
+- All pages have SEO metadata exports
+- Build: 47 routes (4 new static pages), zero errors
+
+Stage Summary:
+- 1 new component: AdPlaceholder
+- 4 new pages: /privacy, /terms, /cookies, /advertise
+- All text-only, no images, no new shadcn dependencies
+- 47 total routes, zero build errors
+
+---
+Task ID: 7
+Agent: Main Agent
+Task: Phase 6 — Full Admin Dashboard with 7-tab CRUD for all entities
+
+Work Log:
+- Rewrote src/app/admin/page.tsx as a single-file admin dashboard with 7 tabs:
+  - Overview: stats grid (8 cards including subscribers), AreaChart (article views), BarChart (category distribution), quick action buttons
+  - Articles: full CRUD table with create/edit dialog, featured/pinned toggles, markdown write/preview, cover image preview
+  - Events: full CRUD table with create/edit dialog (title, description, date/endDate, venue, city, category, imageUrl, ticketUrl, isFeatured, isPast switches)
+  - Makers: full CRUD table with create/edit dialog (name, slug auto-gen, discipline, bio, location, website, instagram, twitter, isFeatured switch)
+  - Authors: full CRUD table with create/edit dialog (name, slug auto-gen, bio, avatar URL with preview, role select: Writer/Editor/Contributor/Columnist)
+  - Categories: CRUD table with create/edit dialog (name, slug auto-gen, description, color picker)
+  - Subscribers: read-only list with delete action
+- Created 9 new API route files following existing pattern:
+  - /api/admin/events/route.ts (GET all, POST new)
+  - /api/admin/events/[id]/route.ts (PATCH, DELETE)
+  - /api/admin/makers/route.ts (GET all, POST new with P2002 handling)
+  - /api/admin/makers/[id]/route.ts (PATCH with P2002, DELETE)
+  - /api/admin/authors/route.ts (GET all with article count, POST new with P2002)
+  - /api/admin/authors/[id]/route.ts (PATCH with P2002, DELETE)
+  - /api/admin/categories/route.ts (GET all with article/event counts, POST new with P2002)
+  - /api/admin/categories/[id]/route.ts (PATCH with P2002, DELETE)
+  - /api/admin/subscribers/route.ts (GET all)
+  - /api/admin/subscribers/[id]/route.ts (DELETE)
+- Verified stats API already includes subscriber count (no changes needed)
+- Fixed lucide-react Image import renamed to ImageIcon to avoid jsx-a11y false positive
+- All new code passes lint cleanly (4 pre-existing errors in other files remain)
+
+Stage Summary:
+- 10 new API route files for full admin CRUD
+- Admin dashboard rewritten with 7 tabs, 5 dialog forms, consistent design (font-serif headings, font-mono labels, glass header)
+- All entity types manageable from single admin page
+- Auto-slug generation from name for Maker, Author, Category
+- confirm() dialogs for all delete actions
+- Recharts charts preserved in Overview tab
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Phase 7 — Editor/Author Dashboard at /dashboard
+
+Work Log:
+- Created src/app/dashboard/layout.tsx (server component) with metadata: title 'Editor Dashboard', robots noindex/nofollow
+- Created src/app/dashboard/page.tsx (client component) as a single-file editor dashboard with 3 tabs:
+  - My Articles: stats row (total articles, total views, categories, avg views), responsive table with Title/Category/Published/Views/Actions columns, View (opens /articles/[slug] in new tab) and Edit (opens dialog) actions, no delete capability
+  - New Article: full-page creation form with Title (auto-generates slug), Slug, Category select (from /api/categories with color dots), Author select (from /api/authors with role), Excerpt textarea, Content with Write/Preview tabs (ReactMarkdown + word count), Cover Image URL with live preview, Tags (comma-separated), Read Time (number). Submit calls POST /api/admin/articles, shows success banner, auto-switches to My Articles tab
+  - Content Calendar: read-only list of upcoming events from /api/events, each showing title, date range, venue/city with MapPin icon, category badge with color, featured badge, date accent card on desktop
+- Edit Article: Dialog with same fields as create form, PATCH /api/admin/articles/[id], success banner on save
+- Design: consistent with admin dashboard (font-mono 10px uppercase labels, font-serif headings, shadcn/ui components throughout), simpler header (no glass effect, no charts), mobile-friendly responsive layout
+- Reuses existing API routes: /api/admin/articles (GET/POST), /api/admin/articles/[id] (PATCH), /api/categories, /api/authors, /api/events
+- Zero new lint errors (4 pre-existing errors in other files remain)
+
+Stage Summary:
+- 2 new files: src/app/dashboard/layout.tsx, src/app/dashboard/page.tsx
+- 3-tab editor dashboard: My Articles, New Article, Content Calendar
+- Editor-focused workflow: create, edit, track performance, get story ideas from events
+- No new API routes needed — fully reuses existing admin APIs

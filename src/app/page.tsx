@@ -20,6 +20,7 @@ import { AboutPage } from '@/components/sanaa/AboutPage'
 import { EventsPage } from '@/components/sanaa/EventsPage'
 import { CategoryPage } from '@/components/sanaa/CategoryPage'
 import { NewsletterCTA } from '@/components/sanaa/NewsletterCTA'
+import { AdPlaceholder } from '@/components/sanaa/AdPlaceholder'
 import { StoryGridSkeleton } from '@/components/sanaa/Skeletons'
 import { BackToTop } from '@/components/sanaa/BackToTop'
 import { ScrollReveal } from '@/components/sanaa/ScrollReveal'
@@ -71,6 +72,11 @@ function HomePage() {
           <OpinionSection />
         </div>
       </ScrollReveal>
+
+      {/* In-feed Ad */}
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
+        <AdPlaceholder variant="in-feed" />
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-6"><div className="h-px bg-border" /></div>
 
