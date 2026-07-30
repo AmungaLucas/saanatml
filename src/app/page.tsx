@@ -12,6 +12,7 @@ import { FromTheArchive } from '@/components/sanaa/FromTheArchive'
 import { OpinionSection } from '@/components/sanaa/OpinionSection'
 import { EventsSection } from '@/components/sanaa/EventsSection'
 import { ArticleModal } from '@/components/sanaa/ArticleModal'
+import { EventModal } from '@/components/sanaa/EventModal'
 import { SearchModal } from '@/components/sanaa/SearchModal'
 import { Footer } from '@/components/sanaa/Footer'
 import { AboutPage } from '@/components/sanaa/AboutPage'
@@ -163,6 +164,7 @@ export default function Home() {
 
       <Footer />
       <ArticleModal />
+      <EventModal />
       <SearchModal />
       <BackToTop />
     </div>

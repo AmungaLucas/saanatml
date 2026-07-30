@@ -7,7 +7,12 @@ import { Button } from '@/components/ui/button'
 import { Calendar, MapPin, Clock, ArrowLeft, ExternalLink } from 'lucide-react'
 
 export function EventsPage() {
-  const { events, categories, setView } = useStore()
+  const { events, categories, setView, openEvent } = useStore()
+
+  const handleEventClick = (e: React.MouseEvent, event: typeof events[0]) => {
+    if ((e.target as HTMLElement).closest('a')) return
+    openEvent(event)
+  }
   const [cityFilter, setCityFilter] = useState('all')
   const [catFilter, setCatFilter] = useState('all')
   const [showPast, setShowPast] = useState(false)
@@ -49,7 +54,7 @@ export function EventsPage() {
           <h2 className="font-serif text-xl font-bold mb-4">Featured Events</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {featuredEvents.map(event => (
-              <div key={event.id} className="relative rounded-xl overflow-hidden group cursor-pointer" style={{ minHeight: '220px' }}>
+              <div key={event.id} className="relative rounded-xl overflow-hidden group cursor-pointer" style={{ minHeight: '220px' }} onClick={(e) => handleEventClick(e, event)}>
                 <img
                   src={event.imageUrl}
                   alt={event.title}
@@ -154,6 +159,7 @@ export function EventsPage() {
             <div
               key={event.id}
               className="flex gap-4 p-5 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors cursor-pointer group"
+              onClick={(e) => handleEventClick(e, event)}
             >
               <div className="text-center shrink-0">
                 <div className="font-mono text-xs text-primary uppercase">
@@ -205,6 +211,7 @@ export function EventsPage() {
               <div
                 key={event.id}
                 className="flex gap-4 p-5 rounded-xl border border-border bg-muted/30 opacity-70 cursor-pointer group"
+                onClick={(e) => handleEventClick(e, event)}
               >
                 <div className="text-center shrink-0">
                   <div className="font-mono text-xs text-muted-foreground uppercase">

@@ -127,6 +127,8 @@ interface AppState {
   // UI State
   selectedArticle: Article | null
   isArticleOpen: boolean
+  selectedEvent: Event | null
+  isEventOpen: boolean
   isSearchOpen: boolean
   activeCategory: string
   searchQuery: string
@@ -152,6 +154,8 @@ interface AppState {
   setDataLoaded: (loaded: boolean) => void
   openArticle: (article: Article) => void
   closeArticle: () => void
+  openEvent: (event: Event) => void
+  closeEvent: () => void
   toggleSearch: () => void
   setActiveCategory: (category: string) => void
   setSearchQuery: (query: string) => void
@@ -176,6 +180,8 @@ export const useStore = create<AppState>((set, get) => ({
   dataLoaded: false,
   selectedArticle: null,
   isArticleOpen: false,
+  selectedEvent: null,
+  isEventOpen: false,
   isSearchOpen: false,
   activeCategory: 'all',
   searchQuery: '',
@@ -194,6 +200,8 @@ export const useStore = create<AppState>((set, get) => ({
   setDataLoaded: (loaded) => set({ dataLoaded: loaded }),
   openArticle: (article) => set({ selectedArticle: article, isArticleOpen: true }),
   closeArticle: () => set({ selectedArticle: null, isArticleOpen: false }),
+  openEvent: (event) => set({ selectedEvent: event, isEventOpen: true }),
+  closeEvent: () => set({ selectedEvent: null, isEventOpen: false }),
   toggleSearch: () => set((s) => ({ isSearchOpen: !s.isSearchOpen })),
   setActiveCategory: (activeCategory) => set({ activeCategory, currentView: 'category' }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),

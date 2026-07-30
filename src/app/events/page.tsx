@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
 import { db } from '@/lib/db'
 import { EventsContent } from './EventsContent'
+import { EventModal } from '@/components/sanaa/EventModal'
+import { Header } from '@/components/sanaa/Header'
+import { Footer } from '@/components/sanaa/Footer'
 
 export const metadata: Metadata = {
   title: 'Events — Sanaa Through My Lens',
@@ -13,5 +16,14 @@ export default async function EventsPageRoute() {
     include: { categoryRef: true },
   })
 
-  return <EventsContent events={JSON.parse(JSON.stringify(events))} />
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-1">
+        <EventsContent events={JSON.parse(JSON.stringify(events))} />
+      </main>
+      <Footer />
+      <EventModal />
+    </div>
+  )
 }

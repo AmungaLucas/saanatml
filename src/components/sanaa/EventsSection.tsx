@@ -5,7 +5,12 @@ import { Badge } from '@/components/ui/badge'
 import { Calendar, MapPin } from 'lucide-react'
 
 export function EventsSection() {
-  const { events } = useStore()
+  const { events, openEvent } = useStore()
+
+  const handleEventClick = (e: React.MouseEvent, event: typeof events[0]) => {
+    if ((e.target as HTMLElement).closest('a')) return
+    openEvent(event)
+  }
   const upcoming = events.filter(e => !e.isPast).slice(0, 4)
   const past = events.filter(e => e.isPast).slice(0, 3)
 
@@ -26,6 +31,7 @@ export function EventsSection() {
           <div
             key={event.id}
             className="relative rounded-xl overflow-hidden group cursor-pointer"
+            onClick={(e) => handleEventClick(e, event)}
           >
             <div className="aspect-[16/9]">
               <img
@@ -62,6 +68,7 @@ export function EventsSection() {
           <div
             key={event.id}
             className="flex gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors cursor-pointer group"
+            onClick={(e) => handleEventClick(e, event)}
           >
             <div className="text-center shrink-0">
               <div className="font-mono text-xs text-primary uppercase">

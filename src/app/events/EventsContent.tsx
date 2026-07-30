@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useStore } from '@/store/useStore'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Calendar, MapPin, ArrowLeft, ExternalLink } from 'lucide-react'
@@ -28,7 +29,13 @@ interface EventsContentProps {
 }
 
 export function EventsContent({ events }: EventsContentProps) {
+  const { openEvent } = useStore()
   const [cityFilter, setCityFilter] = useState('all')
+
+  const handleEventClick = (e: React.MouseEvent, event: EventItem) => {
+    if ((e.target as HTMLElement).closest('a')) return
+    openEvent(event as any)
+  }
   const [catFilter, setCatFilter] = useState('all')
   const [showPast, setShowPast] = useState(false)
 
@@ -69,7 +76,7 @@ export function EventsContent({ events }: EventsContentProps) {
           <h2 className="font-serif text-xl font-bold mb-4">Featured Events</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {featuredEvents.map(event => (
-              <div key={event.id} className="relative rounded-xl overflow-hidden group cursor-pointer" style={{ minHeight: '220px' }}>
+              <div key={event.id} className="relative rounded-xl overflow-hidden group cursor-pointer" style={{ minHeight: '220px' }} onClick={(e) => handleEventClick(e, event)}>
                 <img
                   src={event.imageUrl}
                   alt={event.title}
@@ -134,7 +141,7 @@ export function EventsContent({ events }: EventsContentProps) {
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {upcoming.map(event => (
-            <div key={event.id} className="flex gap-4 p-5 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors cursor-pointer group">
+            <div key={event.id} className="flex gap-4 p-5 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors cursor-pointer group" onClick={(e) => handleEventClick(e, event)}>
               <div className="text-center shrink-0">
                 <div className="font-mono text-xs text-primary uppercase">
                   {new Date(event.date).toLocaleDateString('en-KE', { month: 'short' })}
@@ -172,7 +179,7 @@ export function EventsContent({ events }: EventsContentProps) {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {past.map(event => (
-              <div key={event.id} className="flex gap-4 p-5 rounded-xl border border-border bg-muted/30 opacity-70 cursor-pointer group">
+              <div key={event.id} className="flex gap-4 p-5 rounded-xl border border-border bg-muted/30 opacity-70 cursor-pointer group" onClick={(e) => handleEventClick(e, event)}>
                 <div className="text-center shrink-0">
                   <div className="font-mono text-xs text-muted-foreground uppercase">{new Date(event.date).toLocaleDateString('en-KE', { month: 'short' })}</div>
                   <div className="font-serif text-3xl font-bold leading-none text-muted-foreground">{new Date(event.date).getDate()}</div>
