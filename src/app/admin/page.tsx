@@ -420,7 +420,12 @@ export default function AdminPage() {
             <span className="text-border">|</span>
             <span className="font-serif font-bold text-lg">Admin Dashboard</span>
           </div>
-          <Badge variant="outline" className="font-mono text-[10px]">Sanaa CMS</Badge>
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Editor</Link>
+            <span className="text-border">|</span>
+            <button onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login' }} className="text-xs text-muted-foreground hover:text-destructive transition-colors">Logout</button>
+            <Badge variant="outline" className="font-mono text-[10px]">Sanaa CMS</Badge>
+          </div>
         </div>
       </header>
 

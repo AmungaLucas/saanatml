@@ -189,3 +189,23 @@ Stage Summary:
 - 3-tab editor dashboard: My Articles, New Article, Content Calendar
 - Editor-focused workflow: create, edit, track performance, get story ideas from events
 - No new API routes needed — fully reuses existing admin APIs
+
+---
+Task ID: dashboard-auth
+Agent: Main
+Task: Fix /dashboard page not loading + add authentication to /admin and /dashboard
+
+Work Log:
+- Diagnosed /dashboard returning 200 OK but likely HMR didn't pick up new route directory
+- Created auth API routes: /api/auth/login (POST, sets sanaa_auth cookie) and /api/auth/logout (POST, clears cookie)
+- Created middleware.ts at src/middleware.ts - protects /admin and /dashboard routes, redirects to /login?redirect=...
+- Created /login page with password form (server component + inline script for form handling)
+- Added Logout + cross-link buttons to both /admin and /dashboard headers
+- Default password: sanaa2025 (configurable via ADMIN_PASSWORD env var)
+- Build passes with all 48 routes including /login, /dashboard, /admin, and middleware
+
+Stage Summary:
+- Auth system: password-based with httpOnly cookie, 7-day expiry
+- Protected routes: /admin, /dashboard (via middleware matcher)
+- Login page: /login with redirect-back-after-auth
+- Both dashboards have Admin/Editor cross-links and Logout buttons

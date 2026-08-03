@@ -296,12 +296,17 @@ export default function EditorDashboard() {
               Sanaa <span className="text-muted-foreground">/ Editor Dashboard</span>
             </h1>
           </div>
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Back to Site
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/admin" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Admin</Link>
+            <span className="text-border">|</span>
+            <button onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login' }} className="text-xs text-muted-foreground hover:text-destructive transition-colors">Logout</button>
+            <Link href="/">
+              <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back to Site
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
