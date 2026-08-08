@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mammoth from 'mammoth'
-import pdfParse from 'pdf-parse'
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,6 +30,8 @@ export async function POST(request: NextRequest) {
       const result = await mammoth.extractRawText({ buffer })
       text = result.value
     } else if (ext === 'pdf') {
+      // Dynamic import to handle pdf-parse ESM compatibility
+      const pdfParse = (await import('pdf-parse')).default || (await import('pdf-parse'))
       const data = await pdfParse(buffer)
       text = data.text
       // Use PDF metadata for title hint

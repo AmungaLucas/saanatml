@@ -17,19 +17,21 @@ import {
   FileText, Users, Tag, Calendar, Eye, MessageSquare, Star, Pin, Trash2,
   Plus, BarChart3, ArrowLeft, BookmarkCheck, BookOpen, Mail,
   TrendingUp, ImageIcon, Pencil, ExternalLink, Palette, Flag, CheckCircle, XCircle,
-  Upload, FileText, Loader2,
+  Upload, Loader2, Search, Shield, AlertTriangle, ChevronRight, Filter,
+  LayoutDashboard, MessagesSquare, UserCog, FolderOpen, Megaphone, Paintbrush, UsersRound,
+  Menu, X, ChevronDown,
 } from 'lucide-react'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
 
 // ── Interfaces ──────────────────────────────────────────────
 
 interface Article {
-  id: string; title: string; slug: string; excerpt: string
+  id: string; title: string; slug: string; excerpt: string; content?: string
   publishedAt: string; views: number; isFeatured: boolean; isPinned: boolean
   category: { name: string; color: string }; author: { name: string }
-  commentCount: number
+  commentCount: number; coverImage?: string
 }
 
 interface EventItem {
@@ -68,6 +70,13 @@ interface CommentItem {
 interface Stats {
   articles: number; authors: number; categories: number; events: number
   comments: number; makers: number; subscribers: number; totalViews: number
+  flaggedComments: number
+  commentBreakdown: { published: number; flagged: number; removed: number }
+  recentFlagged: CommentItem[]
+}
+
+interface CommentStats {
+  published: number; flagged: number; removed: number; total: number
 }
 
 // ── Helpers ─────────────────────────────────────────────────
@@ -83,16 +92,39 @@ const toDatetimeLocal = (iso: string) => {
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
 const fmtDateTime = (iso: string) => new Date(iso).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+const timeAgo = (iso: string) => {
+  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+  return `${Math.floor(seconds / 86400)}d ago`
+}
 
 const labelCls = 'font-mono text-[10px] uppercase tracking-wider text-muted-foreground block mb-1'
 const thCls = 'text-left px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground'
 const tdCls = 'px-4 py-3'
 const actionBtnCls = 'p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground'
 
+const PIE_COLORS = ['#22c55e', '#ef4444', '#6b7280']
+
+// ── Sidebar Nav Items ───────────────────────────────────────
+
+const navItems = [
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'moderation', label: 'Moderation', icon: Shield },
+  { id: 'articles', label: 'Articles', icon: FileText },
+  { id: 'events', label: 'Events', icon: Calendar },
+  { id: 'makers', label: 'Makers', icon: Paintbrush },
+  { id: 'authors', label: 'Authors', icon: UserCog },
+  { id: 'categories', label: 'Categories', icon: FolderOpen },
+  { id: 'subscribers', label: 'Subscribers', icon: Megaphone },
+] as const
+
 // ── Component ───────────────────────────────────────────────
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<string>('overview')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Data
   const [stats, setStats] = useState<Stats | null>(null)
@@ -102,8 +134,15 @@ export default function AdminPage() {
   const [authors, setAuthors] = useState<AuthorItem[]>([])
   const [categories, setCategories] = useState<CategoryItem[]>([])
   const [subscribers, setSubscribers] = useState<SubscriberItem[]>([])
-  const [flaggedComments, setFlaggedComments] = useState<CommentItem[]>([])
-  const [recentComments, setRecentComments] = useState<CommentItem[]>([])
+
+  // Comments state for moderation tab
+  const [modComments, setModComments] = useState<CommentItem[]>([])
+  const [modStats, setModStats] = useState<CommentStats | null>(null)
+  const [modStatus, setModStatus] = useState<string>('flagged')
+  const [modSearch, setModSearch] = useState('')
+  const [modPage, setModPage] = useState(1)
+  const [modTotalPages, setModTotalPages] = useState(1)
+  const [modLoading, setModLoading] = useState(false)
 
   // Article form
   const [artDialog, setArtDialog] = useState(false)
@@ -185,14 +224,64 @@ export default function AdminPage() {
         fetch(url).then(r => r.json()).then(d => setter(d)).catch(() => {})
       )
     )
-    // Comments endpoint returns { flagged, recent, stats }
-    fetch('/api/admin/comments')
-      .then(r => r.json())
-      .then(d => { setFlaggedComments(d.flagged || []); setRecentComments(d.recent || []) })
-      .catch(() => {})
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  // ── Fetch comments for moderation ──────────────────────────
+  const fetchModComments = useCallback(async () => {
+    setModLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (modStatus) params.set('status', modStatus)
+      if (modSearch) params.set('search', modSearch)
+      params.set('page', String(modPage))
+      const res = await fetch(`/api/admin/comments?${params}`)
+      const data = await res.json()
+      setModComments(data.comments || [])
+      setModStats(data.stats || null)
+      setModTotalPages(data.pagination?.pages || 1)
+    } catch (err) {
+      console.error('Failed to fetch comments', err)
+    } finally {
+      setModLoading(false)
+    }
+  }, [modStatus, modSearch, modPage])
+
+  useEffect(() => { fetchModComments() }, [fetchModComments])
+
+  // ── Comment moderation actions ─────────────────────────────
+  const moderateComment = async (id: string, status: string) => {
+    await fetch(`/api/admin/comments/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    fetchModComments()
+    fetchAll() // refresh stats
+  }
+
+  const deleteComment = async (id: string) => {
+    if (!confirm('Permanently delete this comment? This cannot be undone.')) return
+    await fetch(`/api/admin/comments/${id}`, { method: 'DELETE' })
+    fetchModComments()
+    fetchAll()
+  }
+
+  const bulkAction = async (action: 'published' | 'removed') => {
+    const selected = modComments.map(c => c.id)
+    if (!selected.length) return
+    if (!confirm(`${action === 'published' ? 'Restore' : 'Remove'} ${selected.length} comments?`)) return
+    await Promise.all(selected.map(id =>
+      fetch(`/api/admin/comments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: action }),
+      })
+    ))
+    fetchModComments()
+    fetchAll()
+  }
 
   // ── Charts data ────────────────────────────────────────────
   const viewsChartData = useMemo(() => {
@@ -208,6 +297,15 @@ export default function AdminPage() {
     articles.forEach(a => { map[a.category.name] = (map[a.category.name] || 0) + 1 })
     return Object.entries(map).map(([name, count]) => ({ name, count }))
   }, [articles])
+
+  const commentPieData = useMemo(() => {
+    if (!modStats) return []
+    return [
+      { name: 'Published', value: modStats.published },
+      { name: 'Flagged', value: modStats.flagged },
+      { name: 'Removed', value: modStats.removed },
+    ].filter(d => d.value > 0)
+  }, [modStats])
 
   // ── Article CRUD ───────────────────────────────────────────
   const openArtCreate = () => {
@@ -233,45 +331,27 @@ export default function AdminPage() {
       const form = new FormData()
       form.append('file', file)
       const res = await fetch('/api/admin/parse-file', { method: 'POST', body: form })
-      if (!res.ok) {
-        const data = await res.json()
-        alert(data.error || 'Failed to parse file')
-        return
-      }
+      if (!res.ok) { const data = await res.json(); alert(data.error || 'Failed to parse file'); return }
       const data = await res.json()
       if (data.titleHint && !artTitle) setArtTitle(data.titleHint)
       if (data.excerpt && !artExcerpt) setArtExcerpt(data.excerpt)
       if (data.readTime) setArtReadTime(String(data.readTime))
       if (data.tags && !artTags) setArtTags(data.tags)
       if (data.markdown) setArtContent(data.markdown)
-    } catch {
-      alert('Failed to parse file')
-    } finally {
-      setParsing(false)
-      // Reset file input
-      e.target.value = ''
-    }
+    } catch { alert('Failed to parse file') } finally { setParsing(false); e.target.value = '' }
   }
   const saveArt = async () => {
     if (!artTitle || !artSlug) return
     setArtSaving(true)
     try {
       if (artEdit) {
-        const res = await fetch(`/api/admin/articles/${artEdit.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: artTitle, slug: artSlug, excerpt: artExcerpt, coverImage: artCoverImage }),
-        })
+        const res = await fetch(`/api/admin/articles/${artEdit.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: artTitle, slug: artSlug, excerpt: artExcerpt, coverImage: artCoverImage }) })
         if (res.ok) { const u = await res.json(); setArticles(p => p.map(a => a.id === u.id ? { ...a, ...u } : a)) }
       } else {
         const catId = categories.find(c => c.name === artCategory)?.id || ''
         const authId = authors.find(a => a.name === artAuthor)?.id || ''
         if (!catId || !authId) { setArtSaving(false); return }
-        const res = await fetch('/api/admin/articles', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: artTitle, slug: artSlug, excerpt: artExcerpt, content: artContent, coverImage: artCoverImage, categoryId: catId, authorId: authId, readTime: parseInt(artReadTime) || 5, tags: artTags }),
-        })
+        const res = await fetch('/api/admin/articles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: artTitle, slug: artSlug, excerpt: artExcerpt, content: artContent, coverImage: artCoverImage, categoryId: catId, authorId: authId, readTime: parseInt(artReadTime) || 5, tags: artTags }) })
         if (res.ok) { const n = await res.json(); setArticles(p => [n, ...p]); fetchAll() }
       }
       setArtDialog(false)
@@ -294,32 +374,22 @@ export default function AdminPage() {
 
   // ── Event CRUD ─────────────────────────────────────────────
   const openEvtCreate = () => {
-    setEvtEdit(null)
-    setEvtTitle(''); setEvtDesc(''); setEvtDate(''); setEvtEndDate('')
-    setEvtVenue(''); setEvtCity(''); setEvtCategory('')
-    setEvtImageUrl(''); setEvtTicketUrl('')
-    setEvtFeatured(false); setEvtPast(false)
-    setEvtDialog(true)
+    setEvtEdit(null); setEvtTitle(''); setEvtDesc(''); setEvtDate(''); setEvtEndDate('')
+    setEvtVenue(''); setEvtCity(''); setEvtCategory(''); setEvtImageUrl(''); setEvtTicketUrl('')
+    setEvtFeatured(false); setEvtPast(false); setEvtDialog(true)
   }
   const openEvtEdit = (e: EventItem) => {
-    setEvtEdit(e)
-    setEvtTitle(e.title); setEvtDesc(e.description)
+    setEvtEdit(e); setEvtTitle(e.title); setEvtDesc(e.description)
     setEvtDate(toDatetimeLocal(e.date)); setEvtEndDate(e.endDate ? toDatetimeLocal(e.endDate) : '')
     setEvtVenue(e.venue); setEvtCity(e.city); setEvtCategory(e.category)
     setEvtImageUrl(e.imageUrl); setEvtTicketUrl(e.ticketUrl)
-    setEvtFeatured(e.isFeatured); setEvtPast(e.isPast)
-    setEvtDialog(true)
+    setEvtFeatured(e.isFeatured); setEvtPast(e.isPast); setEvtDialog(true)
   }
   const saveEvt = async () => {
     if (!evtTitle || !evtDate || !evtVenue || !evtCity) return
     setEvtSaving(true)
     try {
-      const payload = {
-        title: evtTitle, description: evtDesc, date: evtDate,
-        endDate: evtEndDate || null, venue: evtVenue, city: evtCity,
-        category: evtCategory, imageUrl: evtImageUrl, ticketUrl: evtTicketUrl,
-        isFeatured: evtFeatured, isPast: evtPast,
-      }
+      const payload = { title: evtTitle, description: evtDesc, date: evtDate, endDate: evtEndDate || null, venue: evtVenue, city: evtCity, category: evtCategory, imageUrl: evtImageUrl, ticketUrl: evtTicketUrl, isFeatured: evtFeatured, isPast: evtPast }
       if (evtEdit) {
         const res = await fetch(`/api/admin/events/${evtEdit.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
         if (res.ok) { const u = await res.json(); setEvents(p => p.map(e => e.id === u.id ? u : e)) }
@@ -339,19 +409,14 @@ export default function AdminPage() {
 
   // ── Maker CRUD ─────────────────────────────────────────────
   const openMkrCreate = () => {
-    setMkrEdit(null)
-    setMkrName(''); setMkrSlug(''); setMkrDiscipline(''); setMkrBio('')
+    setMkrEdit(null); setMkrName(''); setMkrSlug(''); setMkrDiscipline(''); setMkrBio('')
     setMkrLocation(''); setMkrWebsite(''); setMkrInstagram(''); setMkrTwitter('')
-    setMkrFeatured(false)
-    setMkrDialog(true)
+    setMkrFeatured(false); setMkrDialog(true)
   }
   const openMkrEdit = (m: MakerItem) => {
-    setMkrEdit(m)
-    setMkrName(m.name); setMkrSlug(m.slug); setMkrDiscipline(m.discipline)
+    setMkrEdit(m); setMkrName(m.name); setMkrSlug(m.slug); setMkrDiscipline(m.discipline)
     setMkrBio(m.bio); setMkrLocation(m.location); setMkrWebsite(m.website)
-    setMkrInstagram(m.instagram); setMkrTwitter(m.twitter)
-    setMkrFeatured(m.isFeatured)
-    setMkrDialog(true)
+    setMkrInstagram(m.instagram); setMkrTwitter(m.twitter); setMkrFeatured(m.isFeatured); setMkrDialog(true)
   }
   const saveMkr = async () => {
     if (!mkrName || !mkrSlug || !mkrDiscipline) return
@@ -377,14 +442,10 @@ export default function AdminPage() {
 
   // ── Author CRUD ────────────────────────────────────────────
   const openAutCreate = () => {
-    setAutEdit(null)
-    setAutName(''); setAutSlug(''); setAutBio(''); setAutAvatar(''); setAutRole('Writer')
-    setAutDialog(true)
+    setAutEdit(null); setAutName(''); setAutSlug(''); setAutBio(''); setAutAvatar(''); setAutRole('Writer'); setAutDialog(true)
   }
   const openAutEdit = (a: AuthorItem) => {
-    setAutEdit(a)
-    setAutName(a.name); setAutSlug(a.slug); setAutBio(a.bio); setAutAvatar(a.avatar); setAutRole(a.role)
-    setAutDialog(true)
+    setAutEdit(a); setAutName(a.name); setAutSlug(a.slug); setAutBio(a.bio); setAutAvatar(a.avatar); setAutRole(a.role); setAutDialog(true)
   }
   const saveAut = async () => {
     if (!autName || !autSlug) return
@@ -410,14 +471,10 @@ export default function AdminPage() {
 
   // ── Category CRUD ──────────────────────────────────────────
   const openCatCreate = () => {
-    setCatEdit(null)
-    setCatName(''); setCatSlug(''); setCatDescription(''); setCatColor('#8B2252')
-    setCatDialog(true)
+    setCatEdit(null); setCatName(''); setCatSlug(''); setCatDescription(''); setCatColor('#8B2252'); setCatDialog(true)
   }
   const openCatEdit = (c: CategoryItem) => {
-    setCatEdit(c)
-    setCatName(c.name); setCatSlug(c.slug); setCatDescription(c.description); setCatColor(c.color)
-    setCatDialog(true)
+    setCatEdit(c); setCatName(c.name); setCatSlug(c.slug); setCatDescription(c.description); setCatColor(c.color); setCatDialog(true)
   }
   const saveCat = async () => {
     if (!catName || !catSlug) return
@@ -448,123 +505,453 @@ export default function AdminPage() {
     if (res.ok) { setSubscribers(p => p.filter(s => s.id !== id)); fetchAll() }
   }
 
+  // ── Navigate helper ────────────────────────────────────────
+  const navigate = (tab: string) => {
+    setActiveTab(tab)
+    setSidebarOpen(false)
+  }
+
   // ── Render ─────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-background">
-      {/* Admin Header */}
-      <header className="sticky top-0 z-50 glass">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-              <ArrowLeft className="h-4 w-4" />
-              <span className="font-mono text-xs">Back to Site</span>
+    <div className="min-h-screen bg-background flex">
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* ─── Sidebar ─── */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:z-auto
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <div className="flex flex-col h-full">
+          {/* Sidebar header */}
+          <div className="h-14 flex items-center justify-between px-4 border-b border-border shrink-0">
+            <Link href="/" className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" />
+              <span className="font-serif font-bold text-lg">Sanaa</span>
+              <Badge variant="outline" className="font-mono text-[9px] px-1.5 py-0">CMS</Badge>
             </Link>
-            <span className="text-border">|</span>
-            <span className="font-serif font-bold text-lg">Admin Dashboard</span>
+            <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 rounded hover:bg-secondary">
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Editor</Link>
-            <span className="text-border">|</span>
-            <button onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login' }} className="text-xs text-muted-foreground hover:text-destructive transition-colors">Logout</button>
-            <Badge variant="outline" className="font-mono text-[10px]">Sanaa CMS</Badge>
+
+          {/* Nav items */}
+          <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+            {navItems.map(item => {
+              const isActive = activeTab === item.id
+              const showBadge = item.id === 'moderation' && stats && stats.flaggedComments > 0
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => navigate(item.id)}
+                  className={`
+                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                    ${isActive
+                      ? 'bg-primary/10 text-primary border border-primary/20'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                    }
+                  `}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {showBadge && (
+                    <span className="px-2 py-0.5 text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
+                      {stats.flaggedComments}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </nav>
+
+          {/* Sidebar footer */}
+          <div className="border-t border-border p-3 space-y-1 shrink-0">
+            <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+              <Pencil className="h-4 w-4" />
+              <span>Editor Dashboard</span>
+              <ChevronRight className="h-3 w-3 ml-auto" />
+            </Link>
+            <button
+              onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login' }}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Logout</span>
+            </button>
           </div>
         </div>
-      </header>
+      </aside>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-8 flex-wrap h-auto gap-1">
-            <TabsTrigger value="overview"><BarChart3 className="h-4 w-4 mr-1.5" />Overview</TabsTrigger>
-            <TabsTrigger value="articles"><FileText className="h-4 w-4 mr-1.5" />Articles</TabsTrigger>
-            <TabsTrigger value="events"><Calendar className="h-4 w-4 mr-1.5" />Events</TabsTrigger>
-            <TabsTrigger value="makers"><BookmarkCheck className="h-4 w-4 mr-1.5" />Makers</TabsTrigger>
-            <TabsTrigger value="authors"><Users className="h-4 w-4 mr-1.5" />Authors</TabsTrigger>
-            <TabsTrigger value="categories"><Tag className="h-4 w-4 mr-1.5" />Categories</TabsTrigger>
-            <TabsTrigger value="subscribers"><Mail className="h-4 w-4 mr-1.5" />Subscribers</TabsTrigger>
-            <TabsTrigger value="comments"><MessageSquare className="h-4 w-4 mr-1.5" />Comments{flaggedComments.length > 0 && <span className="ml-1.5 px-1.5 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full">{flaggedComments.length}</span>}</TabsTrigger>
-          </TabsList>
+      {/* ─── Main Content ─── */}
+      <div className="flex-1 min-w-0">
+        {/* Top bar */}
+        <header className="sticky top-0 z-30 h-14 bg-background/95 backdrop-blur border-b border-border flex items-center justify-between px-4 md:px-6">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-1.5 rounded-md hover:bg-secondary">
+              <Menu className="h-5 w-5" />
+            </button>
+            <h1 className="font-serif font-bold text-lg">
+              {navItems.find(n => n.id === activeTab)?.label || 'Dashboard'}
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/" className="text-xs text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
+              View Site <ExternalLink className="h-3 w-3 inline ml-1" />
+            </Link>
+          </div>
+        </header>
 
+        <main className="p-4 md:p-6 lg:p-8 max-w-7xl">
           {/* ═══════════════════ OVERVIEW ═══════════════════ */}
-          <TabsContent value="overview">
-            {stats && (
-              <div className="animate-fadeIn">
-                <h2 className="font-serif text-2xl font-bold mb-6">Dashboard Overview</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                  {[
-                    { label: 'Articles', value: stats.articles, icon: FileText, color: 'text-primary', bg: 'bg-primary/10' },
-                    { label: 'Authors', value: stats.authors, icon: Users, color: 'text-gold', bg: 'bg-gold/10' },
-                    { label: 'Categories', value: stats.categories, icon: Tag, color: 'text-terracotta', bg: 'bg-terracotta/10' },
-                    { label: 'Events', value: stats.events, icon: Calendar, color: 'text-forest', bg: 'bg-forest/10' },
-                    { label: 'Comments', value: stats.comments, icon: MessageSquare, color: 'text-primary', bg: 'bg-primary/10' },
-                    { label: 'Makers', value: stats.makers, icon: Star, color: 'text-gold', bg: 'bg-gold/10' },
-                    { label: 'Subscribers', value: stats.subscribers, icon: Mail, color: 'text-terracotta', bg: 'bg-terracotta/10' },
-                    { label: 'Total Views', value: stats.totalViews.toLocaleString(), icon: Eye, color: 'text-forest', bg: 'bg-forest/10' },
-                  ].map(stat => (
-                    <div key={stat.label} className="p-5 rounded-xl border border-border bg-card hover-card">
-                      <div className={`h-10 w-10 rounded-lg ${stat.bg} flex items-center justify-center mb-3`}>
+          {activeTab === 'overview' && stats && (
+            <div className="animate-fadeIn space-y-6">
+              {/* Flagged alert banner */}
+              {stats.flaggedComments > 0 && (
+                <button
+                  onClick={() => navigate('moderation')}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl border border-destructive/30 bg-destructive/5 hover:bg-destructive/10 transition-colors text-left group"
+                >
+                  <div className="h-10 w-10 rounded-lg bg-destructive/20 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="h-5 w-5 text-destructive" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm">
+                      {stats.flaggedComments} comment{stats.flaggedComments !== 1 ? 's' : ''} flagged for review
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {stats.recentFlagged?.[0]?.content.slice(0, 80)}...
+                    </p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-destructive transition-colors" />
+                </button>
+              )}
+
+              {/* Stat cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { label: 'Articles', value: stats.articles, icon: FileText, color: 'text-primary', bg: 'bg-primary/10' },
+                  { label: 'Total Views', value: stats.totalViews.toLocaleString(), icon: Eye, color: 'text-forest', bg: 'bg-forest/10' },
+                  { label: 'Comments', value: stats.comments, icon: MessageSquare, color: 'text-primary', bg: 'bg-primary/10', sub: stats.flaggedComments > 0 ? `${stats.flaggedComments} flagged` : undefined, subColor: 'text-destructive' },
+                  { label: 'Subscribers', value: stats.subscribers, icon: Mail, color: 'text-terracotta', bg: 'bg-terracotta/10' },
+                  { label: 'Authors', value: stats.authors, icon: Users, color: 'text-gold', bg: 'bg-gold/10' },
+                  { label: 'Categories', value: stats.categories, icon: Tag, color: 'text-terracotta', bg: 'bg-terracotta/10' },
+                  { label: 'Events', value: stats.events, icon: Calendar, color: 'text-forest', bg: 'bg-forest/10' },
+                  { label: 'Makers', value: stats.makers, icon: BookmarkCheck, color: 'text-gold', bg: 'bg-gold/10' },
+                ].map(stat => (
+                  <div key={stat.label} className="p-5 rounded-xl border border-border bg-card hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between">
+                      <div className={`h-10 w-10 rounded-lg ${stat.bg} flex items-center justify-center`}>
                         <stat.icon className={`h-5 w-5 ${stat.color}`} />
                       </div>
-                      <p className="font-serif text-2xl md:text-3xl font-bold">{stat.value}</p>
-                      <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mt-1">{stat.label}</p>
+                      {stat.sub && <span className={`text-[10px] font-mono font-bold ${stat.subColor}`}>{stat.sub}</span>}
                     </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                  <div className="p-6 rounded-xl border border-border bg-card">
-                    <h3 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-primary" /> Article Views
-                    </h3>
-                    {viewsChartData.length > 0 && (
-                      <ResponsiveContainer width="100%" height={220}>
-                        <AreaChart data={viewsChartData}>
-                          <defs>
-                            <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="oklch(0.37 0.14 350)" stopOpacity={0.3} />
-                              <stop offset="95%" stopColor="oklch(0.37 0.14 350)" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                          <YAxis tick={{ fontSize: 10 }} />
-                          <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card)' }} />
-                          <Area type="monotone" dataKey="views" stroke="oklch(0.37 0.14 350)" fillOpacity={1} fill="url(#colorViews)" />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    )}
+                    <p className="font-serif text-2xl md:text-3xl font-bold mt-3">{stat.value}</p>
+                    <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mt-1">{stat.label}</p>
                   </div>
-                  <div className="p-6 rounded-xl border border-border bg-card">
-                    <h3 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
-                      <Tag className="h-4 w-4 text-gold" /> Category Distribution
-                    </h3>
-                    {categoryData.length > 0 && (
-                      <ResponsiveContainer width="100%" height={220}>
-                        <BarChart data={categoryData}>
-                          <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                          <YAxis tick={{ fontSize: 10 }} />
-                          <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card)' }} />
-                          <Bar dataKey="count" fill="oklch(0.72 0.14 55)" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    )}
-                  </div>
+                ))}
+              </div>
+
+              {/* Charts row */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 p-6 rounded-xl border border-border bg-card">
+                  <h3 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-primary" /> Top Article Views
+                  </h3>
+                  {viewsChartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={240}>
+                      <AreaChart data={viewsChartData}>
+                        <defs>
+                          <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="oklch(0.37 0.14 350)" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="oklch(0.37 0.14 350)" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card)' }} />
+                        <Area type="monotone" dataKey="views" stroke="oklch(0.37 0.14 350)" fillOpacity={1} fill="url(#colorViews)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-12">No data yet</p>
+                  )}
                 </div>
-                <div>
-                  <h3 className="font-serif text-xl font-bold mb-4">Quick Actions</h3>
-                  <div className="flex flex-wrap gap-3">
-                    <Button onClick={() => { setActiveTab('articles'); setTimeout(openArtCreate, 50) }} className="gap-2"><Plus className="h-4 w-4" /> New Article</Button>
-                    <Button variant="outline" onClick={() => { setActiveTab('events'); setTimeout(openEvtCreate, 50) }} className="gap-2"><Plus className="h-4 w-4" /> New Event</Button>
-                    <Button variant="outline" onClick={() => { setActiveTab('makers'); setTimeout(openMkrCreate, 50) }} className="gap-2"><Plus className="h-4 w-4" /> New Maker</Button>
-                    <Button variant="outline" onClick={() => { setActiveTab('authors'); setTimeout(openAutCreate, 50) }} className="gap-2"><Plus className="h-4 w-4" /> New Author</Button>
+                <div className="p-6 rounded-xl border border-border bg-card">
+                  <h3 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-primary" /> Comments
+                  </h3>
+                  {commentPieData.length > 0 ? (
+                    <div className="space-y-4">
+                      <ResponsiveContainer width="100%" height={160}>
+                        <PieChart>
+                          <Pie data={commentPieData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="value">
+                            {commentPieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
+                          </Pie>
+                          <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card)' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="flex justify-center gap-4 text-xs">
+                        {commentPieData.map((d, i) => (
+                          <div key={d.name} className="flex items-center gap-1.5">
+                            <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[i] }} />
+                            <span className="text-muted-foreground">{d.name}</span>
+                            <span className="font-bold">{d.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-12">No comments yet</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Category chart + Quick actions */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 p-6 rounded-xl border border-border bg-card">
+                  <h3 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+                    <Palette className="h-4 w-4 text-gold" /> Category Distribution
+                  </h3>
+                  {categoryData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={categoryData}>
+                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card)' }} />
+                        <Bar dataKey="count" fill="oklch(0.72 0.14 55)" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-12">No data yet</p>
+                  )}
+                </div>
+                <div className="p-6 rounded-xl border border-border bg-card">
+                  <h3 className="font-serif font-bold text-lg mb-4">Quick Actions</h3>
+                  <div className="space-y-2">
+                    <Button onClick={() => { navigate('articles'); setTimeout(openArtCreate, 50) }} variant="outline" className="w-full justify-start gap-2"><Plus className="h-4 w-4" /> New Article</Button>
+                    <Button onClick={() => { navigate('events'); setTimeout(openEvtCreate, 50) }} variant="outline" className="w-full justify-start gap-2"><Plus className="h-4 w-4" /> New Event</Button>
+                    <Button onClick={() => { navigate('makers'); setTimeout(openMkrCreate, 50) }} variant="outline" className="w-full justify-start gap-2"><Plus className="h-4 w-4" /> New Maker</Button>
+                    <Button onClick={() => { navigate('authors'); setTimeout(openAutCreate, 50) }} variant="outline" className="w-full justify-start gap-2"><Plus className="h-4 w-4" /> New Author</Button>
+                    {stats.flaggedComments > 0 && (
+                      <Button onClick={() => navigate('moderation')} className="w-full justify-start gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+                        <Shield className="h-4 w-4" /> Review {stats.flaggedComments} Flagged
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
-            )}
-          </TabsContent>
+            </div>
+          )}
+
+          {/* ═══════════════════ MODERATION ═══════════════════ */}
+          {activeTab === 'moderation' && (
+            <div className="animate-fadeIn space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h2 className="font-serif text-2xl font-bold">Comment Moderation</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Manage reported comments and moderation queue</p>
+                </div>
+                {modComments.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => bulkAction('published')} className="gap-1.5 text-xs">
+                      <CheckCircle className="h-3.5 w-3.5" /> Restore All
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => bulkAction('removed')} className="gap-1.5 text-xs text-destructive hover:text-destructive">
+                      <XCircle className="h-3.5 w-3.5" /> Remove All
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Stats cards */}
+              {modStats && (
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: 'Published', value: modStats.published, color: 'text-green-600', bg: 'bg-green-500/10', border: 'border-green-500/20' },
+                    { label: 'Flagged', value: modStats.flagged, color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/20' },
+                    { label: 'Removed', value: modStats.removed, color: 'text-muted-foreground', bg: 'bg-muted', border: 'border-border' },
+                  ].map(s => (
+                    <button
+                      key={s.label}
+                      onClick={() => { setModStatus(s.label.toLowerCase()); setModPage(1) }}
+                      className={`p-4 rounded-xl border text-left transition-all hover:shadow-md ${
+                        modStatus === s.label.toLowerCase() ? `${s.border} ${s.bg} ring-1 ring-current/20` : 'border-border bg-card'
+                      }`}
+                    >
+                      <p className={`font-serif text-2xl font-bold ${s.color}`}>{s.value}</p>
+                      <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mt-1">{s.label}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Search & Filter bar */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by author, content, or article title..."
+                    value={modSearch}
+                    onChange={e => { setModSearch(e.target.value); setModPage(1) }}
+                    className="pl-10 font-mono text-sm"
+                  />
+                </div>
+                <Select value={modStatus} onValueChange={v => { setModStatus(v); setModPage(1) }}>
+                  <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="flagged">Flagged</SelectItem>
+                    <SelectItem value="published">Published</SelectItem>
+                    <SelectItem value="removed">Removed</SelectItem>
+                    <SelectItem value="">All Comments</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Comments list */}
+              {modLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
+                </div>
+              ) : modComments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  {modStatus === 'flagged' ? (
+                    <>
+                      <CheckCircle className="h-10 w-10 text-green-500/40 mb-3" />
+                      <p className="text-sm text-muted-foreground">No flagged comments. All clear!</p>
+                    </>
+                  ) : (
+                    <>
+                      <MessageSquare className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                      <p className="text-sm text-muted-foreground">No comments found.</p>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    {modComments.map(c => {
+                      const isFlagged = c.status === 'flagged'
+                      const isRemoved = c.status === 'removed'
+                      return (
+                        <div
+                          key={c.id}
+                          className={`
+                            p-4 rounded-xl border transition-all hover:shadow-sm
+                            ${isFlagged ? 'border-destructive/30 bg-destructive/5' : isRemoved ? 'border-border bg-muted/50 opacity-70' : 'border-border bg-card'}
+                          `}
+                        >
+                          <div className="flex items-start gap-4">
+                            {/* Avatar */}
+                            <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold ${
+                              isFlagged ? 'bg-destructive/20 text-destructive' : 'bg-primary/10 text-primary'
+                            }`}>
+                              {c.author.charAt(0).toUpperCase()}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center flex-wrap gap-2 mb-1">
+                                <span className="font-semibold text-sm">{c.author}</span>
+                                {isFlagged && (
+                                  <Badge variant="destructive" className="text-[10px] gap-1">
+                                    <Flag className="h-2.5 w-2.5" /> {c.reportCount} report{c.reportCount !== 1 ? 's' : ''}
+                                  </Badge>
+                                )}
+                                {isRemoved && (
+                                  <Badge variant="secondary" className="text-[10px]">Removed</Badge>
+                                )}
+                                {c.status === 'published' && (
+                                  <Badge variant="outline" className="text-[10px] text-green-600 border-green-200">Published</Badge>
+                                )}
+                                <span className="text-[10px] font-mono text-muted-foreground ml-auto">{timeAgo(c.createdAt)}</span>
+                              </div>
+                              <p className="text-sm text-foreground/80 mb-2 leading-relaxed">{c.content}</p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="font-mono">on:</span>
+                                <a href={`/articles/${c.article.slug}`} target="blank" className="text-primary hover:underline font-medium">
+                                  {c.article.title}
+                                </a>
+                                <span className="text-border">|</span>
+                                <span className="font-mono">{fmtDateTime(c.createdAt)}</span>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-1 shrink-0">
+                              {isFlagged && (
+                                <button
+                                  onClick={() => moderateComment(c.id, 'published')}
+                                  className="p-2 rounded-lg hover:bg-green-500/10 text-muted-foreground hover:text-green-600 transition-colors"
+                                  title="Restore (publish)"
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </button>
+                              )}
+                              {c.status !== 'removed' && (
+                                <button
+                                  onClick={() => moderateComment(c.id, 'removed')}
+                                  className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                  title="Remove"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </button>
+                              )}
+                              {c.status !== 'flagged' && (
+                                <button
+                                  onClick={() => moderateComment(c.id, 'flagged')}
+                                  className="p-2 rounded-lg hover:bg-yellow-500/10 text-muted-foreground hover:text-yellow-600 transition-colors"
+                                  title="Flag"
+                                >
+                                  <Flag className="h-4 w-4" />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => deleteComment(c.id)}
+                                className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                title="Delete permanently"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Pagination */}
+                  {modTotalPages > 1 && (
+                    <div className="flex items-center justify-center gap-2 pt-4">
+                      <Button
+                        size="sm" variant="outline"
+                        disabled={modPage <= 1}
+                        onClick={() => setModPage(p => p - 1)}
+                      >Previous</Button>
+                      <span className="text-sm text-muted-foreground font-mono">
+                        Page {modPage} of {modTotalPages}
+                      </span>
+                      <Button
+                        size="sm" variant="outline"
+                        disabled={modPage >= modTotalPages}
+                        onClick={() => setModPage(p => p + 1)}
+                      >Next</Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
           {/* ═══════════════════ ARTICLES ═══════════════════ */}
-          <TabsContent value="articles">
+          {activeTab === 'articles' && (
             <div className="animate-fadeIn">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="font-serif text-2xl font-bold">Articles ({articles.length})</h2>
+                <div>
+                  <h2 className="font-serif text-2xl font-bold">Articles ({articles.length})</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Manage your published content</p>
+                </div>
                 <Button onClick={openArtCreate} className="gap-2"><Plus className="h-4 w-4" /> New Article</Button>
               </div>
               <div className="border border-border rounded-xl overflow-hidden">
@@ -616,13 +1003,16 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
-          </TabsContent>
+          )}
 
           {/* ═══════════════════ EVENTS ═══════════════════ */}
-          <TabsContent value="events">
+          {activeTab === 'events' && (
             <div className="animate-fadeIn">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="font-serif text-2xl font-bold">Events ({events.length})</h2>
+                <div>
+                  <h2 className="font-serif text-2xl font-bold">Events ({events.length})</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Manage upcoming and past events</p>
+                </div>
                 <Button onClick={openEvtCreate} className="gap-2"><Plus className="h-4 w-4" /> New Event</Button>
               </div>
               <div className="border border-border rounded-xl overflow-hidden">
@@ -667,13 +1057,16 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
-          </TabsContent>
+          )}
 
           {/* ═══════════════════ MAKERS ═══════════════════ */}
-          <TabsContent value="makers">
+          {activeTab === 'makers' && (
             <div className="animate-fadeIn">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="font-serif text-2xl font-bold">Makers ({makers.length})</h2>
+                <div>
+                  <h2 className="font-serif text-2xl font-bold">Makers ({makers.length})</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Cultural artisans and creatives</p>
+                </div>
                 <Button onClick={openMkrCreate} className="gap-2"><Plus className="h-4 w-4" /> New Maker</Button>
               </div>
               <div className="border border-border rounded-xl overflow-hidden">
@@ -692,14 +1085,23 @@ export default function AdminPage() {
                       {makers.map(mkr => (
                         <tr key={mkr.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
                           <td className={tdCls}>
-                            <p className="font-serif font-semibold text-sm">{mkr.name}</p>
-                            <p className="text-[10px] font-mono text-muted-foreground">{mkr.slug}</p>
+                            <div className="flex items-center gap-2">
+                              {mkr.avatar ? (
+                                <img src={mkr.avatar} alt={mkr.name} className="h-7 w-7 rounded-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                              ) : (
+                                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">{mkr.name.charAt(0)}</div>
+                              )}
+                              <div>
+                                <p className="font-serif font-semibold text-sm">{mkr.name}</p>
+                                <p className="text-[10px] font-mono text-muted-foreground">{mkr.slug}</p>
+                              </div>
+                            </div>
                           </td>
                           <td className={`${tdCls} text-sm text-muted-foreground hidden md:table-cell`}>{mkr.discipline}</td>
                           <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{mkr.location}</td>
                           <td className={`${tdCls}`}>
                             <div className="flex justify-center">
-                              {mkr.isFeatured && <Star className="h-4 w-4 text-gold" fill="currentColor" />}
+                              {mkr.isFeatured ? <Star className="h-4 w-4 text-gold" fill="currentColor" /> : <span className="text-muted-foreground/30">—</span>}
                             </div>
                           </td>
                           <td className={`${tdCls} text-right`}>
@@ -715,13 +1117,16 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
-          </TabsContent>
+          )}
 
           {/* ═══════════════════ AUTHORS ═══════════════════ */}
-          <TabsContent value="authors">
+          {activeTab === 'authors' && (
             <div className="animate-fadeIn">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="font-serif text-2xl font-bold">Authors ({authors.length})</h2>
+                <div>
+                  <h2 className="font-serif text-2xl font-bold">Authors ({authors.length})</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Writers, editors, and contributors</p>
+                </div>
                 <Button onClick={openAutCreate} className="gap-2"><Plus className="h-4 w-4" /> New Author</Button>
               </div>
               <div className="border border-border rounded-xl overflow-hidden">
@@ -740,7 +1145,11 @@ export default function AdminPage() {
                         <tr key={aut.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
                           <td className={tdCls}>
                             <div className="flex items-center gap-2">
-                              {aut.avatar && <img src={aut.avatar} alt={aut.name} className="h-7 w-7 rounded-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />}
+                              {aut.avatar ? (
+                                <img src={aut.avatar} alt={aut.name} className="h-7 w-7 rounded-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                              ) : (
+                                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">{aut.name.charAt(0)}</div>
+                              )}
                               <div>
                                 <p className="font-serif font-semibold text-sm">{aut.name}</p>
                                 <p className="text-[10px] font-mono text-muted-foreground">{aut.slug}</p>
@@ -764,13 +1173,16 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
-          </TabsContent>
+          )}
 
           {/* ═══════════════════ CATEGORIES ═══════════════════ */}
-          <TabsContent value="categories">
+          {activeTab === 'categories' && (
             <div className="animate-fadeIn">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="font-serif text-2xl font-bold">Categories ({categories.length})</h2>
+                <div>
+                  <h2 className="font-serif text-2xl font-bold">Categories ({categories.length})</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Organize your content sections</p>
+                </div>
                 <Button onClick={openCatCreate} className="gap-2"><Plus className="h-4 w-4" /> New Category</Button>
               </div>
               <div className="border border-border rounded-xl overflow-hidden">
@@ -811,13 +1223,14 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
-          </TabsContent>
+          )}
 
           {/* ═══════════════════ SUBSCRIBERS ═══════════════════ */}
-          <TabsContent value="subscribers">
+          {activeTab === 'subscribers' && (
             <div className="animate-fadeIn">
-              <div className="flex items-center justify-between mb-6">
+              <div className="mb-6">
                 <h2 className="font-serif text-2xl font-bold">Newsletter Subscribers ({subscribers.length})</h2>
+                <p className="text-sm text-muted-foreground mt-1">Manage your mailing list</p>
               </div>
               <div className="border border-border rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
@@ -852,137 +1265,13 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
-          </TabsContent>
+          )}
+        </main>
+      </div>
 
-          {/* ═══════════════════ COMMENTS ═══════════════════ */}
-          <TabsContent value="comments">
-            <div className="animate-fadeIn">
-              <h2 className="font-serif text-2xl font-bold mb-6 flex items-center gap-3">
-                Comments
-                {flaggedComments.length > 0 && (
-                  <Badge variant="destructive" className="font-mono text-xs">
-                    {flaggedComments.length} flagged
-                  </Badge>
-                )}
-              </h2>
+      {/* ═══════════════════ DIALOGS ═══════════════════ */}
 
-              {/* Flagged Queue */}
-              {flaggedComments.length > 0 && (
-                <div className="mb-10">
-                  <h3 className="font-serif text-lg font-bold mb-4 flex items-center gap-2">
-                    <Flag className="h-4 w-4 text-destructive" />
-                    Flagged for Review
-                  </h3>
-                  <div className="space-y-3">
-                    {flaggedComments.map(c => (
-                      <div key={c.id} className="p-4 rounded-xl border border-destructive/30 bg-destructive/5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-medium text-sm">{c.author}</span>
-                              <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30">
-                                {c.reportCount} report{c.reportCount !== 1 ? 's' : ''}
-                              </Badge>
-                              <span className="text-[10px] font-mono text-muted-foreground">{fmtDateTime(c.createdAt)}</span>
-                            </div>
-                            <p className="text-sm text-foreground/80 line-clamp-2">{c.content}</p>
-                            <p className="text-xs text-muted-foreground mt-2 font-mono">
-                              on: <a href={`/articles/${c.article.slug}`} target="_blank" className="text-primary hover:underline">{c.article.title}</a>
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              onClick={async () => {
-                                await fetch(`/api/admin/comments/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'published' }) })
-                                setFlaggedComments(p => p.filter(x => x.id !== c.id))
-                              }}
-                              className="p-1.5 rounded-md hover:bg-green-500/10 text-muted-foreground hover:text-green-600 transition-colors"
-                              title="Restore (publish)"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={async () => {
-                                await fetch(`/api/admin/comments/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'removed' }) })
-                                setFlaggedComments(p => p.filter(x => x.id !== c.id))
-                              }}
-                              className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                              title="Remove"
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={async () => {
-                                if (!confirm('Permanently delete this comment?')) return
-                                await fetch(`/api/admin/comments/${c.id}`, { method: 'DELETE' })
-                                setFlaggedComments(p => p.filter(x => x.id !== c.id))
-                              }}
-                              className={actionBtnCls}
-                              title="Delete permanently"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Recent Comments */}
-              <div>
-                <h3 className="font-serif text-lg font-bold mb-4">Recent Comments</h3>
-                {recentComments.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-8 text-center">No comments yet.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {recentComments.map(c => (
-                      <div key={c.id} className="flex items-start gap-4 p-4 rounded-xl border border-border bg-card">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-sm">{c.author}</span>
-                            <span className="text-[10px] font-mono text-muted-foreground">{fmtDateTime(c.createdAt)}</span>
-                          </div>
-                          <p className="text-sm text-foreground/80 line-clamp-2">{c.content}</p>
-                          <p className="text-xs text-muted-foreground mt-1 font-mono">
-                            on: <a href={`/articles/${c.article.slug}`} target="_blank" className="text-primary hover:underline">{c.article.title}</a>
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            onClick={async () => {
-                              await fetch(`/api/admin/comments/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'removed' }) })
-                              setRecentComments(p => p.filter(x => x.id !== c.id))
-                            }}
-                            className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                            title="Remove"
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={async () => {
-                              if (!confirm('Permanently delete this comment?')) return
-                              await fetch(`/api/admin/comments/${c.id}`, { method: 'DELETE' })
-                              setRecentComments(p => p.filter(x => x.id !== c.id))
-                            }}
-                            className={actionBtnCls}
-                            title="Delete permanently"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </main>
-
-      {/* ═══════════════════ ARTICLE DIALOG ═══════════════════ */}
+      {/* Article Dialog */}
       <Dialog open={artDialog} onOpenChange={setArtDialog}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
           <DialogHeader>
@@ -1025,26 +1314,12 @@ export default function AdminPage() {
               <div>
                 <label className={labelCls}>Import from File</label>
                 <div className="relative border-2 border-dashed border-border rounded-xl p-4 text-center hover:border-primary/50 transition-colors">
-                  <input
-                    type="file"
-                    accept=".docx,.pdf,.doc,.txt"
-                    onChange={handleFileUpload}
-                    disabled={parsing}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                  />
+                  <input type="file" accept=".docx,.pdf,.doc,.txt" onChange={handleFileUpload} disabled={parsing} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" />
                   <div className="flex flex-col items-center gap-2">
-                    {parsing ? (
-                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    ) : (
-                      <Upload className="h-5 w-5 text-muted-foreground" />
-                    )}
+                    {parsing ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <Upload className="h-5 w-5 text-muted-foreground" />}
                     <div>
-                      <p className="text-sm font-medium">
-                        {parsing ? 'Parsing...' : 'Upload DOCX, PDF, or TXT'}
-                      </p>
-                      <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
-                        Extracts title, excerpt, content, tags &amp; read time
-                      </p>
+                      <p className="text-sm font-medium">{parsing ? 'Parsing...' : 'Upload DOCX, PDF, or TXT'}</p>
+                      <p className="text-[10px] font-mono text-muted-foreground mt-0.5">Extracts title, excerpt, content, tags &amp; read time</p>
                     </div>
                   </div>
                 </div>
@@ -1104,7 +1379,7 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ═══════════════════ EVENT DIALOG ═══════════════════ */}
+      {/* Event Dialog */}
       <Dialog open={evtDialog} onOpenChange={setEvtDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
           <DialogHeader>
@@ -1176,7 +1451,7 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ═══════════════════ MAKER DIALOG ═══════════════════ */}
+      {/* Maker Dialog */}
       <Dialog open={mkrDialog} onOpenChange={setMkrDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
           <DialogHeader>
@@ -1233,7 +1508,7 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ═══════════════════ AUTHOR DIALOG ═══════════════════ */}
+      {/* Author Dialog */}
       <Dialog open={autDialog} onOpenChange={setAutDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
           <DialogHeader>
@@ -1285,7 +1560,7 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ═══════════════════ CATEGORY DIALOG ═══════════════════ */}
+      {/* Category Dialog */}
       <Dialog open={catDialog} onOpenChange={setCatDialog}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
           <DialogHeader>
