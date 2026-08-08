@@ -136,13 +136,13 @@ export default function AdminPage() {
   const [subscribers, setSubscribers] = useState<SubscriberItem[]>([])
 
   // Comments state for moderation tab
-  const [modComments, setModComments] = useState<CommentItem[]>([])
-  const [modStats, setModStats] = useState<CommentStats | null>(null)
+  const [modComments, setMmodComments] = useState<CommentItem[]>([])
+  const [modStats, setMmodStats] = useState<CommentStats | null>(null)
   const [modStatus, setModStatus] = useState<string>('flagged')
-  const [modSearch, setModSearch] = useState('')
-  const [modPage, setModPage] = useState(1)
-  const [modTotalPages, setModTotalPages] = useState(1)
-  const [modLoading, setModLoading] = useState(false)
+  const [modSearch, setMmodSearch] = useState('')
+  const [modPage, setMmodPage] = useState(1)
+  const [modTotalPages, setMmodTotalPages] = useState(1)
+  const [modLoading, setMmodLoading] = useState(false)
 
   // Article form
   const [artDialog, setArtDialog] = useState(false)
@@ -229,8 +229,8 @@ export default function AdminPage() {
   useEffect(() => { fetchAll() }, [fetchAll])
 
   // ── Fetch comments for moderation ──────────────────────────
-  const fetchModComments = useCallback(async () => {
-    setModLoading(true)
+  const fetchMmodComments = useCallback(async () => {
+    setMmodLoading(true)
     try {
       const params = new URLSearchParams()
       if (modStatus) params.set('status', modStatus)
@@ -238,17 +238,17 @@ export default function AdminPage() {
       params.set('page', String(modPage))
       const res = await fetch(`/api/admin/comments?${params}`)
       const data = await res.json()
-      setModComments(data.comments || [])
-      setModStats(data.stats || null)
-      setModTotalPages(data.pagination?.pages || 1)
+      setMmodComments(data.comments || [])
+      setMmodStats(data.stats || null)
+      setMmodTotalPages(data.pagination?.pages || 1)
     } catch (err) {
       console.error('Failed to fetch comments', err)
     } finally {
-      setModLoading(false)
+      setMmodLoading(false)
     }
   }, [modStatus, modSearch, modPage])
 
-  useEffect(() => { fetchModComments() }, [fetchModComments])
+  useEffect(() => { fetchMmodComments() }, [fetchMmodComments])
 
   // ── Comment moderation actions ─────────────────────────────
   const moderateComment = async (id: string, status: string) => {
@@ -257,14 +257,14 @@ export default function AdminPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     })
-    fetchModComments()
+    fetchMmodComments()
     fetchAll() // refresh stats
   }
 
   const deleteComment = async (id: string) => {
     if (!confirm('Permanently delete this comment? This cannot be undone.')) return
     await fetch(`/api/admin/comments/${id}`, { method: 'DELETE' })
-    fetchModComments()
+    fetchMmodComments()
     fetchAll()
   }
 
@@ -279,7 +279,7 @@ export default function AdminPage() {
         body: JSON.stringify({ status: action }),
       })
     ))
-    fetchModComments()
+    fetchMmodComments()
     fetchAll()
   }
 
@@ -781,7 +781,7 @@ export default function AdminPage() {
                   ].map(s => (
                     <button
                       key={s.label}
-                      onClick={() => { setModStatus(s.label.toLowerCase()); setModPage(1) }}
+                      onClick={() => { setModStatus(s.label.toLowerCase()); setMmodPage(1) }}
                       className={`p-4 rounded-xl border text-left transition-all hover:shadow-md ${
                         modStatus === s.label.toLowerCase() ? `${s.border} ${s.bg} ring-1 ring-current/20` : 'border-border bg-card'
                       }`}
@@ -800,17 +800,17 @@ export default function AdminPage() {
                   <Input
                     placeholder="Search by author, content, or article title..."
                     value={modSearch}
-                    onChange={e => { setModSearch(e.target.value); setModPage(1) }}
+                    onChange={e => { setMmodSearch(e.target.value); setMmodPage(1) }}
                     className="pl-10 font-mono text-sm"
                   />
                 </div>
-                <Select value={modStatus} onValueChange={v => { setModStatus(v); setModPage(1) }}>
+                <Select value={modStatus} onValueChange={v => { setModStatus(v); setMmodPage(1) }}>
                   <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="flagged">Flagged</SelectItem>
                     <SelectItem value="published">Published</SelectItem>
                     <SelectItem value="removed">Removed</SelectItem>
-                    <SelectItem value="">All Comments</SelectItem>
+                    <SelectItem value="all">All Comments</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -933,7 +933,7 @@ export default function AdminPage() {
                       <Button
                         size="sm" variant="outline"
                         disabled={modPage <= 1}
-                        onClick={() => setModPage(p => p - 1)}
+                        onClick={() => setMmodPage(p => p - 1)}
                       >Previous</Button>
                       <span className="text-sm text-muted-foreground font-mono">
                         Page {modPage} of {modTotalPages}
@@ -941,7 +941,7 @@ export default function AdminPage() {
                       <Button
                         size="sm" variant="outline"
                         disabled={modPage >= modTotalPages}
-                        onClick={() => setModPage(p => p + 1)}
+                        onClick={() => setMmodPage(p => p + 1)}
                       >Next</Button>
                     </div>
                   )}
