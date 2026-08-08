@@ -1,0 +1,789 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useCallback } from 'react'
+     4→import { Badge } from '@/components/ui/badge'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Input } from '@/components/ui/input'
+     7→import { Textarea } from '@/components/ui/textarea'
+     8→import { Separator } from '@/components/ui/separator'
+     9→import {
+    10→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    11→} from '@/components/ui/select'
+    12→import {
+    13→  Dialog, DialogContent, DialogHeader, DialogTitle,
+    14→} from '@/components/ui/dialog'
+    15→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    16→import { ScrollArea } from '@/components/ui/scroll-area'
+    17→import {
+    18→  FileText, ArrowLeft, Eye, Pencil, Plus, Calendar,
+    19→  MapPin, ExternalLink, Send, Loader2, CheckCircle2,
+    20→  BookOpen, Shield, Flag, XCircle, CheckCircle, Trash2,
+    21→  MessageSquare, TrendingUp, ChevronRight, Menu, X, Upload,
+    22→} from 'lucide-react'
+    23→import { ImageUpload } from '@/components/ui/image-upload'
+    24→import { ArticleForm, type ArticleFormData } from '@/components/article-form'
+    25→import Link from 'next/link'
+    26→import ReactMarkdown from 'react-markdown'
+    27→
+    28→// ── Interfaces ──────────────────────────────────────────────
+    29→
+    30→interface Article {
+    31→  id: string
+    32→  title: string
+    33→  slug: string
+    34→  excerpt: string
+    35→  content: string
+    36→  coverImage: string
+    37→  publishedAt: string
+    38→  views: number
+    39→  readTime: number
+    40→  tags: string
+    41→  isFeatured: boolean
+    42→  isPinned: boolean
+    43→  category: { name: string; color: string }
+    44→  author: { name: string; id: string }
+    45→  commentCount: number
+    46→}
+    47→
+    48→interface CategoryItem {
+    49→  id: string
+    50→  name: string
+    51→  slug: string
+    52→  description: string
+    53→  color: string
+    54→}
+    55→
+    56→interface AuthorItem {
+    57→  id: string
+    58→  name: string
+    59→  slug: string
+    60→  bio: string
+    61→  avatar: string
+    62→  role: string
+    63→}
+    64→
+    65→interface EventItem {
+    66→  id: string
+    67→  title: string
+    68→  description: string
+    69→  date: string
+    70→  endDate: string | null
+    71→  venue: string
+    72→  city: string
+    73→  category: string
+    74→  imageUrl: string
+    75→  ticketUrl: string
+    76→  isFeatured: boolean
+    77→  isPast: boolean
+    78→  categoryRef: { name: string; color: string } | null
+    79→}
+    80→
+    81→interface FlaggedComment {
+    82→  id: string; author: string; content: string; status: string
+    83→  reportCount: number; createdAt: string; articleId: string
+    84→  article: { id: string; title: string; slug: string }
+    85→}
+    86→
+    87→// ── Helpers ─────────────────────────────────────────────────
+    88→
+    89→const slugify = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '')
+    90→
+    91→const fmtDate = (iso: string) =>
+    92→  new Date(iso).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+    93→
+    94→const fmtDateTime = (iso: string) =>
+    95→  new Date(iso).toLocaleDateString('en-KE', {
+    96→    day: 'numeric', month: 'short', year: 'numeric',
+    97→    hour: '2-digit', minute: '2-digit',
+    98→  })
+    99→
+   100→const fmtEventDate = (iso: string, endDate: string | null) => {
+   101→  const d = new Date(iso).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })
+   102→  if (endDate) {
+   103→    const e = new Date(endDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+   104→    return `${d} – ${e}`
+   105→  }
+   106→  return d
+   107→}
+   108→
+   109→const timeAgo = (iso: string) => {
+   110→  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+   111→  if (seconds < 60) return 'just now'
+   112→  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+   113→  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+   114→  return `${Math.floor(seconds / 86400)}d ago`
+   115→}
+   116→
+   117→const labelCls = 'font-mono text-[10px] uppercase tracking-wider text-muted-foreground block mb-1.5'
+   118→const thCls = 'text-left px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground'
+   119→const tdCls = 'px-4 py-3'
+   120→
+   121→const navItems = [
+   122→  { id: 'articles', label: 'My Articles', icon: FileText },
+   123→  { id: 'new', label: 'New Article', icon: Plus },
+   124→  { id: 'calendar', label: 'Content Calendar', icon: Calendar },
+   125→  { id: 'comments', label: 'Comment Queue', icon: Shield },
+   126→] as const
+   127→
+   128→// ── Component ───────────────────────────────────────────────
+   129→
+   130→export default function EditorDashboard() {
+   131→  const [activeTab, setActiveTab] = useState<string>('articles')
+   132→  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+   133→  const [sidebarOpen, setSidebarOpen] = useState(false)
+   134→
+   135→  // Data
+   136→  const [articles, setArticles] = useState<Article[]>([])
+   137→  const [categories, setCategories] = useState<CategoryItem[]>([])
+   138→  const [authors, setAuthors] = useState<AuthorItem[]>([])
+   139→  const [events, setEvents] = useState<EventItem[]>([])
+   140→  const [loading, setLoading] = useState(true)
+   141→
+   142→  // Flagged comments for editor quick-moderate
+   143→  const [flaggedComments, setFlaggedComments] = useState<FlaggedComment[]>([])
+   144→  const [commentFilter, setCommentFilter] = useState<string>('flagged')
+   145→  const [allComments, setAllComments] = useState<FlaggedComment[]>([])
+   146→
+   147→  // New article form
+   148→  const [formTitle, setFormTitle] = useState('')
+   149→  const [formSlug, setFormSlug] = useState('')
+   150→  const [formExcerpt, setFormExcerpt] = useState('')
+   151→  const [formContent, setFormContent] = useState('')
+   152→  const [formCoverImage, setFormCoverImage] = useState('')
+   153→  const [formCategoryId, setFormCategoryId] = useState('')
+   154→  const [formAuthorId, setFormAuthorId] = useState('')
+   155→  const [formTags, setFormTags] = useState('')
+   156→  const [formReadTime, setFormReadTime] = useState('5')
+   157→  const [formSaving, setFormSaving] = useState(false)
+   158→  const [formError, setFormError] = useState<string | null>(null)
+   159→  const [parsing, setParsing] = useState(false)
+   160→
+   161→  // Edit dialog
+   162→  const [editDialog, setEditDialog] = useState(false)
+   163→  const [editArticle, setEditArticle] = useState<Article | null>(null)
+   164→  const [editTitle, setEditTitle] = useState('')
+   165→  const [editSlug, setEditSlug] = useState('')
+   166→  const [editExcerpt, setEditExcerpt] = useState('')
+   167→  const [editContent, setEditContent] = useState('')
+   168→  const [editCoverImage, setEditCoverImage] = useState('')
+   169→  const [editCategoryId, setEditCategoryId] = useState('')
+   170→  const [editAuthorId, setEditAuthorId] = useState('')
+   171→  const [editTags, setEditTags] = useState('')
+   172→  const [editReadTime, setEditReadTime] = useState('5')
+   173→  const [editSaving, setEditSaving] = useState(false)
+   174→
+   175→  // Markdown preview toggle
+   176→  const [mdTab, setMdTab] = useState<string>('write')
+   177→  const [editMdTab, setEditMdTab] = useState<string>('write')
+   178→
+   179→  // ── Data Fetching ─────────────────────────────────────────
+   180→
+   181→  const fetchAll = useCallback(async () => {
+   182→    setLoading(true)
+   183→    try {
+   184→      const results = await Promise.allSettled([
+   185→        fetch('/api/admin/articles').then(r => r.ok ? r.json() : []),
+   186→        fetch('/api/categories').then(r => r.ok ? r.json() : []),
+   187→        fetch('/api/authors').then(r => r.ok ? r.json() : []),
+   188→        fetch('/api/events').then(r => r.ok ? r.json() : []),
+   189→        fetch('/api/admin/comments?status=flagged&limit=20').then(r => r.ok ? r.json() : { comments: [] }),
+   190→      ])
+   191→      if (results[0].status === 'fulfilled') setArticles(results[0].value)
+   192→      if (results[1].status === 'fulfilled') setCategories(results[1].value)
+   193→      if (results[2].status === 'fulfilled') setAuthors(results[2].value)
+   194→      if (results[3].status === 'fulfilled') setEvents(results[3].value)
+   195→      if (results[4].status === 'fulfilled') setFlaggedComments(results[4].value.comments || [])
+   196→    } catch (err) {
+   197→      console.error('Failed to fetch data', err)
+   198→    } finally {
+   199→      setLoading(false)
+   200→    }
+   201→  }, [])
+   202→
+   203→  const fetchComments = useCallback(async (status?: string) => {
+   204→    try {
+   205→      const params = new URLSearchParams()
+   206→      if (status && status !== 'all') params.set('status', status)
+   207→      params.set('limit', '30')
+   208→      const res = await fetch(`/api/admin/comments?${params}`)
+   209→      if (res.ok) {
+   210→        const data = await res.json()
+   211→        setAllComments(data.comments || [])
+   212→      }
+   213→    } catch (err) {
+   214→      console.error('Failed to fetch comments', err)
+   215→    }
+   216→  }, [])
+   217→
+   218→  useEffect(() => { fetchAll() }, [fetchAll])
+   219→  useEffect(() => { if (activeTab === 'comments') fetchComments(commentFilter) }, [activeTab, commentFilter, fetchComments])
+   220→
+   221→  // ── Comment moderation ─────────────────────────────────────
+   222→  const moderateComment = async (id: string, status: string) => {
+   223→    await fetch(`/api/admin/comments/${id}`, {
+   224→      method: 'PATCH',
+   225→      headers: { 'Content-Type': 'application/json' },
+   226→      body: JSON.stringify({ status }),
+   227→    })
+   228→    fetchComments(commentFilter)
+   229→    fetchAll() // refresh flagged count
+   230→  }
+   231→
+   232→  const deleteComment = async (id: string) => {
+   233→    if (!confirm('Permanently delete this comment?')) return
+   234→    await fetch(`/api/admin/comments/${id}`, { method: 'DELETE' })
+   235→    fetchComments(commentFilter)
+   236→    fetchAll()
+   237→  }
+   238→
+   239→  // ── Auto-slug from title ──────────────────────────────────
+   240→
+   241→  const handleTitleChange = (val: string) => {
+   242→    setFormTitle(val)
+   243→    setFormSlug(slugify(val))
+   244→  }
+   245→
+   246→  const handleEditTitleChange = (val: string) => {
+   247→    setEditTitle(val)
+   248→    setEditSlug(slugify(val))
+   249→  }
+   250→
+   251→  // ── File Import (DOCX / PDF / TXT) ─────────────────────
+   252→
+   253→  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+   254→    const file = e.target.files?.[0]
+   255→    if (!file) return
+   256→    setParsing(true)
+   257→    try {
+   258→      const form = new FormData()
+   259→      form.append('file', file)
+   260→      const res = await fetch('/api/admin/parse-file', { method: 'POST', body: form })
+   261→      const json = await res.json()
+   262→      if (json.markdown) setFormContent(json.markdown)
+   263→      if (json.titleHint && !formTitle) handleTitleChange(json.titleHint)
+   264→      if (json.excerpt && !formExcerpt) setFormExcerpt(json.excerpt)
+   265→      if (json.readTime) setFormReadTime(String(json.readTime))
+   266→      if (json.tags) setFormTags(prev => prev ? `${prev}, ${json.tags}` : json.tags)
+   267→    } catch { /* silent */ }
+   268→    setParsing(false)
+   269→    e.target.value = ''
+   270→  }
+   271→
+   272→  // ── Create Article ────────────────────────────────────────
+   273→
+   274→  const handleCreate = async (data: ArticleFormData) => {
+   275→    setFormError(null)
+   276→    setFormSaving(true)
+   277→    try {
+   278→      const res = await fetch('/api/admin/articles', {
+   279→        method: 'POST',
+   280→        headers: { 'Content-Type': 'application/json' },
+   281→        body: JSON.stringify({
+   282→          ...data,
+   283→          readTime: parseInt(data.readTime) || 5,
+   284→        }),
+   285→      })
+   286→      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to create article') }
+   287→      setSuccessMsg('Article created successfully!')
+   288→      await fetchAll()
+   289→      setActiveTab('articles')
+   290→      setTimeout(() => setSuccessMsg(null), 4000)
+   291→    } catch (err: any) {
+   292→      setFormError(err.message)
+   293→    } finally {
+   294→      setFormSaving(false)
+   295→    }
+   296→  }
+   297→
+   298→  // ── Edit Article ──────────────────────────────────────────
+   299→
+   300→  const openEdit = (article: Article) => {
+   301→    setEditArticle(article)
+   302→    setEditTitle(article.title)
+   303→    setEditSlug(article.slug)
+   304→    setEditExcerpt(article.excerpt)
+   305→    setEditContent(article.content)
+   306→    setEditCoverImage(article.coverImage)
+   307→    setEditCategoryId(article.category?.name ? categories.find(c => c.name === article.category.name)?.id || '' : '')
+   308→    setEditAuthorId(article.author?.id || '')
+   309→    setEditTags(article.tags)
+   310→    setEditReadTime(String(article.readTime))
+   311→    setEditDialog(true)
+   312→  }
+   313→
+   314→  const handleEditSave = async () => {
+   315→    if (!editArticle || !editTitle || !editSlug || !editCategoryId || !editAuthorId) return
+   316→    setEditSaving(true)
+   317→    try {
+   318→      const res = await fetch(`/api/admin/articles/${editArticle.id}`, {
+   319→        method: 'PATCH',
+   320→        headers: { 'Content-Type': 'application/json' },
+   321→        body: JSON.stringify({
+   322→          title: editTitle, slug: editSlug, excerpt: editExcerpt, content: editContent,
+   323→          coverImage: editCoverImage, categoryId: editCategoryId, authorId: editAuthorId,
+   324→          tags: editTags, readTime: parseInt(editReadTime) || 5,
+   325→        }),
+   326→      })
+   327→      if (!res.ok) throw new Error('Failed to update article')
+   328→      setEditDialog(false)
+   329→      setSuccessMsg('Article updated successfully!')
+   330→      await fetchAll()
+   331→      setTimeout(() => setSuccessMsg(null), 4000)
+   332→    } catch (err) {
+   333→      console.error(err)
+   334→    } finally {
+   335→      setEditSaving(false)
+   336→    }
+   337→  }
+   338→
+   339→  // ── Computed ──────────────────────────────────────────────
+   340→
+   341→  const upcomingEvents = events
+   342→    .filter(e => !e.isPast && new Date(e.date) >= new Date())
+   343→    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+   344→
+   345→  const totalViews = articles.reduce((sum, a) => sum + a.views, 0)
+   346→
+   347→  const wordCount = (text: string) => text.trim().split(/\s+/).filter(Boolean).length
+   348→
+   349→  const navigate = (tab: string) => {
+   350→    setActiveTab(tab)
+   351→    setSidebarOpen(false)
+   352→  }
+   353→
+   354→  // ── Render ────────────────────────────────────────────────
+   355→
+   356→  return (
+   357→    <div className="min-h-screen bg-background flex">
+   358→      {/* Mobile sidebar overlay */}
+   359→      {sidebarOpen && (
+   360→        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
+   361→      )}
+   362→
+   363→      {/* ─── Sidebar ─── */}
+   364→      <aside className={`
+   365→        fixed inset-y-0 left-0 z-50 w-60 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:z-auto lg:shrink-0
+   366→        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+   367→      `}>
+   368→        <div className="flex flex-col h-full">
+   369→          {/* Sidebar header */}
+   370→          <div className="h-14 flex items-center justify-between px-4 border-b border-border shrink-0">
+   371→            <Link href="/" className="flex items-center gap-2">
+   372→              <BookOpen className="h-5 w-5 text-primary" />
+   373→              <span className="font-serif font-bold text-lg">Sanaa</span>
+   374→            </Link>
+   375→            <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 rounded hover:bg-secondary">
+   376→              <X className="h-4 w-4" />
+   377→            </button>
+   378→          </div>
+   379→
+   380→          {/* Nav items */}
+   381→          <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+   382→            {navItems.map(item => {
+   383→              const isActive = activeTab === item.id
+   384→              const showBadge = item.id === 'comments' && flaggedComments.length > 0
+   385→              return (
+   386→                <button
+   387→                  key={item.id}
+   388→                  onClick={() => navigate(item.id)}
+   389→                  className={`
+   390→                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+   391→                    ${isActive
+   392→                      ? 'bg-primary/10 text-primary border border-primary/20'
+   393→                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+   394→                    }
+   395→                  `}
+   396→                >
+   397→                  <item.icon className="h-4 w-4 shrink-0" />
+   398→                  <span className="flex-1 text-left">{item.label}</span>
+   399→                  {showBadge && (
+   400→                    <span className="px-2 py-0.5 text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
+   401→                      {flaggedComments.length}
+   402→                    </span>
+   403→                  )}
+   404→                </button>
+   405→              )
+   406→            })}
+   407→          </nav>
+   408→
+   409→          {/* Sidebar footer */}
+   410→          <div className="border-t border-border p-3 space-y-1 shrink-0">
+   411→            <Link href="/admin" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+   412→              <Shield className="h-4 w-4" />
+   413→              <span>Admin Dashboard</span>
+   414→              <ChevronRight className="h-3 w-3 ml-auto" />
+   415→            </Link>
+   416→            <button
+   417→              onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login' }}
+   418→              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+   419→            >
+   420→              <ArrowLeft className="h-4 w-4" />
+   421→              <span>Logout</span>
+   422→            </button>
+   423→          </div>
+   424→        </div>
+   425→      </aside>
+   426→
+   427→      {/* ─── Main Content ─── */}
+   428→      <div className="flex-1 min-w-0">
+   429→        {/* Top bar */}
+   430→        <header className="sticky top-0 z-30 h-14 bg-background/95 backdrop-blur border-b border-border flex items-center justify-between px-4 md:px-6">
+   431→          <div className="flex items-center gap-3">
+   432→            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-1.5 rounded-md hover:bg-secondary">
+   433→              <Menu className="h-5 w-5" />
+   434→            </button>
+   435→            <div>
+   436→              <h1 className="font-serif font-bold text-base">
+   437→                {navItems.find(n => n.id === activeTab)?.label || 'Dashboard'}
+   438→              </h1>
+   439→              <p className="text-[10px] text-muted-foreground font-mono">Editor Dashboard</p>
+   440→            </div>
+   441→          </div>
+   442→          <div className="flex items-center gap-2">
+   443→            {flaggedComments.length > 0 && activeTab !== 'comments' && (
+   444→              <button
+   445→                onClick={() => navigate('comments')}
+   446→                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-medium hover:bg-destructive/20 transition-colors"
+   447→              >
+   448→                <Flag className="h-3.5 w-3.5" />
+   449→                {flaggedComments.length} flagged
+   450→              </button>
+   451→            )}
+   452→            <Link href="/">
+   453→              <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
+   454→                <ExternalLink className="h-3 w-3" />
+   455→                <span className="hidden sm:inline">View Site</span>
+   456→              </Button>
+   457→            </Link>
+   458→          </div>
+   459→        </header>
+   460→
+   461→        {/* Success Banner */}
+   462→        {successMsg && (
+   463→          <div className="border-b bg-emerald-50 dark:bg-emerald-950/30 px-4 py-2.5">
+   464→            <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400">
+   465→              <CheckCircle2 className="h-4 w-4" />
+   466→              {successMsg}
+   467→            </div>
+   468→          </div>
+   469→        )}
+   470→
+   471→        {/* Content */}
+   472→        <main className="p-4 md:p-6 lg:p-8 max-w-6xl">
+   473→          {/* ─── MY ARTICLES TAB ──────────────────────────────── */}
+   474→          {activeTab === 'articles' && (
+   475→            <div className="animate-fadeIn">
+   476→              {/* Stats row */}
+   477→              <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+   478→                <div className="p-4 rounded-xl border border-border bg-card">
+   479→                  <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Total Articles</p>
+   480→                  <p className="mt-1 text-2xl font-bold font-serif">{articles.length}</p>
+   481→                </div>
+   482→                <div className="p-4 rounded-xl border border-border bg-card">
+   483→                  <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Total Views</p>
+   484→                  <p className="mt-1 text-2xl font-bold font-serif">{totalViews.toLocaleString()}</p>
+   485→                </div>
+   486→                <div className="p-4 rounded-xl border border-border bg-card">
+   487→                  <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Categories</p>
+   488→                  <p className="mt-1 text-2xl font-bold font-serif">{new Set(articles.map(a => a.category?.name)).size}</p>
+   489→                </div>
+   490→                <div className="p-4 rounded-xl border border-border bg-card">
+   491→                  <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Avg Views</p>
+   492→                  <p className="mt-1 text-2xl font-bold font-serif">
+   493→                    {articles.length ? Math.round(totalViews / articles.length).toLocaleString() : '0'}
+   494→                  </p>
+   495→                </div>
+   496→              </div>
+   497→
+   498→              {/* Flagged alert */}
+   499→              {flaggedComments.length > 0 && (
+   500→                <button
+   501→                  onClick={() => navigate('comments')}
+   502→                  className="w-full mb-6 flex items-center gap-3 p-3 rounded-xl border border-destructive/30 bg-destructive/5 hover:bg-destructive/10 transition-colors text-left group"
+   503→                >
+   504→                  <Flag className="h-4 w-4 text-destructive shrink-0" />
+   505→                  <span className="text-sm font-medium">{flaggedComments.length} comment{flaggedComments.length !== 1 ? 's' : ''} need review</span>
+   506→                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-destructive ml-auto" />
+   507→                </button>
+   508→              )}
+   509→
+   510→              {loading ? (
+   511→                <div className="flex items-center justify-center py-12 text-muted-foreground">
+   512→                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading articles…
+   513→                </div>
+   514→              ) : articles.length === 0 ? (
+   515→                <div className="flex flex-col items-center justify-center py-16 text-center">
+   516→                  <FileText className="mb-3 h-10 w-10 text-muted-foreground/40" />
+   517→                  <p className="text-sm text-muted-foreground">No articles yet. Create your first article!</p>
+   518→                  <Button variant="outline" size="sm" className="mt-4 gap-1.5" onClick={() => navigate('new')}>
+   519→                    <Plus className="h-3.5 w-3.5" /> New Article
+   520→                  </Button>
+   521→                </div>
+   522→              ) : (
+   523→                <div className="overflow-x-auto rounded-xl border border-border">
+   524→                  <table className="w-full text-sm">
+   525→                    <thead className="border-b bg-secondary/50">
+   526→                      <tr>
+   527→                        <th className={thCls}>Title</th>
+   528→                        <th className={`${thCls} hidden sm:table-cell`}>Category</th>
+   529→                        <th className={`${thCls} hidden md:table-cell`}>Published</th>
+   530→                        <th className={`${thCls} hidden md:table-cell`}>Views</th>
+   531→                        <th className={thCls}>Actions</th>
+   532→                      </tr>
+   533→                    </thead>
+   534→                    <tbody>
+   535→                      {articles.map((article) => (
+   536→                        <tr key={article.id} className="border-b last:border-0 transition-colors hover:bg-secondary/30">
+   537→                          <td className={tdCls}>
+   538→                            <div className="flex items-center gap-2">
+   539→                              {article.isPinned && (
+   540→                                <span className="shrink-0 text-primary text-[10px] font-mono font-bold">PIN</span>
+   541→                              )}
+   542→                              {article.isFeatured && (
+   543→                                <Badge variant="secondary" className="shrink-0 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-[9px] px-1.5">Featured</Badge>
+   544→                              )}
+   545→                              <span className="max-w-[200px] truncate font-medium lg:max-w-[300px]">{article.title}</span>
+   546→                            </div>
+   547→                          </td>
+   548→                          <td className={`${tdCls} hidden sm:table-cell`}>
+   549→                            {article.category && (
+   550→                              <Badge variant="outline" className="text-[10px]" style={{ borderColor: article.category.color, color: article.category.color }}>
+   551→                                {article.category.name}
+   552→                              </Badge>
+   553→                            )}
+   554→                          </td>
+   555→                          <td className={`${tdCls} hidden md:table-cell`}>
+   556→                            <span className="font-mono text-xs text-muted-foreground">{fmtDate(article.publishedAt)}</span>
+   557→                          </td>
+   558→                          <td className={`${tdCls} hidden md:table-cell`}>
+   559→                            <span className="flex items-center gap-1 font-mono text-xs">
+   560→                              <Eye className="h-3 w-3 text-muted-foreground" />{article.views.toLocaleString()}
+   561→                            </span>
+   562→                          </td>
+   563→                          <td className={tdCls}>
+   564→                            <div className="flex items-center gap-1">
+   565→                              <Link href={`/articles/${article.slug}`} target="_blank">
+   566→                                <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs"><ExternalLink className="h-3 w-3" /><span className="hidden sm:inline">View</span></Button>
+   567→                              </Link>
+   568→                              <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => openEdit(article)}>
+   569→                                <Pencil className="h-3 w-3" /><span className="hidden sm:inline">Edit</span>
+   570→                              </Button>
+   571→                            </div>
+   572→                          </td>
+   573→                        </tr>
+   574→                      ))}
+   575→                    </tbody>
+   576→                  </table>
+   577→                </div>
+   578→              )}
+   579→            </div>
+   580→          )}
+   581→
+   582→          {/* ─── NEW ARTICLE TAB ──────────────────────────────── */}
+   583→          {activeTab === 'new' && (
+   584→            <div className="animate-fadeIn">
+   585→              {formError && (
+   586→                <div className="mb-4 mx-auto max-w-6xl rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
+   587→                  {formError}
+   588→                </div>
+   589→              )}
+   590→              <ArticleForm
+   591→                mode='create'
+   592→                variant='page'
+   593→                categories={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+   594→                authors={authors.map(a => ({ id: a.id, name: a.name, role: a.role }))}
+   595→                onSubmit={handleCreate}
+   596→                onCancel={() => navigate('articles')}
+   597→              />
+   598→            </div>
+   599→          )}
+   600→
+   601→          {/* ─── CONTENT CALENDAR TAB ─────────────────────────── */}
+   602→          {activeTab === 'calendar' && (
+   603→            <div className="animate-fadeIn mx-auto max-w-3xl">
+   604→              <div className="mb-6">
+   605→                <h2 className="font-serif text-2xl font-bold">Content Calendar</h2>
+   606→                <p className="text-sm text-muted-foreground mt-1">Upcoming events for story inspiration</p>
+   607→              </div>
+   608→
+   609→              {loading ? (
+   610→                <div className="flex items-center justify-center py-12 text-muted-foreground">
+   611→                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading events…
+   612→                </div>
+   613→              ) : upcomingEvents.length === 0 ? (
+   614→                <div className="flex flex-col items-center justify-center py-16 text-center">
+   615→                  <Calendar className="mb-3 h-10 w-10 text-muted-foreground/40" />
+   616→                  <p className="text-sm text-muted-foreground">No upcoming events at the moment.</p>
+   617→                </div>
+   618→              ) : (
+   619→                <div className="space-y-3">
+   620→                  {upcomingEvents.map((event) => {
+   621→                    const catName = event.categoryRef?.name || event.category
+   622→                    const catColor = event.categoryRef?.color || '#888'
+   623→                    return (
+   624→                      <div key={event.id} className="group rounded-xl border border-border p-4 transition-colors hover:shadow-sm hover:bg-secondary/30">
+   625→                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+   626→                          <div className="flex-1">
+   627→                            <div className="mb-1 flex flex-wrap items-center gap-2">
+   628→                              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{fmtEventDate(event.date, event.endDate)}</span>
+   629→                              {catName && <Badge variant="outline" className="text-[9px] px-1.5" style={{ borderColor: catColor, color: catColor }}>{catName}</Badge>}
+   630→                              {event.isFeatured && <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-[9px] px-1.5">Featured</Badge>}
+   631→                            </div>
+   632→                            <h3 className="font-serif text-base font-semibold">{event.title}</h3>
+   633→                            {event.description && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{event.description}</p>}
+   634→                            <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+   635→                              {(event.venue || event.city) && (
+   636→                                <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{[event.venue, event.city].filter(Boolean).join(', ')}</span>
+   637→                              )}
+   638→                            </div>
+   639→                          </div>
+   640→                          <div className="hidden shrink-0 sm:block">
+   641→                            <div className="flex h-12 w-12 flex-col items-center justify-center rounded-lg bg-muted text-center">
+   642→                              <span className="text-lg font-bold leading-none">{new Date(event.date).getDate()}</span>
+   643→                              <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{new Date(event.date).toLocaleDateString('en-KE', { month: 'short' })}</span>
+   644→                            </div>
+   645→                          </div>
+   646→                        </div>
+   647→                      </div>
+   648→                    )
+   649→                  })}
+   650→                </div>
+   651→              )}
+   652→            </div>
+   653→          )}
+   654→
+   655→          {/* ─── COMMENT QUEUE TAB ────────────────────────────── */}
+   656→          {activeTab === 'comments' && (
+   657→            <div className="animate-fadeIn space-y-6">
+   658→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   659→                <div>
+   660→                  <h2 className="font-serif text-2xl font-bold">Comment Queue</h2>
+   661→                  <p className="text-sm text-muted-foreground mt-1">Review and moderate reader comments</p>
+   662→                </div>
+   663→                <div className="flex items-center gap-2">
+   664→                  {['flagged', 'published', 'all'].map(f => (
+   665→                    <button
+   666→                      key={f}
+   667→                      onClick={() => setCommentFilter(f)}
+   668→                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+   669→                        commentFilter === f
+   670→                          ? 'bg-primary text-primary-foreground'
+   671→                          : 'bg-secondary text-muted-foreground hover:text-foreground'
+   672→                      }`}
+   673→                    >
+   674→                      {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+   675→                    </button>
+   676→                  ))}
+   677→                </div>
+   678→              </div>
+   679→
+   680→              {allComments.length === 0 ? (
+   681→                <div className="flex flex-col items-center justify-center py-16 text-center">
+   682→                  {commentFilter === 'flagged' ? (
+   683→                    <>
+   684→                      <CheckCircle className="h-10 w-10 text-green-500/40 mb-3" />
+   685→                      <p className="text-sm text-muted-foreground">No flagged comments. All clear!</p>
+   686→                    </>
+   687→                  ) : (
+   688→                    <>
+   689→                      <MessageSquare className="h-10 w-10 text-muted-foreground/40 mb-3" />
+   690→                      <p className="text-sm text-muted-foreground">No comments found.</p>
+   691→                    </>
+   692→                  )}
+   693→                </div>
+   694→              ) : (
+   695→                <div className="space-y-3">
+   696→                  {allComments.map(c => {
+   697→                    const isFlagged = c.status === 'flagged'
+   698→                    const isRemoved = c.status === 'removed'
+   699→                    return (
+   700→                      <div
+   701→                        key={c.id}
+   702→                        className={`p-4 rounded-xl border transition-all hover:shadow-sm ${
+   703→                          isFlagged ? 'border-destructive/30 bg-destructive/5' : isRemoved ? 'border-border bg-muted/50 opacity-70' : 'border-border bg-card'
+   704→                        }`}
+   705→                      >
+   706→                        <div className="flex items-start gap-3">
+   707→                          <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+   708→                            isFlagged ? 'bg-destructive/20 text-destructive' : 'bg-primary/10 text-primary'
+   709→                          }`}>
+   710→                            {c.author.charAt(0).toUpperCase()}
+   711→                          </div>
+   712→                          <div className="flex-1 min-w-0">
+   713→                            <div className="flex items-center flex-wrap gap-2 mb-1">
+   714→                              <span className="font-semibold text-sm">{c.author}</span>
+   715→                              {isFlagged && <Badge variant="destructive" className="text-[10px] gap-1"><Flag className="h-2.5 w-2.5" />{c.reportCount}</Badge>}
+   716→                              {isRemoved && <Badge variant="secondary" className="text-[10px]">Removed</Badge>}
+   717→                              <span className="text-[10px] font-mono text-muted-foreground ml-auto">{timeAgo(c.createdAt)}</span>
+   718→                            </div>
+   719→                            <p className="text-sm text-foreground/80 mb-1.5">{c.content}</p>
+   720→                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+   721→                              <span className="font-mono">on:</span>
+   722→                              <a href={`/articles/${c.article.slug}`} target="_blank" className="text-primary hover:underline font-medium">{c.article.title}</a>
+   723→                            </div>
+   724→                          </div>
+   725→                          <div className="flex items-center gap-1 shrink-0">
+   726→                            {isFlagged && (
+   727→                              <button onClick={() => moderateComment(c.id, 'published')} className="p-2 rounded-lg hover:bg-green-500/10 text-muted-foreground hover:text-green-600 transition-colors" title="Restore">
+   728→                                <CheckCircle className="h-4 w-4" />
+   729→                              </button>
+   730→                            )}
+   731→                            {c.status !== 'removed' && (
+   732→                              <button onClick={() => moderateComment(c.id, 'removed')} className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Remove">
+   733→                                <XCircle className="h-4 w-4" />
+   734→                              </button>
+   735→                            )}
+   736→                            {c.status !== 'flagged' && (
+   737→                              <button onClick={() => moderateComment(c.id, 'flagged')} className="p-2 rounded-lg hover:bg-yellow-500/10 text-muted-foreground hover:text-yellow-600 transition-colors" title="Flag">
+   738→                                <Flag className="h-4 w-4" />
+   739→                              </button>
+   740→                            )}
+   741→                            <button onClick={() => deleteComment(c.id)} className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Delete">
+   742→                              <Trash2 className="h-4 w-4" />
+   743→                            </button>
+   744→                          </div>
+   745→                        </div>
+   746→                      </div>
+   747→                    )
+   748→                  })}
+   749→                </div>
+   750→              )}
+   751→            </div>
+   752→          )}
+   753→        </main>
+   754→      </div>
+   755→
+   756→      {/* ─── EDIT ARTICLE DIALOG ────────────────────────────── */}
+   757→      <Dialog open={editDialog} onOpenChange={setEditDialog}>
+   758→        <DialogContent className="max-w-6xl max-h-[92vh] overflow-hidden w-[97vw] sm:w-full p-0">
+   759→          <ArticleForm
+   760→            key={editArticle?.id || 'edit'}
+   761→            mode='edit'
+   762→            variant='dialog'
+   763→            categories={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+   764→            authors={authors.map(a => ({ id: a.id, name: a.name, role: a.role }))}
+   765→            initialData={editArticle ? {
+   766→              title: editArticle.title, slug: editArticle.slug, excerpt: editArticle.excerpt,
+   767→              coverImage: editArticle.coverImage, categoryId: categories.find(c => c.name === editArticle.category?.name)?.id || '',
+   768→              authorId: editArticle.author?.id || '', tags: editArticle.tags,
+   769→              readTime: String(editArticle.readTime || 5),
+   770→              isFeatured: editArticle.isFeatured, isPinned: editArticle.isPinned,
+   771→            } : undefined}
+   772→            onSubmit={async (data: ArticleFormData) => {
+   773→              if (!editArticle) return
+   774→              const res = await fetch(`/api/admin/articles/${editArticle.id}`, {
+   775→                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+   776→                body: JSON.stringify({ ...data, readTime: parseInt(data.readTime) || 5 }),
+   777→              })
+   778→              if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to update') }
+   779→              await fetchAll()
+   780→              setEditDialog(false)
+   781→            }}
+   782→            onCancel={() => setEditDialog(false)}
+   783→          />
+   784→        </DialogContent>
+   785→      </Dialog>
+   786→    </div>
+   787→  )
+   788→}
+   789→
