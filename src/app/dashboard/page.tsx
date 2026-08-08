@@ -21,6 +21,7 @@ import {
   MessageSquare, TrendingUp, ChevronRight, Menu, X, Upload,
 } from 'lucide-react'
 import { ImageUpload } from '@/components/ui/image-upload'
+import { ArticleForm, type ArticleFormData } from '@/components/article-form'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 
@@ -270,11 +271,7 @@ export default function EditorDashboard() {
 
   // ── Create Article ────────────────────────────────────────
 
-  const handleCreate = async () => {
-    if (!formTitle || !formSlug || !formCategoryId || !formAuthorId) {
-      setFormError('Title, slug, category, and author are required.')
-      return
-    }
+  const handleCreate = async (data: ArticleFormData) => {
     setFormError(null)
     setFormSaving(true)
     try {
@@ -282,18 +279,11 @@ export default function EditorDashboard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: formTitle, slug: formSlug, excerpt: formExcerpt, content: formContent,
-          coverImage: formCoverImage, categoryId: formCategoryId, authorId: formAuthorId,
-          tags: formTags, readTime: parseInt(formReadTime) || 5,
+          ...data,
+          readTime: parseInt(data.readTime) || 5,
         }),
       })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to create article')
-      }
-      setFormTitle(''); setFormSlug(''); setFormExcerpt(''); setFormContent('')
-      setFormCoverImage(''); setFormCategoryId(''); setFormAuthorId('')
-      setFormTags(''); setFormReadTime('5')
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to create article') }
       setSuccessMsg('Article created successfully!')
       await fetchAll()
       setActiveTab('articles')
@@ -591,117 +581,20 @@ export default function EditorDashboard() {
 
           {/* ─── NEW ARTICLE TAB ──────────────────────────────── */}
           {activeTab === 'new' && (
-            <div className="animate-fadeIn mx-auto max-w-3xl">
-              <div className="mb-6">
-                <h2 className="font-serif text-2xl font-bold">Create New Article</h2>
-                <p className="text-sm text-muted-foreground mt-1">Write and publish a new story</p>
-              </div>
-
+            <div className="animate-fadeIn">
               {formError && (
-                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
+                <div className="mb-4 mx-auto max-w-6xl rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
                   {formError}
                 </div>
               )}
-
-              <div className="space-y-5">
-                <div>
-                  <label className={labelCls}>Title *</label>
-                  <Input value={formTitle} onChange={e => handleTitleChange(e.target.value)} placeholder="Enter article title…" className="font-serif text-base" />
-                </div>
-                <div>
-                  <label className={labelCls}>Slug *</label>
-                  <Input value={formSlug} onChange={e => setFormSlug(e.target.value)} placeholder="article-url-slug" className="font-mono text-sm" />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className={labelCls}>Category *</label>
-                    <Select value={formCategoryId} onValueChange={setFormCategoryId}>
-                      <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                      <SelectContent>
-                        {categories.map(cat => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            <span className="flex items-center gap-2">
-                              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: cat.color }} />{cat.name}
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className={labelCls}>Author *</label>
-                    <Select value={formAuthorId} onValueChange={setFormAuthorId}>
-                      <SelectTrigger><SelectValue placeholder="Select author" /></SelectTrigger>
-                      <SelectContent>
-                        {authors.map(auth => (
-                          <SelectItem key={auth.id} value={auth.id}>{auth.name} <span className="text-muted-foreground">({auth.role})</span></SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div>
-                  <label className={labelCls}>Excerpt</label>
-                  <Textarea value={formExcerpt} onChange={e => setFormExcerpt(e.target.value)} placeholder="A brief summary of the article…" rows={3} />
-                </div>
-                <div>
-                  <label className={labelCls}>Import from File</label>
-                  <div className="relative border-2 border-dashed border-border rounded-xl p-3 text-center hover:border-primary/50 transition-colors">
-                    <input type="file" accept=".docx,.pdf,.doc,.txt" onChange={handleFileUpload} disabled={parsing} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" />
-                    <div className="flex flex-col items-center gap-1.5">
-                      {parsing ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Upload className="h-4 w-4 text-muted-foreground" />}
-                      <div>
-                        <p className="text-xs font-medium">{parsing ? 'Parsing…' : 'Upload DOCX, PDF, or TXT'}</p>
-                        <p className="text-[9px] font-mono text-muted-foreground">Extracts title, excerpt, content &amp; tags</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <label className={labelCls}>Content</label>
-                  <Tabs value={mdTab} onValueChange={setMdTab} className="rounded-lg border">
-                    <TabsList className="w-full rounded-none border-b bg-transparent px-0">
-                      <TabsTrigger value="write" className="flex-1 gap-1.5 rounded-none text-xs data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"><Pencil className="h-3 w-3" />Write</TabsTrigger>
-                      <TabsTrigger value="preview" className="flex-1 gap-1.5 rounded-none text-xs data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"><Eye className="h-3 w-3" />Preview <span className="font-mono text-[9px] text-muted-foreground">{wordCount(formContent)} words</span></TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="write" className="mt-0">
-                      <Textarea value={formContent} onChange={e => setFormContent(e.target.value)} placeholder="Write your article content in Markdown…" rows={16} className="rounded-none border-0 font-mono text-sm resize-y focus-visible:ring-0" />
-                    </TabsContent>
-                    <TabsContent value="preview" className="mt-0">
-                      <ScrollArea className="max-h-[420px]">
-                        <div className="prose prose-sm dark:prose-invert max-w-none p-4">
-                          {formContent ? <ReactMarkdown>{formContent}</ReactMarkdown> : <p className="text-muted-foreground italic">Nothing to preview yet…</p>}
-                        </div>
-                      </ScrollArea>
-                    </TabsContent>
-                  </Tabs>
-                </div>
-                <ImageUpload
-                  value={formCoverImage}
-                  onChange={setFormCoverImage}
-                  folder="posts"
-                  label="Cover Image"
-                  placeholder="Upload or paste a CDN URL…"
-                />
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className={labelCls}>Tags</label>
-                    <Input value={formTags} onChange={e => setFormTags(e.target.value)} placeholder="art, nairobi, exhibition (comma-separated)" className="text-sm" />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Read Time (minutes)</label>
-                    <Input type="number" min={1} max={60} value={formReadTime} onChange={e => setFormReadTime(e.target.value)} className="font-mono text-sm w-24" />
-                  </div>
-                </div>
-                <Separator />
-                <div className="flex items-center gap-3">
-                  <Button onClick={handleCreate} disabled={formSaving} className="gap-2">
-                    {formSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    {formSaving ? 'Publishing…' : 'Publish Article'}
-                  </Button>
-                  <Button variant="ghost" onClick={() => navigate('articles')} className="text-xs">Cancel</Button>
-                </div>
-              </div>
+              <ArticleForm
+                mode='create'
+                variant='page'
+                categories={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+                authors={authors.map(a => ({ id: a.id, name: a.name, role: a.role }))}
+                onSubmit={handleCreate}
+                onCancel={() => navigate('articles')}
+              />
             </div>
           )}
 
@@ -862,94 +755,32 @@ export default function EditorDashboard() {
 
       {/* ─── EDIT ARTICLE DIALOG ────────────────────────────── */}
       <Dialog open={editDialog} onOpenChange={setEditDialog}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="font-serif">Edit Article</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div>
-              <label className={labelCls}>Title *</label>
-              <Input value={editTitle} onChange={e => handleEditTitleChange(e.target.value)} className="font-serif text-base" />
-            </div>
-            <div>
-              <label className={labelCls}>Slug *</label>
-              <Input value={editSlug} onChange={e => setEditSlug(e.target.value)} className="font-mono text-sm" />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className={labelCls}>Category *</label>
-                <Select value={editCategoryId} onValueChange={setEditCategoryId}>
-                  <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                  <SelectContent>
-                    {categories.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: cat.color }} />{cat.name}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className={labelCls}>Author *</label>
-                <Select value={editAuthorId} onValueChange={setEditAuthorId}>
-                  <SelectTrigger><SelectValue placeholder="Select author" /></SelectTrigger>
-                  <SelectContent>
-                    {authors.map(auth => (
-                      <SelectItem key={auth.id} value={auth.id}>{auth.name} <span className="text-muted-foreground">({auth.role})</span></SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <label className={labelCls}>Excerpt</label>
-              <Textarea value={editExcerpt} onChange={e => setEditExcerpt(e.target.value)} rows={2} />
-            </div>
-            <div>
-              <label className={labelCls}>Content</label>
-              <Tabs value={editMdTab} onValueChange={setEditMdTab} className="rounded-lg border">
-                <TabsList className="w-full rounded-none border-b bg-transparent px-0">
-                  <TabsTrigger value="write" className="flex-1 gap-1.5 rounded-none text-xs data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"><Pencil className="h-3 w-3" />Write</TabsTrigger>
-                  <TabsTrigger value="preview" className="flex-1 gap-1.5 rounded-none text-xs data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"><Eye className="h-3 w-3" />Preview <span className="font-mono text-[9px] text-muted-foreground">{wordCount(editContent)} words</span></TabsTrigger>
-                </TabsList>
-                <TabsContent value="write" className="mt-0">
-                  <Textarea value={editContent} onChange={e => setEditContent(e.target.value)} rows={10} className="rounded-none border-0 font-mono text-sm resize-y focus-visible:ring-0" />
-                </TabsContent>
-                <TabsContent value="preview" className="mt-0">
-                  <ScrollArea className="max-h-[280px]">
-                    <div className="prose prose-sm dark:prose-invert max-w-none p-4">
-                      {editContent ? <ReactMarkdown>{editContent}</ReactMarkdown> : <p className="text-muted-foreground italic">Nothing to preview…</p>}
-                    </div>
-                  </ScrollArea>
-                </TabsContent>
-              </Tabs>
-            </div>
-            <ImageUpload
-              value={editCoverImage}
-              onChange={setEditCoverImage}
-              folder="posts"
-              label="Cover Image"
-              placeholder="Upload or paste a CDN URL…"
-            />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className={labelCls}>Tags</label>
-                <Input value={editTags} onChange={e => setEditTags(e.target.value)} className="text-sm" />
-              </div>
-              <div>
-                <label className={labelCls}>Read Time (min)</label>
-                <Input type="number" min={1} max={60} value={editReadTime} onChange={e => setEditReadTime(e.target.value)} className="font-mono text-sm w-24" />
-              </div>
-            </div>
-            <Separator />
-            <div className="flex items-center gap-3">
-              <Button onClick={handleEditSave} disabled={editSaving} className="gap-2">
-                {editSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
-                {editSaving ? 'Saving…' : 'Save Changes'}
-              </Button>
-              <Button variant="ghost" onClick={() => setEditDialog(false)} className="text-xs">Cancel</Button>
-            </div>
-          </div>
+        <DialogContent className="max-w-6xl max-h-[92vh] overflow-hidden w-[97vw] sm:w-full p-0">
+          <ArticleForm
+            key={editArticle?.id || 'edit'}
+            mode='edit'
+            variant='dialog'
+            categories={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+            authors={authors.map(a => ({ id: a.id, name: a.name, role: a.role }))}
+            initialData={editArticle ? {
+              title: editArticle.title, slug: editArticle.slug, excerpt: editArticle.excerpt,
+              coverImage: editArticle.coverImage, categoryId: categories.find(c => c.name === editArticle.category?.name)?.id || '',
+              authorId: editArticle.author?.id || '', tags: editArticle.tags,
+              readTime: String(editArticle.readTime || 5),
+              isFeatured: editArticle.isFeatured, isPinned: editArticle.isPinned,
+            } : undefined}
+            onSubmit={async (data: ArticleFormData) => {
+              if (!editArticle) return
+              const res = await fetch(`/api/admin/articles/${editArticle.id}`, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...data, readTime: parseInt(data.readTime) || 5 }),
+              })
+              if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to update') }
+              await fetchAll()
+              setEditDialog(false)
+            }}
+            onCancel={() => setEditDialog(false)}
+          />
         </DialogContent>
       </Dialog>
     </div>

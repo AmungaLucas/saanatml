@@ -22,6 +22,7 @@ import {
   Menu, X, ChevronDown, ImageIcon, Copy, Check,
 } from 'lucide-react'
 import { ImageUpload } from '@/components/ui/image-upload'
+import { ArticleForm, type ArticleFormData } from '@/components/article-form'
 import { type CDNFile, CDN_FOLDERS, type CDNFolder } from '@/lib/cdn'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
@@ -1472,104 +1473,41 @@ export default function AdminPage() {
 
       {/* Article Dialog */}
       <Dialog open={artDialog} onOpenChange={setArtDialog}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-xl">{artEdit ? 'Edit Article' : 'New Article'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className={labelCls}>Title *</label>
-              <Input value={artTitle} onChange={e => { setArtTitle(e.target.value); if (!artEdit) setArtSlug(slugify(e.target.value)) }} placeholder="Article title" />
-            </div>
-            <div>
-              <label className={labelCls}>Slug *</label>
-              <Input value={artSlug} onChange={e => setArtSlug(e.target.value)} placeholder="article-slug" className="font-mono" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}>Category</label>
-                <Select value={artCategory} onValueChange={setArtCategory}>
-                  <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                  <SelectContent>
-                    {categories.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className={labelCls}>Author</label>
-                <Select value={artAuthor} onValueChange={setArtAuthor}>
-                  <SelectTrigger><SelectValue placeholder="Select author" /></SelectTrigger>
-                  <SelectContent>
-                    {authors.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <label className={labelCls}>Excerpt</label>
-              <Textarea value={artExcerpt} onChange={e => setArtExcerpt(e.target.value)} placeholder="Brief summary..." rows={2} />
-            </div>
-            {!artEdit && (
-              <div>
-                <label className={labelCls}>Import from File</label>
-                <div className="relative border-2 border-dashed border-border rounded-xl p-4 text-center hover:border-primary/50 transition-colors">
-                  <input type="file" accept=".docx,.pdf,.doc,.txt" onChange={handleFileUpload} disabled={parsing} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" />
-                  <div className="flex flex-col items-center gap-2">
-                    {parsing ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <Upload className="h-5 w-5 text-muted-foreground" />}
-                    <div>
-                      <p className="text-sm font-medium">{parsing ? 'Parsing...' : 'Upload DOCX, PDF, or TXT'}</p>
-                      <p className="text-[10px] font-mono text-muted-foreground mt-0.5">Extracts title, excerpt, content, tags &amp; read time</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            {!artEdit && (
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className={labelCls}>Content (Markdown)</label>
-                  {artContent && <span className="font-mono text-[10px] text-muted-foreground">{artContent.split(/\s+/).filter(Boolean).length} words</span>}
-                </div>
-                <Tabs defaultValue="write" className="mt-2">
-                  <TabsList className="mb-2">
-                    <TabsTrigger value="write" className="text-xs">Write</TabsTrigger>
-                    <TabsTrigger value="preview" className="text-xs">Preview</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="write">
-                    <Textarea value={artContent} onChange={e => setArtContent(e.target.value)} placeholder="Write your article in Markdown..." rows={8} className="font-mono text-sm" />
-                  </TabsContent>
-                  <TabsContent value="preview">
-                    <div className="border border-border rounded-xl p-4 min-h-[200px] prose-article">
-                      {artContent ? <ReactMarkdown>{artContent}</ReactMarkdown> : <p className="text-muted-foreground text-sm italic">Start writing to see a preview...</p>}
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </div>
-            )}
-            <ImageUpload
-              value={artCoverImage}
-              onChange={setArtCoverImage}
-              folder="posts"
-              label="Cover Image"
-              placeholder="Upload or paste a CDN URL…"
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}>Tags</label>
-                <Input value={artTags} onChange={e => setArtTags(e.target.value)} placeholder="tag1, tag2, tag3" />
-              </div>
-              <div>
-                <label className={labelCls}>Read Time (min)</label>
-                <Input type="number" value={artReadTime} onChange={e => setArtReadTime(e.target.value)} />
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 pt-4 border-t border-border">
-              <Button variant="outline" onClick={() => setArtDialog(false)}>Cancel</Button>
-              <Button onClick={saveArt} disabled={artSaving || !artTitle || !artSlug} className="font-mono text-xs">
-                {artSaving ? 'Saving...' : artEdit ? 'Update' : 'Create Article'}
-              </Button>
-            </div>
-          </div>
+        <DialogContent className="max-w-6xl max-h-[92vh] overflow-hidden w-[97vw] sm:w-full p-0">
+          <ArticleForm
+            key={artEdit?.id || 'new'}
+            mode={artEdit ? 'edit' : 'create'}
+            variant="dialog"
+            categories={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+            authors={authors.map(a => ({ id: a.id, name: a.name, role: a.role }))}
+            initialData={artEdit ? {
+              title: artEdit.title, slug: artEdit.slug, excerpt: artEdit.excerpt,
+              coverImage: artEdit.coverImage || '',
+              categoryId: artEdit.category?.name || '',
+              authorId: artEdit.author?.name || '',
+            } : undefined}
+            onSubmit={async (data: ArticleFormData) => {
+              if (artEdit) {
+                const catId = categories.find(c => c.name === data.categoryId)?.id || data.categoryId
+                const authId = authors.find(a => a.name === data.authorId)?.id || data.authorId
+                const res = await fetch(`/api/admin/articles/${artEdit.id}`, {
+                  method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ title: data.title, slug: data.slug, excerpt: data.excerpt, coverImage: data.coverImage, isFeatured: data.isFeatured, isPinned: data.isPinned, tags: data.tags, readTime: parseInt(data.readTime) || 5 }),
+                })
+                if (res.ok) { const updated = await res.json(); setArticles(p => p.map(a => a.id === artEdit.id ? { ...a, ...updated } : a)); fetchAll() }
+              } else {
+                const catId = categories.find(c => c.name === data.categoryId)?.id || data.categoryId
+                const authId = authors.find(a => a.name === data.authorId)?.id || data.authorId
+                const res = await fetch('/api/admin/articles', {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ ...data, categoryId: catId, authorId: authId, readTime: parseInt(data.readTime) || 5 }),
+                })
+                if (res.ok) { const created = await res.json(); setArticles(p => [created, ...p]); fetchAll() }
+              }
+              setArtDialog(false)
+            }}
+            onCancel={() => setArtDialog(false)}
+          />
         </DialogContent>
       </Dialog>
 
