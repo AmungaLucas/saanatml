@@ -18,7 +18,7 @@ import {
   FileText, ArrowLeft, Eye, Pencil, Plus, Calendar,
   MapPin, ExternalLink, Send, Loader2, CheckCircle2,
   BookOpen, Shield, Flag, XCircle, CheckCircle, Trash2,
-  MessageSquare, TrendingUp, ChevronRight, Menu, X,
+  MessageSquare, TrendingUp, ChevronRight, Menu, X, Upload,
 } from 'lucide-react'
 import { ImageUpload } from '@/components/ui/image-upload'
 import Link from 'next/link'
@@ -155,6 +155,7 @@ export default function EditorDashboard() {
   const [formReadTime, setFormReadTime] = useState('5')
   const [formSaving, setFormSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [parsing, setParsing] = useState(false)
 
   // Edit dialog
   const [editDialog, setEditDialog] = useState(false)
@@ -244,6 +245,27 @@ export default function EditorDashboard() {
   const handleEditTitleChange = (val: string) => {
     setEditTitle(val)
     setEditSlug(slugify(val))
+  }
+
+  // ── File Import (DOCX / PDF / TXT) ─────────────────────
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setParsing(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch('/api/admin/parse-file', { method: 'POST', body: form })
+      const json = await res.json()
+      if (json.markdown) setFormContent(json.markdown)
+      if (json.titleHint && !formTitle) handleTitleChange(json.titleHint)
+      if (json.excerpt && !formExcerpt) setFormExcerpt(json.excerpt)
+      if (json.readTime) setFormReadTime(String(json.readTime))
+      if (json.tags) setFormTags(prev => prev ? `${prev}, ${json.tags}` : json.tags)
+    } catch { /* silent */ }
+    setParsing(false)
+    e.target.value = ''
   }
 
   // ── Create Article ────────────────────────────────────────
@@ -350,7 +372,7 @@ export default function EditorDashboard() {
 
       {/* ─── Sidebar ─── */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-60 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:z-auto
+        fixed inset-y-0 left-0 z-50 w-60 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:z-auto lg:shrink-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="flex flex-col h-full">
@@ -621,6 +643,19 @@ export default function EditorDashboard() {
                 <div>
                   <label className={labelCls}>Excerpt</label>
                   <Textarea value={formExcerpt} onChange={e => setFormExcerpt(e.target.value)} placeholder="A brief summary of the article…" rows={3} />
+                </div>
+                <div>
+                  <label className={labelCls}>Import from File</label>
+                  <div className="relative border-2 border-dashed border-border rounded-xl p-3 text-center hover:border-primary/50 transition-colors">
+                    <input type="file" accept=".docx,.pdf,.doc,.txt" onChange={handleFileUpload} disabled={parsing} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" />
+                    <div className="flex flex-col items-center gap-1.5">
+                      {parsing ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Upload className="h-4 w-4 text-muted-foreground" />}
+                      <div>
+                        <p className="text-xs font-medium">{parsing ? 'Parsing…' : 'Upload DOCX, PDF, or TXT'}</p>
+                        <p className="text-[9px] font-mono text-muted-foreground">Extracts title, excerpt, content &amp; tags</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <label className={labelCls}>Content</label>
