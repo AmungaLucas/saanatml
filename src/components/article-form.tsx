@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef, useCallback } from 'react'
+import { useState, useMemo, useRef, useCallback, type KeyboardEvent } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,8 +12,10 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  Pencil, Eye, Split, Send, Loader2, Upload, FileText, Star, Pin,
-  Clock, X, CheckCircle2,
+  Pencil, Eye, Send, Loader2, Upload, FileText, Star, Pin,
+  Clock, X, CheckCircle2, RotateCcw,
+  Bold, Italic, Heading2, Heading3, Link, Image as ImageLucide,
+  ListOrdered, List, Quote, Code, Minus,
 } from 'lucide-react'
 import { ImageUpload } from '@/components/ui/image-upload'
 import ReactMarkdown from 'react-markdown'
@@ -45,6 +47,94 @@ const estReadTime = (w: number) => Math.max(1, Math.ceil(w / 200))
 
 const FIELD_LABEL = 'text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block'
 
+// ── Markdown toolbar actions ────────────────────────────────────
+
+type InsertFn = (textarea: HTMLTextAreaElement, val: string) => void
+
+interface ToolbarAction {
+  icon: React.ReactNode
+  label: string
+  insert: InsertFn
+}
+
+const wrapSelection = (before: string, after: string, placeholder?: string): InsertFn =>
+  (ta, _val) => {
+    const start = ta.selectionStart
+    const end = ta.selectionEnd
+    const selected = ta.value.slice(start, end) || placeholder || ''
+    const replacement = `${before}${selected}${after}`
+    // Use native input setter to trigger React's onChange
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set!
+    nativeInputValueSetter.call(ta, ta.value.slice(0, start) + replacement + ta.value.slice(end))
+    ta.dispatchEvent(new Event('input', { bubbles: true }))
+    ta.focus()
+    // Place cursor inside the markers
+    const cursorPos = start + before.length + selected.length
+    ta.setSelectionRange(cursorPos, cursorPos)
+  }
+
+const insertAtLineStart = (prefix: string): InsertFn =>
+  (ta, _val) => {
+    const start = ta.selectionStart
+    const lineStart = ta.value.lastIndexOf('\n', start - 1) + 1
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set!
+    nativeInputValueSetter.call(ta, ta.value.slice(0, lineStart) + prefix + ta.value.slice(lineStart))
+    ta.dispatchEvent(new Event('input', { bubbles: true }))
+    ta.focus()
+    ta.setSelectionRange(start + prefix.length, start + prefix.length)
+  }
+
+const insertBlock = (block: string): InsertFn =>
+  (ta, _val) => {
+    const start = ta.selectionStart
+    const before = ta.value.slice(0, start)
+    const needsNewline = before.length > 0 && !before.endsWith('\n')
+    const insert = (needsNewline ? '\n' : '') + block
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set!
+    nativeInputValueSetter.call(ta, before + insert + ta.value.slice(start))
+    ta.dispatchEvent(new Event('input', { bubbles: true }))
+    ta.focus()
+  }
+
+const TOOLBAR_ACTIONS: ToolbarAction[] = [
+  { label: 'Bold', icon: <Bold className="h-3.5 w-3.5" />, insert: wrapSelection('**', '**', 'bold text') },
+  { label: 'Italic', icon: <Italic className="h-3.5 w-3.5" />, insert: wrapSelection('*', '*', 'italic text') },
+  { label: 'Heading 2', icon: <Heading2 className="h-3.5 w-3.5" />, insert: insertAtLineStart('## ') },
+  { label: 'Heading 3', icon: <Heading3 className="h-3.5 w-3.5" />, insert: insertAtLineStart('### ') },
+  { label: 'Link', icon: <Link className="h-3.5 w-3.5" />, insert: wrapSelection('[', '](url)', 'link text') },
+  { label: 'Image', icon: <ImageLucide className="h-3.5 w-3.5" />, insert: insertBlock('![alt](https://cdn.sanaathrumylens.co.ke/posts/image.jpg)\n') },
+  { label: 'Ordered List', icon: <ListOrdered className="h-3.5 w-3.5" />, insert: insertAtLineStart('1. ') },
+  { label: 'Unordered List', icon: <List className="h-3.5 w-3.5" />, insert: insertAtLineStart('- ') },
+  { label: 'Quote', icon: <Quote className="h-3.5 w-3.5" />, insert: insertAtLineStart('> ') },
+  { label: 'Code', icon: <Code className="h-3.5 w-3.5" />, insert: wrapSelection('`', '`', 'code') },
+  { label: 'Divider', icon: <Minus className="h-3.5 w-3.5" />, insert: insertBlock('\n---\n') },
+]
+
+// ── Markdown Toolbar Component ─────────────────────────────────
+
+function MdToolbar({ textareaRef }: { textareaRef: React.RefObject<HTMLTextAreaElement | null> }) {
+  return (
+    <div className="flex items-center gap-0.5 overflow-x-auto border-b bg-muted/20 px-2 py-1.5 shrink-0">
+      {TOOLBAR_ACTIONS.map(action => (
+        <button
+          key={action.label}
+          type="button"
+          title={action.label}
+          onClick={() => {
+            const ta = textareaRef.current
+            if (ta) action.insert(ta, '')
+          }}
+          className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
+          {action.icon}
+        </button>
+      ))}
+      <div className="w-px h-5 bg-border mx-1 shrink-0" />
+      <span className="text-[10px] font-mono text-muted-foreground/60 whitespace-nowrap px-1">Markdown</span>
+    </div>
+  )
+}
+
 // ── Component ──────────────────────────────────────────────────
 
 export function ArticleForm({
@@ -70,6 +160,7 @@ export function ArticleForm({
   const [parsing, setParsing] = useState(false)
   const [parsedFileName, setParsedFileName] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [dragOver, setDragOver] = useState(false)
 
   const wc = useMemo(() => wordCount(content), [content])
@@ -144,6 +235,10 @@ export function ArticleForm({
     if (file) await processFile(file)
   }, [processFile])
 
+  const clearImport = () => {
+    setContent(''); setTitle(''); setExcerpt(''); setTags(''); setParsedFileName(null)
+  }
+
   // ── Form ───────────────────────────────────────────────
   const formContent = (
     <div className={variant === 'dialog' ? 'px-1' : 'max-w-4xl mx-auto'}>
@@ -165,17 +260,6 @@ export function ArticleForm({
         )}
       </div>
 
-      {/* Import success banner */}
-      {parsedFileName && (
-        <div className="mb-4 flex items-center gap-2.5 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs dark:border-green-900 dark:bg-green-950/30">
-          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
-          <span className="flex-1 min-w-0 truncate">
-            Imported from <span className="font-mono font-medium">{parsedFileName}</span>
-          </span>
-          <button onClick={() => { setContent(''); setTitle(''); setExcerpt(''); setTags(''); setParsedFileName(null) }} className="text-muted-foreground hover:text-foreground shrink-0">Undo</button>
-        </div>
-      )}
-
       {/* Two-column: main fields | sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         {/* ═══ LEFT ═══ */}
@@ -185,38 +269,60 @@ export function ArticleForm({
           {mode === 'create' && (
             <div>
               <label className={FIELD_LABEL}>Upload Document</label>
-              <div
-                onDragOver={handleDocDragOver}
-                onDragLeave={handleDocDragLeave}
-                onDrop={handleDocDrop}
-                onClick={() => !parsing && fileInputRef.current?.click()}
-                className={`relative flex items-center gap-3 rounded-xl border-2 border-dashed px-4 py-3 cursor-pointer transition-colors
-                  ${parsing ? 'border-primary/50 bg-primary/5' : dragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}
-                `}
-              >
-                {parsing
-                  ? <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
-                  : <Upload className="h-5 w-5 text-muted-foreground shrink-0" />
-                }
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">
-                    {parsing ? 'Parsing document…' : 'Drop a file here or click to browse'}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">DOCX, PDF, TXT — extracts title, content & metadata</p>
+              {/* After successful parse — show file info, not blank dropzone */}
+              {parsedFileName && !parsing ? (
+                <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 dark:border-green-900/60 dark:bg-green-950/20 px-4 py-3">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{parsedFileName}</p>
+                    <p className="text-[11px] text-green-700/70 dark:text-green-400/70">Content imported successfully</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1 text-xs font-medium text-primary hover:underline shrink-0"
+                  >
+                    <RotateCcw className="h-3 w-3" /> Replace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearImport}
+                    className="text-xs text-muted-foreground hover:text-destructive shrink-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
-                <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono text-muted-foreground bg-muted px-2 py-1 rounded-md shrink-0">
-                  .docx .pdf .txt
-                </span>
-                <input
-                  ref={fileInputRef} type="file" accept=".docx,.pdf,.doc,.txt"
-                  onChange={handleFileChange} disabled={parsing} className="hidden"
-                />
-              </div>
+              ) : (
+                <div
+                  onDragOver={handleDocDragOver}
+                  onDragLeave={handleDocDragLeave}
+                  onDrop={handleDocDrop}
+                  onClick={() => !parsing && fileInputRef.current?.click()}
+                  className={`relative flex items-center gap-3 rounded-xl border-2 border-dashed px-4 py-3 cursor-pointer transition-colors
+                    ${parsing ? 'border-primary/50 bg-primary/5' : dragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}
+                  `}
+                >
+                  {parsing
+                    ? <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
+                    : <Upload className="h-5 w-5 text-muted-foreground shrink-0" />
+                  }
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">
+                      {parsing ? 'Parsing document…' : 'Drop a file here or click to browse'}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">DOCX, PDF, TXT — extracts title, content & metadata</p>
+                  </div>
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono text-muted-foreground bg-muted px-2 py-1 rounded-md shrink-0">
+                    .docx .pdf .txt
+                  </span>
+                </div>
+              )}
+              <input
+                ref={fileInputRef} type="file" accept=".docx,.pdf,.doc,.txt"
+                onChange={handleFileChange} disabled={parsing} className="hidden"
+              />
             </div>
           )}
-
-          {/* Cover Image */}
-          <ImageUpload value={coverImage} onChange={setCoverImage} folder="posts" variant="cover" />
 
           {/* Title */}
           <div>
@@ -266,15 +372,12 @@ export function ArticleForm({
             />
           </div>
 
-          {/* Content Editor */}
+          {/* Content Editor — fixed height with scroll */}
           <div>
             <Tabs value={mdTab} onValueChange={setMdTab} className="rounded-xl border overflow-hidden">
-              <TabsList className="w-full rounded-none border-b bg-muted/30 h-10 px-0">
+              <TabsList className="w-full rounded-none border-b bg-muted/20 h-10 px-0">
                 <TabsTrigger value="write" className="flex-1 gap-1.5 rounded-none text-xs data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">
                   <Pencil className="h-3 w-3" /> Write
-                </TabsTrigger>
-                <TabsTrigger value="split" className="flex-1 gap-1.5 rounded-none text-xs data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">
-                  <Split className="h-3 w-3" /> Split
                 </TabsTrigger>
                 <TabsTrigger value="preview" className="flex-1 gap-1.5 rounded-none text-xs data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">
                   <Eye className="h-3 w-3" /> Preview
@@ -282,39 +385,34 @@ export function ArticleForm({
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="write" className="mt-0">
+              <TabsContent value="write" className="mt-0 flex flex-col">
+                <MdToolbar textareaRef={textareaRef} />
                 <Textarea
+                  ref={textareaRef}
                   value={content}
                   onChange={e => setContent(e.target.value)}
                   placeholder="Start writing your article in markdown…"
-                  className="rounded-none border-0 font-mono text-sm resize-y min-h-[400px] focus-visible:ring-0"
+                  className="rounded-none border-0 font-mono text-sm resize-none h-[50vh] max-h-[500px] min-h-[250px] focus-visible:ring-0"
                 />
               </TabsContent>
 
-              <TabsContent value="split" className="mt-0">
-                <div className="grid grid-cols-1 md:grid-cols-2 divide-x">
-                  <Textarea
-                    value={content}
-                    onChange={e => setContent(e.target.value)}
-                    placeholder="Markdown…"
-                    className="rounded-none border-0 font-mono text-sm resize-none min-h-[400px] focus-visible:ring-0"
-                  />
-                  <ScrollArea className="max-h-[400px]">
-                    <div className="prose prose-sm dark:prose-invert max-w-none p-4">
-                      {content ? <ReactMarkdown>{content}</ReactMarkdown> : <p className="text-muted-foreground italic text-sm">Nothing to preview…</p>}
-                    </div>
-                  </ScrollArea>
+              <TabsContent value="preview" className="mt-0">
+                <div className="h-[50vh] max-h-[500px] min-h-[250px] overflow-y-auto">
+                  <div className="prose prose-sm dark:prose-invert max-w-none p-4">
+                    {content
+                      ? <ReactMarkdown>{content}</ReactMarkdown>
+                      : <p className="text-muted-foreground italic text-sm">Nothing to preview yet…</p>
+                    }
+                  </div>
                 </div>
               </TabsContent>
-
-              <TabsContent value="preview" className="mt-0">
-                <ScrollArea className="max-h-[500px]">
-                  <div className="prose prose-sm dark:prose-invert max-w-none p-4">
-                    {content ? <ReactMarkdown>{content}</ReactMarkdown> : <p className="text-muted-foreground italic text-sm">Nothing to preview yet…</p>}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
             </Tabs>
+          </div>
+
+          {/* Cover Image — below the editor */}
+          <div>
+            <label className={FIELD_LABEL}>Cover Image</label>
+            <ImageUpload value={coverImage} onChange={setCoverImage} folder="posts" variant="cover" />
           </div>
         </div>
 
