@@ -19,7 +19,7 @@ import {
   TrendingUp, Pencil, ExternalLink, Palette, Flag, CheckCircle, XCircle,
   Upload, Loader2, Search, Shield, AlertTriangle, ChevronRight, Filter,
   LayoutDashboard, MessagesSquare, UserCog, FolderOpen, Megaphone, Paintbrush, UsersRound,
-  Menu, X, ChevronDown, ImageIcon, Copy, Check,
+  Menu, X, ChevronDown, ImageIcon, Copy, Check, RotateCcw,
 } from 'lucide-react'
 import { ImageUpload } from '@/components/ui/image-upload'
 import { ArticleForm, type ArticleFormData } from '@/components/article-form'
@@ -131,6 +131,8 @@ export default function AdminPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Data
+  const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [stats, setStats] = useState<Stats | null>(null)
   const [articles, setArticles] = useState<Article[]>([])
   const [events, setEvents] = useState<EventItem[]>([])
@@ -228,20 +230,36 @@ export default function AdminPage() {
 
   // ── Fetch all data ─────────────────────────────────────────
   const fetchAll = useCallback(async () => {
-    const endpoints = [
-      ['stats', '/api/admin/stats', setStats],
-      ['articles', '/api/admin/articles', setArticles],
-      ['events', '/api/admin/events', setEvents],
-      ['makers', '/api/admin/makers', setMakers],
-      ['authors', '/api/admin/authors', setAuthors],
-      ['categories', '/api/admin/categories', setCategories],
-      ['subscribers', '/api/admin/subscribers', setSubscribers],
-    ] as const
-    await Promise.all(
-      endpoints.map(([, url, setter]) =>
-        fetch(url).then(r => r.ok ? r.json() : null).then(d => { if (d) setter(d) }).catch(() => {})
+    setLoading(true)
+    setFetchError(null)
+    try {
+      const endpoints = [
+        ['stats', '/api/admin/stats', setStats],
+        ['articles', '/api/admin/articles', setArticles],
+        ['events', '/api/admin/events', setEvents],
+        ['makers', '/api/admin/makers', setMakers],
+        ['authors', '/api/admin/authors', setAuthors],
+        ['categories', '/api/admin/categories', setCategories],
+        ['subscribers', '/api/admin/subscribers', setSubscribers],
+      ] as const
+      const results = await Promise.allSettled(
+        endpoints.map(async ([key, url, setter]) => {
+          const res = await fetch(url)
+          if (!res.ok) throw new Error(`${key} returned ${res.status}`)
+          const data = await res.json()
+          setter(data)
+        })
       )
-    )
+      // Check if stats specifically failed
+      const statsResult = results[0]
+      if (statsResult.status === 'rejected') {
+        setFetchError(statsResult.reason?.message || 'Failed to load stats')
+      }
+    } catch (err: any) {
+      setFetchError(err.message || 'Failed to load dashboard data')
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
@@ -687,10 +705,20 @@ export default function AdminPage() {
 
         <main className="p-4 md:p-6 lg:p-8 max-w-7xl">
           {/* ═══════════════════ OVERVIEW ═══════════════════ */}
-          {activeTab === 'overview' && !stats && (
+          {activeTab === 'overview' && loading && !fetchError && (
             <div className="flex items-center justify-center py-24">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mr-3" />
               <span className="text-sm text-muted-foreground">Loading dashboard...</span>
+            </div>
+          )}
+          {activeTab === 'overview' && fetchError && !stats && (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <AlertTriangle className="h-10 w-10 text-amber-500/50 mb-3" />
+              <p className="text-sm font-medium">Failed to load dashboard</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-sm">{fetchError}</p>
+              <Button variant="outline" size="sm" className="mt-4 gap-1.5" onClick={() => fetchAll()}>
+                <RotateCcw className="h-3.5 w-3.5" /> Retry
+              </Button>
             </div>
           )}
           {activeTab === 'overview' && stats && (
