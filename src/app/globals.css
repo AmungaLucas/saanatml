@@ -602,3 +602,21 @@
     max-width: 100% !important;
   }
 }
+
+/* ═══════ Mobile Utilities ═══════ */
+
+/* Hide scrollbar but keep scrolling */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Better touch behavior */
+body {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  touch-action: manipulation;
+}

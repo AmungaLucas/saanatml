@@ -17,6 +17,7 @@ import {
   FileText, Users, Tag, Calendar, Eye, MessageSquare, Star, Pin, Trash2,
   Plus, BarChart3, ArrowLeft, BookmarkCheck, BookOpen, Mail,
   TrendingUp, ImageIcon, Pencil, ExternalLink, Palette, Flag, CheckCircle, XCircle,
+  Upload, FileText, Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
@@ -117,6 +118,7 @@ export default function AdminPage() {
   const [artTags, setArtTags] = useState('')
   const [artReadTime, setArtReadTime] = useState('5')
   const [artSaving, setArtSaving] = useState(false)
+  const [parsing, setParsing] = useState(false)
 
   // Event form
   const [evtDialog, setEvtDialog] = useState(false)
@@ -222,6 +224,33 @@ export default function AdminPage() {
     setArtCategory(a.category?.name || ''); setArtAuthor(a.author?.name || '')
     setArtTags(''); setArtReadTime(String(5))
     setArtDialog(true)
+  }
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setParsing(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch('/api/admin/parse-file', { method: 'POST', body: form })
+      if (!res.ok) {
+        const data = await res.json()
+        alert(data.error || 'Failed to parse file')
+        return
+      }
+      const data = await res.json()
+      if (data.titleHint && !artTitle) setArtTitle(data.titleHint)
+      if (data.excerpt && !artExcerpt) setArtExcerpt(data.excerpt)
+      if (data.readTime) setArtReadTime(String(data.readTime))
+      if (data.tags && !artTags) setArtTags(data.tags)
+      if (data.markdown) setArtContent(data.markdown)
+    } catch {
+      alert('Failed to parse file')
+    } finally {
+      setParsing(false)
+      // Reset file input
+      e.target.value = ''
+    }
   }
   const saveArt = async () => {
     if (!artTitle || !artSlug) return
@@ -955,7 +984,7 @@ export default function AdminPage() {
 
       {/* ═══════════════════ ARTICLE DIALOG ═══════════════════ */}
       <Dialog open={artDialog} onOpenChange={setArtDialog}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
           <DialogHeader>
             <DialogTitle className="font-serif text-xl">{artEdit ? 'Edit Article' : 'New Article'}</DialogTitle>
           </DialogHeader>
@@ -992,6 +1021,35 @@ export default function AdminPage() {
               <label className={labelCls}>Excerpt</label>
               <Textarea value={artExcerpt} onChange={e => setArtExcerpt(e.target.value)} placeholder="Brief summary..." rows={2} />
             </div>
+            {!artEdit && (
+              <div>
+                <label className={labelCls}>Import from File</label>
+                <div className="relative border-2 border-dashed border-border rounded-xl p-4 text-center hover:border-primary/50 transition-colors">
+                  <input
+                    type="file"
+                    accept=".docx,.pdf,.doc,.txt"
+                    onChange={handleFileUpload}
+                    disabled={parsing}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                  />
+                  <div className="flex flex-col items-center gap-2">
+                    {parsing ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    ) : (
+                      <Upload className="h-5 w-5 text-muted-foreground" />
+                    )}
+                    <div>
+                      <p className="text-sm font-medium">
+                        {parsing ? 'Parsing...' : 'Upload DOCX, PDF, or TXT'}
+                      </p>
+                      <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                        Extracts title, excerpt, content, tags &amp; read time
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {!artEdit && (
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -1048,7 +1106,7 @@ export default function AdminPage() {
 
       {/* ═══════════════════ EVENT DIALOG ═══════════════════ */}
       <Dialog open={evtDialog} onOpenChange={setEvtDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
           <DialogHeader>
             <DialogTitle className="font-serif text-xl">{evtEdit ? 'Edit Event' : 'New Event'}</DialogTitle>
           </DialogHeader>
@@ -1120,7 +1178,7 @@ export default function AdminPage() {
 
       {/* ═══════════════════ MAKER DIALOG ═══════════════════ */}
       <Dialog open={mkrDialog} onOpenChange={setMkrDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
           <DialogHeader>
             <DialogTitle className="font-serif text-xl">{mkrEdit ? 'Edit Maker' : 'New Maker'}</DialogTitle>
           </DialogHeader>
@@ -1177,7 +1235,7 @@ export default function AdminPage() {
 
       {/* ═══════════════════ AUTHOR DIALOG ═══════════════════ */}
       <Dialog open={autDialog} onOpenChange={setAutDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
           <DialogHeader>
             <DialogTitle className="font-serif text-xl">{autEdit ? 'Edit Author' : 'New Author'}</DialogTitle>
           </DialogHeader>
@@ -1229,7 +1287,7 @@ export default function AdminPage() {
 
       {/* ═══════════════════ CATEGORY DIALOG ═══════════════════ */}
       <Dialog open={catDialog} onOpenChange={setCatDialog}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
           <DialogHeader>
             <DialogTitle className="font-serif text-xl">{catEdit ? 'Edit Category' : 'New Category'}</DialogTitle>
           </DialogHeader>
