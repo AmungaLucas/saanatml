@@ -1,0 +1,657 @@
+     1→'use client'
+     2→
+     3→import { useState, useMemo, useRef, useCallback } from 'react'
+     4→import { Badge } from '@/components/ui/badge'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Input } from '@/components/ui/input'
+     7→import { Textarea } from '@/components/ui/textarea'
+     8→import { Switch } from '@/components/ui/switch'
+     9→import { ScrollArea } from '@/components/ui/scroll-area'
+    10→import {
+    11→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    12→} from '@/components/ui/select'
+    13→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    14→import {
+    15→  Pencil, Eye, Split, Send, Loader2, Upload, FileText, Star, Pin,
+    16→  Link as LinkIcon, Clock, X, ImageIcon,
+    17→  FileUp, ArrowRight, CheckCircle2, ChevronDown, ChevronUp,
+    18→  Type, Hash, Image as ImageLucide, Settings2,
+    19→} from 'lucide-react'
+    20→import { ImageUpload } from '@/components/ui/image-upload'
+    21→import ReactMarkdown from 'react-markdown'
+    22→
+    23→// ── Types ──────────────────────────────────────────────────────
+    24→
+    25→interface CategoryOption { id: string; name: string; color: string }
+    26→interface AuthorOption { id: string; name: string; role: string }
+    27→
+    28→export interface ArticleFormData {
+    29→  title: string; slug: string; excerpt: string; content: string
+    30→  coverImage: string; categoryId: string; authorId: string
+    31→  readTime: string; tags: string; isFeatured: boolean; isPinned: boolean
+    32→}
+    33→
+    34→interface ArticleFormProps {
+    35→  initialData?: Partial<ArticleFormData>
+    36→  onSubmit: (data: ArticleFormData) => Promise<void>
+    37→  onCancel: () => void
+    38→  mode: 'create' | 'edit'
+    39→  categories: CategoryOption[]
+    40→  authors: AuthorOption[]
+    41→  /** 'dialog' = inside a Dialog (max-w-6xl), 'page' = full page */
+    42→  variant?: 'dialog' | 'page'
+    43→}
+    44→
+    45→const slugify = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '')
+    46→const wordCount = (t: string) => t.trim().split(/\s+/).filter(Boolean).length
+    47→const estReadTime = (w: number) => Math.max(1, Math.ceil(w / 200))
+    48→
+    49→const FILE_ICONS: Record<string, string> = {
+    50→  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    51→  'application/pdf': 'pdf',
+    52→  'text/plain': 'txt',
+    53→  'application/msword': 'doc',
+    54→}
+    55→
+    56→const FILE_COLORS: Record<string, string> = {
+    57→  docx: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+    58→  pdf: 'bg-red-500/10 text-red-600 dark:text-red-400',
+    59→  doc: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+    60→  txt: 'bg-neutral-500/10 text-neutral-600 dark:text-neutral-400',
+    61→}
+    62→
+    63→// ── Component ──────────────────────────────────────────────────
+    64→
+    65→export function ArticleForm({
+    66→  initialData = {},
+    67→  onSubmit, onCancel,
+    68→  mode,
+    69→  categories, authors,
+    70→  variant = 'dialog',
+    71→}: ArticleFormProps) {
+    72→  // ── State ─────────────────────────────────────────────────
+    73→  const [title, setTitle] = useState(initialData.title || '')
+    74→  const [slug, setSlug] = useState(initialData.slug || '')
+    75→  const [excerpt, setExcerpt] = useState(initialData.excerpt || '')
+    76→  const [content, setContent] = useState(initialData.content || '')
+    77→  const [coverImage, setCoverImage] = useState(initialData.coverImage || '')
+    78→  const [categoryId, setCategoryId] = useState(initialData.categoryId || '')
+    79→  const [authorId, setAuthorId] = useState(initialData.authorId || '')
+    80→  const [readTime, setReadTime] = useState(initialData.readTime || '5')
+    81→  const [tags, setTags] = useState(initialData.tags || '')
+    82→  const [featured, setFeatured] = useState(initialData.isFeatured || false)
+    83→  const [pinned, setPinned] = useState(initialData.isPinned || false)
+    84→  const [saving, setSaving] = useState(false)
+    85→  const [mdTab, setMdTab] = useState('write')
+    86→  const [parsing, setParsing] = useState(false)
+    87→  const [parsedFileName, setParsedFileName] = useState<string | null>(null)
+    88→  const [parsedFileType, setParsedFileType] = useState<string>('')
+    89→  const [sidebarSections, setSidebarSections] = useState({
+    90→    publish: true, tags: true, options: true,
+    91→  })
+    92→  const fileInputRef = useRef<HTMLInputElement>(null)
+    93→  const [docDragOver, setDocDragOver] = useState(false)
+    94→
+    95→  const wc = useMemo(() => wordCount(content), [content])
+    96→  const autoReadTime = useMemo(() => estReadTime(wc), [wc])
+    97→  const tagList = useMemo(() => tags.split(',').map(t => t.trim()).filter(Boolean), [tags])
+    98→
+    99→  // Whether the form has content (to decide if we show the upload hero or the editor)
+   100→  const hasContent = !!(content || title)
+   101→
+   102→  // ── Helpers ───────────────────────────────────────────────
+   103→  const handleTitleChange = (val: string) => {
+   104→    setTitle(val)
+   105→    if (mode === 'create') setSlug(slugify(val))
+   106→  }
+   107→
+   108→  const removeTag = (idx: number) => {
+   109→    const list = [...tagList]; list.splice(idx, 1)
+   110→    setTags(list.join(', '))
+   111→  }
+   112→
+   113→  const handleTagsKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+   114→    if (e.key === 'Enter' || e.key === ',') {
+   115→      e.preventDefault()
+   116→      const input = e.currentTarget
+   117→      const val = input.value.trim()
+   118→      if (val && !tagList.includes(val)) {
+   119→        setTags(prev => prev ? `${prev}, ${val}` : val)
+   120→      }
+   121→      input.value = ''
+   122→    }
+   123→  }
+   124→
+   125→  const canSubmit = title && slug && categoryId && authorId
+   126→
+   127→  const handleSubmit = async () => {
+   128→    if (!canSubmit || saving) return
+   129→    setSaving(true)
+   130→    try {
+   131→      await onSubmit({
+   132→        title, slug, excerpt, content, coverImage,
+   133→        categoryId, authorId, readTime, tags,
+   134→        isFeatured: featured, isPinned: pinned,
+   135→      })
+   136→    } catch { /* caller handles errors */ }
+   137→    setSaving(false)
+   138→  }
+   139→
+   140→  // ── File import ────────────────────────────────────────────
+   141→  const processFile = useCallback(async (file: File) => {
+   142→    setParsing(true)
+   143→    setParsedFileName(file.name)
+   144→    const ext = FILE_ICONS[file.type] || 'txt'
+   145→    setParsedFileType(ext)
+   146→    try {
+   147→      const form = new FormData(); form.append('file', file)
+   148→      const res = await fetch('/api/admin/parse-file', { method: 'POST', body: form })
+   149→      const json = await res.json()
+   150→      if (json.markdown) setContent(json.markdown)
+   151→      if (json.titleHint && !title) handleTitleChange(json.titleHint)
+   152→      if (json.excerpt && !excerpt) setExcerpt(json.excerpt)
+   153→      if (json.readTime) setReadTime(String(json.readTime))
+   154→      if (json.tags) setTags(prev => prev ? `${prev}, ${json.tags}` : json.tags)
+   155→    } catch { /* silent */ }
+   156→    setParsing(false)
+   157→  }, [title, excerpt, handleTitleChange])
+   158→
+   159→  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+   160→    const file = e.target.files?.[0]; if (!file) return
+   161→    await processFile(file)
+   162→    e.target.value = ''
+   163→  }
+   164→
+   165→  // Document drag & drop
+   166→  const handleDocDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setDocDragOver(true) }, [])
+   167→  const handleDocDragLeave = useCallback((e: React.DragEvent) => { e.preventDefault(); setDocDragOver(false) }, [])
+   168→  const handleDocDrop = useCallback(async (e: React.DragEvent) => {
+   169→    e.preventDefault(); setDocDragOver(false)
+   170→    const file = e.dataTransfer.files?.[0]
+   171→    if (file && FILE_ICONS[file.type]) {
+   172→      await processFile(file)
+   173→    }
+   174→  }, [processFile])
+   175→
+   176→  // ── Inner form content (shared between dialog & page) ──────
+   177→  const formContent = (
+   178→    <div className={variant === 'dialog' ? '' : 'max-w-7xl mx-auto'}>
+   179→      {/* Header */}
+   180→      <div className="mb-6 flex items-center justify-between">
+   181→        <div>
+   182→          <h2 className="font-serif text-2xl font-bold">
+   183→            {mode === 'edit' ? 'Edit Article' : 'New Article'}
+   184→          </h2>
+   185→          <p className="text-sm text-muted-foreground mt-0.5">
+   186→            {mode === 'edit' ? 'Update and republish your story' : 'Start with a document or write from scratch'}
+   187→          </p>
+   188→        </div>
+   189→        {/* Word count pill in header */}
+   190→        {hasContent && (
+   191→          <div className="hidden sm:flex items-center gap-3 text-xs text-muted-foreground">
+   192→            <span className="flex items-center gap-1 font-mono"><FileText className="h-3.5 w-3.5" />{wc.toLocaleString()} words</span>
+   193→            <span className="flex items-center gap-1 font-mono"><Clock className="h-3.5 w-3.5" />~{autoReadTime} min read</span>
+   194→          </div>
+   195→        )}
+   196→      </div>
+   197→
+   198→      {/* ══════════════════════════════════════════════════════
+   199→          HERO: Document Upload (create mode, when no content yet)
+   200→         ══════════════════════════════════════════════════════ */}
+   201→      {mode === 'create' && !hasContent && (
+   202→        <div className="mb-8">
+   203→          <div
+   204→            onDragOver={handleDocDragOver}
+   205→            onDragLeave={handleDocDragLeave}
+   206→            onDrop={handleDocDrop}
+   207→            onClick={() => fileInputRef.current?.click()}
+   208→            className={`relative rounded-3xl border-2 border-dashed transition-all cursor-pointer overflow-hidden
+   209→              ${parsing
+   210→                ? 'border-primary/60 bg-primary/5'
+   211→                : docDragOver
+   212→                  ? 'border-primary bg-primary/5 scale-[1.01]'
+   213→                  : 'border-border/80 hover:border-primary/40 bg-card'
+   214→              }`
+   215→            }
+   216→          >
+   217→            <div className="py-16 px-8 flex flex-col items-center justify-center gap-4">
+   218→              {parsing ? (
+   219→                <>
+   220→                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+   221→                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+   222→                  </div>
+   223→                  <div className="text-center">
+   224→                    <p className="text-base font-semibold">Parsing your document…</p>
+   225→                    {parsedFileName && (
+   226→                      <p className="text-sm text-muted-foreground mt-1 font-mono">{parsedFileName}</p>
+   227→                    )}
+   228→                  </div>
+   229→                </>
+   230→              ) : (
+   231→                <>
+   232→                  <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
+   233→                    <FileUp className="h-8 w-8 text-muted-foreground/50" />
+   234→                  </div>
+   235→                  <div className="text-center">
+   236→                    <p className="text-lg font-semibold">Upload a document to get started</p>
+   237→                    <p className="text-sm text-muted-foreground mt-1.5 max-w-md">
+   238→                      Drop your DOCX, PDF, or TXT file here. We'll extract the title, content, and metadata automatically.
+   239→                    </p>
+   240→                  </div>
+   241→                  <div className="flex items-center gap-3 mt-2">
+   242→                    {['DOCX', 'PDF', 'TXT'].map(fmt => (
+   243→                      <span key={fmt} className={`px-3 py-1 rounded-lg text-[11px] font-mono font-bold ${FILE_COLORS[fmt.toLowerCase()]}`}>
+   244→                        .{fmt}
+   245→                      </span>
+   246→                    ))}
+   247→                  </div>
+   248→                  <div className="flex items-center gap-2 mt-3">
+   249→                    <Button size="sm" className="gap-2">
+   250→                      <Upload className="h-4 w-4" /> Choose File
+   251→                    </Button>
+   252→                    <span className="text-xs text-muted-foreground">or drag & drop</span>
+   253→                  </div>
+   254→                </>
+   255→              )}
+   256→            </div>
+   257→          </div>
+   258→
+   259→          {/* Parsed success banner */}
+   260→          {parsedFileName && !parsing && hasContent && (
+   261→            <div className="mt-4 flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30 px-5 py-3">
+   262→              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
+   263→              <div className="flex-1 min-w-0">
+   264→                <p className="text-sm font-medium text-green-800 dark:text-green-300">
+   265→                  Imported from <span className="font-mono">{parsedFileName}</span>
+   266→                </p>
+   267→                <p className="text-xs text-green-600/70 dark:text-green-400/70 mt-0.5">
+   268→                  Title, content, excerpt & tags extracted. Review and fill in the details below.
+   269→                </p>
+   270→              </div>
+   271→              <button
+   272→                onClick={() => { setContent(''); setTitle(''); setExcerpt(''); setTags(''); setParsedFileName(null) }}
+   273→                className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+   274→              >
+   275→                Undo
+   276→              </button>
+   277→            </div>
+   278→          )}
+   279→
+   280→          <input
+   281→            ref={fileInputRef}
+   282→            type="file"
+   283→            accept=".docx,.pdf,.doc,.txt"
+   284→            onChange={handleFileUpload}
+   285→            disabled={parsing}
+   286→            className="hidden"
+   287→          />
+   288→        </div>
+   289→      )}
+   290→
+   291→      {/* ══════════════════════════════════════════════════════
+   292→          MAIN FORM: Two-column layout (visible when editing or
+   293→          when create mode has content)
+   294→         ══════════════════════════════════════════════════════ */}
+   295→      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8">
+   296→        {/* ═══ LEFT COLUMN ═══ */}
+   297→        <div className="space-y-5 min-w-0">
+   298→          {/* Parsed success banner (when already has content) */}
+   299→          {mode === 'create' && parsedFileName && (
+   300→            <div className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30 px-5 py-3">
+   301→              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
+   302→              <div className="flex-1 min-w-0">
+   303→                <p className="text-sm font-medium text-green-800 dark:text-green-300">
+   304→                  Imported from <span className="font-mono">{parsedFileName}</span>
+   305→                </p>
+   306→                <p className="text-xs text-green-600/70 dark:text-green-400/70 mt-0.5">
+   307→                  Review the extracted content below. You can upload a different file to replace it.
+   308→                </p>
+   309→              </div>
+   310→              <button
+   311→                onClick={() => fileInputRef.current?.click()}
+   312→                disabled={parsing}
+   313→                className="text-xs text-primary font-medium hover:underline shrink-0 disabled:opacity-50"
+   314→              >
+   315→                {parsing ? 'Parsing…' : 'Replace file'}
+   316→              </button>
+   317→              <input
+   318→                ref={fileInputRef}
+   319→                type="file"
+   320→                accept=".docx,.pdf,.doc,.txt"
+   321→                onChange={handleFileUpload}
+   322→                disabled={parsing}
+   323→                className="hidden"
+   324→              />
+   325→            </div>
+   326→          )}
+   327→
+   328→          {/* Cover Image */}
+   329→          <ImageUpload
+   330→            value={coverImage}
+   331→            onChange={setCoverImage}
+   332→            folder="posts"
+   333→            variant="cover"
+   334→          />
+   335→
+   336→          {/* Title */}
+   337→          <div>
+   338→            <input
+   339→              value={title}
+   340→              onChange={e => handleTitleChange(e.target.value)}
+   341→              placeholder="Article title…"
+   342→              className="w-full text-2xl lg:text-3xl font-serif font-bold bg-transparent border-0 border-b-2 border-transparent focus:border-border outline-none placeholder:text-muted-foreground/40 py-2 transition-colors"
+   343→            />
+   344→          </div>
+   345→
+   346→          {/* Slug + Excerpt row on larger screens */}
+   347→          <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-5">
+   348→            {/* Slug */}
+   349→            <div>
+   350→              <div className="flex items-center gap-2 mb-1.5">
+   351→                <Hash className="h-3 w-3 text-muted-foreground" />
+   352→                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">URL Slug</span>
+   353→              </div>
+   354→              <div className="flex items-center gap-2">
+   355→                <span className="text-[11px] font-mono text-muted-foreground/50 shrink-0 hidden sm:inline">/articles/</span>
+   356→                <input
+   357→                  value={slug}
+   358→                  onChange={e => setSlug(e.target.value)}
+   359→                  placeholder="article-slug"
+   360→                  className="flex-1 font-mono text-sm bg-muted/30 rounded-lg px-3 py-2 border border-transparent focus:border-border outline-none placeholder:text-muted-foreground/40 min-w-0 transition-colors"
+   361→                />
+   362→              </div>
+   363→            </div>
+   364→
+   365→            {/* Read Time */}
+   366→            <div>
+   367→              <div className="flex items-center gap-2 mb-1.5">
+   368→                <Clock className="h-3 w-3 text-muted-foreground" />
+   369→                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Read Time</span>
+   370→                <span className="text-[10px] font-mono text-muted-foreground/50 ml-auto">auto: ~{autoReadTime} min</span>
+   371→              </div>
+   372→              <div className="flex items-center gap-2">
+   373→                <Input
+   374→                  type="number" min={1} max={60}
+   375→                  value={readTime}
+   376→                  onChange={e => setReadTime(e.target.value)}
+   377→                  className="font-mono text-sm bg-muted/30"
+   378→                />
+   379→                <span className="text-xs text-muted-foreground shrink-0">minutes</span>
+   380→              </div>
+   381→            </div>
+   382→          </div>
+   383→
+   384→          {/* Excerpt */}
+   385→          <div>
+   386→            <div className="flex items-center justify-between mb-1.5">
+   387→              <div className="flex items-center gap-2">
+   388→                <Type className="h-3 w-3 text-muted-foreground" />
+   389→                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Excerpt</span>
+   390→              </div>
+   391→              <span className="text-[10px] font-mono text-muted-foreground/50">{excerpt.length}/300</span>
+   392→            </div>
+   393→            <Textarea
+   394→              value={excerpt}
+   395→              onChange={e => setExcerpt(e.target.value.slice(0, 300))}
+   396→              placeholder="A brief summary that appears in article cards and SEO…"
+   397→              rows={3}
+   398→              className="bg-muted/30 rounded-xl text-sm resize-none"
+   399→            />
+   400→          </div>
+   401→
+   402→          {/* Content Editor */}
+   403→          <div>
+   404→            <Tabs value={mdTab} onValueChange={setMdTab} className="rounded-2xl border overflow-hidden bg-card">
+   405→              <TabsList className="w-full rounded-none border-b bg-muted/30 h-11 px-2">
+   406→                <TabsTrigger value="write" className="flex-1 gap-1.5 rounded-lg text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">
+   407→                  <Pencil className="h-3.5 w-3.5" /> Write
+   408→                </TabsTrigger>
+   409→                <TabsTrigger value="split" className="flex-1 gap-1.5 rounded-lg text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">
+   410→                  <Split className="h-3.5 w-3.5" /> Split
+   411→                </TabsTrigger>
+   412→                <TabsTrigger value="preview" className="flex-1 gap-1.5 rounded-lg text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">
+   413→                  <Eye className="h-3.5 w-3.5" /> Preview
+   414→                  <span className="font-mono text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md">{wc.toLocaleString()}</span>
+   415→                </TabsTrigger>
+   416→              </TabsList>
+   417→
+   418→              <TabsContent value="write" className="mt-0">
+   419→                <Textarea
+   420→                  value={content}
+   421→                  onChange={e => setContent(e.target.value)}
+   422→                  placeholder="Start writing your article in markdown…"
+   423→                  className="rounded-none border-0 font-mono text-sm resize-y min-h-[500px] focus-visible:ring-0"
+   424→                />
+   425→              </TabsContent>
+   426→
+   427→              <TabsContent value="split" className="mt-0">
+   428→                <div className="grid grid-cols-1 md:grid-cols-2 divide-x">
+   429→                  <Textarea
+   430→                    value={content}
+   431→                    onChange={e => setContent(e.target.value)}
+   432→                    placeholder="Markdown…"
+   433→                    className="rounded-none border-0 font-mono text-sm resize-none min-h-[500px] focus-visible:ring-0"
+   434→                  />
+   435→                  <ScrollArea className="max-h-[500px]">
+   436→                    <div className="prose prose-sm dark:prose-invert max-w-none p-4">
+   437→                      {content ? <ReactMarkdown>{content}</ReactMarkdown> : <p className="text-muted-foreground italic">Nothing to preview…</p>}
+   438→                    </div>
+   439→                  </ScrollArea>
+   440→                </div>
+   441→              </TabsContent>
+   442→
+   443→              <TabsContent value="preview" className="mt-0">
+   444→                <ScrollArea className="max-h-[600px]">
+   445→                  <div className="prose prose-sm dark:prose-invert max-w-none p-4">
+   446→                    {content ? <ReactMarkdown>{content}</ReactMarkdown> : <p className="text-muted-foreground italic">Nothing to preview yet…</p>}
+   447→                  </div>
+   448→                </ScrollArea>
+   449→              </TabsContent>
+   450→            </Tabs>
+   451→          </div>
+   452→        </div>
+   453→
+   454→        {/* ═══ RIGHT SIDEBAR ═══ */}
+   455→        <div className="space-y-4">
+   456→          {/* ── Publishing Section ── */}
+   457→          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+   458→            <button
+   459→              type="button"
+   460→              onClick={() => setSidebarSections(s => ({ ...s, publish: !s.publish }))}
+   461→              className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors"
+   462→            >
+   463→              <span className="text-sm font-semibold">Publishing</span>
+   464→              {sidebarSections.publish
+   465→                ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+   466→                : <ChevronDown className="h-4 w-4 text-muted-foreground" />
+   467→              }
+   468→            </button>
+   469→            {sidebarSections.publish && (
+   470→              <div className="px-5 pb-5 space-y-4 border-t border-border pt-4">
+   471→                <div>
+   472→                  <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block mb-1.5">Category</label>
+   473→                  <Select value={categoryId} onValueChange={setCategoryId}>
+   474→                    <SelectTrigger className="w-full"><SelectValue placeholder="Select category" /></SelectTrigger>
+   475→                    <SelectContent>
+   476→                      {categories.map(c => (
+   477→                        <SelectItem key={c.id} value={c.id}>
+   478→                          <span className="flex items-center gap-2">
+   479→                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+   480→                            {c.name}
+   481→                          </span>
+   482→                        </SelectItem>
+   483→                      ))}
+   484→                    </SelectContent>
+   485→                  </Select>
+   486→                </div>
+   487→
+   488→                <div>
+   489→                  <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block mb-1.5">Author</label>
+   490→                  <Select value={authorId} onValueChange={setAuthorId}>
+   491→                    <SelectTrigger className="w-full"><SelectValue placeholder="Select author" /></SelectTrigger>
+   492→                    <SelectContent>
+   493→                      {authors.map(a => (
+   494→                        <SelectItem key={a.id} value={a.id}>
+   495→                          {a.name} <span className="text-muted-foreground">({a.role})</span>
+   496→                        </SelectItem>
+   497→                      ))}
+   498→                    </SelectContent>
+   499→                  </Select>
+   500→                </div>
+   501→              </div>
+   502→            )}
+   503→          </div>
+   504→
+   505→          {/* ── Tags Section ── */}
+   506→          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+   507→            <button
+   508→              type="button"
+   509→              onClick={() => setSidebarSections(s => ({ ...s, tags: !s.tags }))}
+   510→              className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors"
+   511→            >
+   512→              <span className="text-sm font-semibold">Tags</span>
+   513→              {sidebarSections.tags
+   514→                ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+   515→                : <ChevronDown className="h-4 w-4 text-muted-foreground" />
+   516→              }
+   517→            </button>
+   518→            {sidebarSections.tags && (
+   519→              <div className="px-5 pb-5 space-y-3 border-t border-border pt-4">
+   520→                {tagList.length > 0 && (
+   521→                  <div className="flex flex-wrap gap-1.5">
+   522→                    {tagList.map((tag, i) => (
+   523→                      <Badge key={i} variant="secondary" className="gap-1 text-xs pr-1">
+   524→                        {tag}
+   525→                        <button onClick={() => removeTag(i)} className="ml-0.5 hover:text-destructive"><X className="h-2.5 w-2.5" /></button>
+   526→                      </Badge>
+   527→                    ))}
+   528→                  </div>
+   529→                )}
+   530→                <Input
+   531→                  placeholder="Type and press Enter to add…"
+   532→                  className="text-sm"
+   533→                  defaultValue={''}
+   534→                  onKeyDown={handleTagsKeyDown}
+   535→                />
+   536→              </div>
+   537→            )}
+   538→          </div>
+   539→
+   540→          {/* ── Options Section ── */}
+   541→          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+   542→            <button
+   543→              type="button"
+   544→              onClick={() => setSidebarSections(s => ({ ...s, options: !s.options }))}
+   545→              className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors"
+   546→            >
+   547→              <span className="text-sm font-semibold">Options</span>
+   548→              {sidebarSections.options
+   549→                ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+   550→                : <ChevronDown className="h-4 w-4 text-muted-foreground" />
+   551→              }
+   552→            </button>
+   553→            {sidebarSections.options && (
+   554→              <div className="px-5 pb-5 space-y-3 border-t border-border pt-4">
+   555→                <div className="flex items-center justify-between py-1">
+   556→                  <div className="flex items-center gap-2.5">
+   557→                    <Star className={`h-4 w-4 ${featured ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground'}`} />
+   558→                    <div>
+   559→                      <span className="text-sm">Featured</span>
+   560→                      <p className="text-[10px] text-muted-foreground">Show in featured section</p>
+   561→                    </div>
+   562→                  </div>
+   563→                  <Switch checked={featured} onCheckedChange={setFeatured} />
+   564→                </div>
+   565→                <div className="flex items-center justify-between py-1">
+   566→                  <div className="flex items-center gap-2.5">
+   567→                    <Pin className={`h-4 w-4 ${pinned ? 'text-primary' : 'text-muted-foreground'}`} />
+   568→                    <div>
+   569→                      <span className="text-sm">Pinned</span>
+   570→                      <p className="text-[10px] text-muted-foreground">Stick to top of listings</p>
+   571→                    </div>
+   572→                  </div>
+   573→                  <Switch checked={pinned} onCheckedChange={setPinned} />
+   574→                </div>
+   575→              </div>
+   576→            )}
+   577→          </div>
+   578→
+   579→          {/* ── Upload Another (create mode, when has content) ── */}
+   580→          {mode === 'create' && hasContent && !parsedFileName && (
+   581→            <div className="rounded-2xl border border-dashed border-border p-4">
+   582→              <div
+   583→                className="relative border-2 border-dashed border-border rounded-xl p-4 text-center hover:border-primary/50 transition-colors cursor-pointer"
+   584→                onClick={() => fileInputRef.current?.click()}
+   585→              >
+   586→                <input
+   587→                  ref={fileInputRef}
+   588→                  type="file"
+   589→                  accept=".docx,.pdf,.doc,.txt"
+   590→                  onChange={handleFileUpload}
+   591→                  disabled={parsing}
+   592→                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+   593→                />
+   594→                <div className="flex flex-col items-center gap-1.5">
+   595→                  {parsing
+   596→                    ? <Loader2 className="h-5 w-5 animate-spin text-primary" />
+   597→                    : <Upload className="h-5 w-5 text-muted-foreground" />
+   598→                  }
+   599→                  <p className="text-xs font-medium">{parsing ? 'Parsing…' : 'Import from DOCX, PDF, or TXT'}</p>
+   600→                  <p className="text-[9px] font-mono text-muted-foreground/60">Extracts title, excerpt, content & tags</p>
+   601→                </div>
+   602→              </div>
+   603→            </div>
+   604→          )}
+   605→
+   606→          {/* ── Stats ── */}
+   607→          <div className="rounded-2xl bg-muted/40 p-4 grid grid-cols-2 gap-3">
+   608→            <div className="flex items-center gap-2.5">
+   609→              <div className="w-8 h-8 rounded-lg bg-background flex items-center justify-center">
+   610→                <FileText className="h-4 w-4 text-muted-foreground" />
+   611→              </div>
+   612→              <div>
+   613→                <p className="font-mono text-sm font-semibold leading-none">{wc.toLocaleString()}</p>
+   614→                <p className="text-[10px] text-muted-foreground mt-0.5">words</p>
+   615→              </div>
+   616→            </div>
+   617→            <div className="flex items-center gap-2.5">
+   618→              <div className="w-8 h-8 rounded-lg bg-background flex items-center justify-center">
+   619→                <Clock className="h-4 w-4 text-muted-foreground" />
+   620→              </div>
+   621→              <div>
+   622→                <p className="font-mono text-sm font-semibold leading-none">~{autoReadTime}</p>
+   623→                <p className="text-[10px] text-muted-foreground mt-0.5">min read</p>
+   624→              </div>
+   625→            </div>
+   626→          </div>
+   627→
+   628→          {/* ── Action Buttons ── */}
+   629→          <div className="lg:sticky lg:bottom-4 pt-2">
+   630→            <div className="flex items-center gap-3 rounded-2xl border border-border bg-background/95 backdrop-blur-sm p-4">
+   631→              <Button
+   632→                onClick={handleSubmit}
+   633→                disabled={!canSubmit || saving}
+   634→                className="flex-1 gap-2"
+   635→              >
+   636→                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+   637→                {saving ? 'Saving…' : mode === 'edit' ? 'Update Article' : 'Publish Article'}
+   638→              </Button>
+   639→              <Button variant="ghost" onClick={onCancel} className="text-xs">Cancel</Button>
+   640→            </div>
+   641→          </div>
+   642→        </div>
+   643→      </div>
+   644→    </div>
+   645→  )
+   646→
+   647→  // ── Render: Dialog vs Page ─────────────────────────────────
+   648→  if (variant === 'dialog') {
+   649→    return (
+   650→      <div className="max-h-[90vh] overflow-y-auto">
+   651→        {formContent}
+   652→      </div>
+   653→    )
+   654→  }
+   655→
+   656→  return formContent
+   657→}
