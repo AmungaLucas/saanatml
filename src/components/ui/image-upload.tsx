@@ -196,36 +196,58 @@ export function ImageUpload({
         </div>
       )}
 
-      {/* CDN File Picker Dialog */}
+      {/* CDN File Picker — z-[100] to escape parent Dialog overlay */}
       {showPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowPicker(false)}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowPicker(false)}>
           <div
-            className="bg-background border border-border rounded-xl shadow-2xl w-[90vw] max-w-2xl max-h-[70vh] flex flex-col"
+            className="bg-background border border-border rounded-2xl shadow-2xl w-[92vw] max-w-3xl max-h-[80vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-4 border-b border-border">
-              <h3 className="font-serif text-base font-semibold">CDN Library — {folder}</h3>
-              <button onClick={() => setShowPicker(false)} className="text-muted-foreground hover:text-foreground">
-                <X className="h-5 w-5" />
-              </button>
+              <div>
+                <h3 className="font-serif text-lg font-semibold">CDN Media Library</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Select an image or upload a new one</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                  Upload New
+                </button>
+                <button onClick={() => setShowPicker(false)} className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-3">
+            <div className="flex-1 overflow-y-auto p-4">
               {loadingFiles ? (
-                <div className="flex items-center justify-center py-12 text-muted-foreground">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+                <div className="flex items-center justify-center py-16 text-muted-foreground">
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading media…
                 </div>
               ) : cdnFiles.length === 0 ? (
-                <p className="text-center text-sm text-muted-foreground py-12">No files in this folder.</p>
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <ImageIcon className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                  <p className="text-sm text-muted-foreground">No files in this folder.</p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">Upload an image to get started.</p>
+                </div>
               ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                   {cdnFiles.map(file => (
                     <button
                       key={file.path}
                       onClick={() => { onChange(file.url); setShowPicker(false) }}
-                      className={`rounded-lg overflow-hidden border-2 aspect-square bg-secondary hover:border-primary transition-colors ${value === file.url ? 'border-primary' : 'border-transparent'}`}
+                      className={`group relative rounded-xl overflow-hidden border-2 aspect-square bg-secondary hover:border-primary/70 transition-all ${value === file.url ? 'border-primary ring-2 ring-primary/20' : 'border-transparent'}`}
                       title={file.filename}
                     >
                       <img src={file.url} alt={file.filename} className="w-full h-full object-cover" loading="lazy" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-end">
+                        <span className="w-full px-2 py-1.5 text-[10px] font-mono text-white truncate opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/60 to-transparent">
+                          {file.filename}
+                        </span>
+                      </div>
                     </button>
                   ))}
                 </div>

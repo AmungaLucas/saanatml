@@ -19,9 +19,10 @@ import {
   TrendingUp, Pencil, ExternalLink, Palette, Flag, CheckCircle, XCircle,
   Upload, Loader2, Search, Shield, AlertTriangle, ChevronRight, Filter,
   LayoutDashboard, MessagesSquare, UserCog, FolderOpen, Megaphone, Paintbrush, UsersRound,
-  Menu, X, ChevronDown,
+  Menu, X, ChevronDown, ImageIcon, Copy, Check,
 } from 'lucide-react'
 import { ImageUpload } from '@/components/ui/image-upload'
+import { type CDNFile, CDN_FOLDERS, type CDNFolder } from '@/lib/cdn'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
@@ -118,6 +119,7 @@ const navItems = [
   { id: 'makers', label: 'Makers', icon: Paintbrush },
   { id: 'authors', label: 'Authors', icon: UserCog },
   { id: 'categories', label: 'Categories', icon: FolderOpen },
+  { id: 'media', label: 'Media', icon: ImageIcon },
   { id: 'subscribers', label: 'Subscribers', icon: Megaphone },
 ] as const
 
@@ -144,6 +146,20 @@ export default function AdminPage() {
   const [modPage, setMmodPage] = useState(1)
   const [modTotalPages, setMmodTotalPages] = useState(1)
   const [modLoading, setMmodLoading] = useState(false)
+
+  // Media library state
+  const [mediaFiles, setMediaFiles] = useState<CDNFile[]>([])
+  const [mediaLoading, setMediaLoading] = useState(false)
+  const [mediaFolder, setMediaFolder] = useState<CDNFolder | ''>('')
+  const [mediaSearch, setMediaSearch] = useState('')
+  const [mediaPage, setMediaPage] = useState(1)
+  const [mediaTotalPages, setMediaTotalPages] = useState(1)
+  const [mediaTotal, setMediaTotal] = useState(0)
+  const [mediaDeleting, setMediaDeleting] = useState<string | null>(null)
+  const [mediaUploading, setMediaUploading] = useState(false)
+  const [mediaUploadFolder, setMediaUploadFolder] = useState<CDNFolder>('misc')
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
+  const [mediaPreview, setMediaPreview] = useState<CDNFile | null>(null)
 
   // Article form
   const [artDialog, setArtDialog] = useState(false)
@@ -504,6 +520,70 @@ export default function AdminPage() {
     if (!confirm('Remove this subscriber?')) return
     const res = await fetch(`/api/admin/subscribers/${id}`, { method: 'DELETE' })
     if (res.ok) { setSubscribers(p => p.filter(s => s.id !== id)); fetchAll() }
+  }
+
+  // ── Media Library helpers ─────────────────────────────────
+  const fetchMedia = useCallback(async () => {
+    setMediaLoading(true)
+    try {
+      const params = new URLSearchParams({ page: String(mediaPage), limit: '40' })
+      if (mediaFolder) params.set('folder', mediaFolder)
+      const res = await fetch(`/api/cdn/list?${params}`)
+      const json = await res.json()
+      if (json.success) {
+        let files = json.data.files || []
+        if (mediaSearch) {
+          const q = mediaSearch.toLowerCase()
+          files = files.filter((f: CDNFile) => f.filename.toLowerCase().includes(q) || f.path.toLowerCase().includes(q))
+        }
+        setMediaFiles(files)
+        setMediaTotal(json.data.total || 0)
+        setMediaTotalPages(json.data.totalPages || 1)
+      }
+    } catch { /* silent */ }
+    setMediaLoading(false)
+  }, [mediaPage, mediaFolder, mediaSearch])
+
+  useEffect(() => { if (activeTab === 'media') fetchMedia() }, [activeTab, fetchMedia])
+
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const allowed = ['image/jpeg','image/png','image/gif','image/webp','image/svg+xml','image/avif']
+    if (!allowed.includes(file.type)) return
+    if (file.size > 10 * 1024 * 1024) return
+    setMediaUploading(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      form.append('folder', mediaUploadFolder)
+      const res = await fetch('/api/cdn/upload', { method: 'POST', body: form })
+      const json = await res.json()
+      if (json.success) fetchMedia()
+    } catch { /* silent */ }
+    setMediaUploading(false)
+    e.target.value = ''
+  }
+
+  const handleMediaDelete = async (file: CDNFile) => {
+    if (!confirm(`Delete "${file.filename}"?`)) return
+    setMediaDeleting(file.path)
+    try {
+      const res = await fetch('/api/cdn/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: file.path }) })
+      const json = await res.json()
+      if (json.success) fetchMedia()
+    } catch { /* silent */ }
+    setMediaDeleting(null)
+  }
+
+  const copyToClipboard = async (url: string) => {
+    try { await navigator.clipboard.writeText(url); setCopiedUrl(url); setTimeout(() => setCopiedUrl(null), 2000) } catch { /* silent */ }
+  }
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / 1048576).toFixed(1) + ' MB'
   }
 
   // ── Navigate helper ────────────────────────────────────────
@@ -1233,6 +1313,118 @@ export default function AdminPage() {
           )}
 
           {/* ═══════════════════ SUBSCRIBERS ═══════════════════ */}
+          {activeTab === 'media' && (
+            <div className="animate-fadeIn">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="font-serif text-2xl font-bold">Media Library{mediaTotal > 0 ? ` (${mediaTotal})` : ''}</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Upload, browse, and manage CDN images</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select value={mediaUploadFolder} onValueChange={v => setMediaUploadFolder(v as CDNFolder)}>
+                    <SelectTrigger className="w-32 text-xs h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CDN_FOLDERS.map(f => <SelectItem key={f} value={f} className="text-xs capitalize">{f}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer">
+                    {mediaUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    {mediaUploading ? 'Uploading…' : 'Upload'}
+                    <input type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml,image/avif" onChange={handleMediaUpload} disabled={mediaUploading} className="hidden" />
+                  </label>
+                </div>
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row gap-3 mb-6">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input value={mediaSearch} onChange={e => { setMediaSearch(e.target.value); setMediaPage(1) }} placeholder="Search files…" className="pl-9 text-sm" />
+                </div>
+                <div className="flex gap-1.5 flex-wrap">
+                  <button onClick={() => { setMediaFolder(''); setMediaPage(1) }} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${mediaFolder === '' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}>All</button>
+                  {CDN_FOLDERS.map(f => (
+                    <button key={f} onClick={() => { setMediaFolder(f); setMediaPage(1) }} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize ${mediaFolder === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}>{f}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Grid */}
+              {mediaLoading ? (
+                <div className="flex items-center justify-center py-24 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin mr-3" /> Loading media…
+                </div>
+              ) : mediaFiles.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24 text-center">
+                  <ImageIcon className="h-12 w-12 text-muted-foreground/20 mb-4" />
+                  <p className="text-sm font-medium text-muted-foreground">No media files found</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Upload images or change the folder filter</p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    {mediaFiles.map(file => (
+                      <div key={file.path} className="group relative rounded-xl overflow-hidden border border-border bg-secondary aspect-square">
+                        <img src={file.url} alt={file.filename} className="w-full h-full object-cover" loading="lazy" />
+                        {/* Hover overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
+                          <p className="text-[10px] font-mono text-white truncate mb-1">{file.filename}</p>
+                          <p className="text-[9px] text-white/60 font-mono">{formatSize(file.size)}</p>
+                        </div>
+                        {/* Action buttons */}
+                        <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => copyToClipboard(file.url)} className="p-1.5 rounded-md bg-black/60 text-white hover:bg-black/80 transition-colors" title="Copy URL">
+                            {copiedUrl === file.url ? <Check className="h-3 w-3 text-green-400" /> : <Copy className="h-3 w-3" />}
+                          </button>
+                          <button onClick={() => setMediaPreview(file)} className="p-1.5 rounded-md bg-black/60 text-white hover:bg-black/80 transition-colors" title="Preview">
+                            <Eye className="h-3 w-3" />
+                          </button>
+                          <button onClick={() => handleMediaDelete(file)} disabled={mediaDeleting === file.path} className="p-1.5 rounded-md bg-black/60 text-white hover:bg-red-600 transition-colors" title="Delete">
+                            {mediaDeleting === file.path ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Pagination */}
+                  {mediaTotalPages > 1 && (
+                    <div className="flex items-center justify-center gap-2 mt-8">
+                      <button onClick={() => setMediaPage(p => Math.max(1, p - 1))} disabled={mediaPage <= 1} className="px-3 py-1.5 rounded-lg text-xs bg-secondary hover:bg-secondary/80 disabled:opacity-40 transition-colors">Prev</button>
+                      <span className="text-xs text-muted-foreground font-mono">Page {mediaPage} of {mediaTotalPages}</span>
+                      <button onClick={() => setMediaPage(p => Math.min(mediaTotalPages, p + 1))} disabled={mediaPage >= mediaTotalPages} className="px-3 py-1.5 rounded-lg text-xs bg-secondary hover:bg-secondary/80 disabled:opacity-40 transition-colors">Next</button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Image Preview Modal */}
+          {mediaPreview && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setMediaPreview(null)}>
+              <div className="relative max-w-4xl w-[92vw] max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-sm font-medium text-white truncate max-w-[60vw]">{mediaPreview.filename}</p>
+                    <p className="text-[10px] font-mono text-white/50">{mediaPreview.path} · {formatSize(mediaPreview.size)}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => copyToClipboard(mediaPreview.url)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/10 text-white text-xs hover:bg-white/20 transition-colors">
+                      {copiedUrl === mediaPreview.url ? <><Check className="h-3 w-3 text-green-400" /> Copied</> : <><Copy className="h-3 w-3" /> Copy URL</>}
+                    </button>
+                    <button onClick={() => setMediaPreview(null)} className="p-1.5 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors">
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-hidden rounded-xl">
+                  <img src={mediaPreview.url} alt={mediaPreview.filename} className="w-full h-full max-h-[75vh] object-contain rounded-xl" />
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'subscribers' && (
             <div className="animate-fadeIn">
               <div className="mb-6">
