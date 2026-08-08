@@ -20,6 +20,7 @@ import {
   BookOpen, Shield, Flag, XCircle, CheckCircle, Trash2,
   MessageSquare, TrendingUp, ChevronRight, Menu, X,
 } from 'lucide-react'
+import { ImageUpload } from '@/components/ui/image-upload'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 
@@ -640,19 +641,13 @@ export default function EditorDashboard() {
                     </TabsContent>
                   </Tabs>
                 </div>
-                <div>
-                  <label className={labelCls}>Cover Image URL</label>
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1">
-                      <Input value={formCoverImage} onChange={e => setFormCoverImage(e.target.value)} placeholder="https://example.com/image.jpg" className="font-mono text-xs" />
-                    </div>
-                    {formCoverImage && (
-                      <div className="h-16 w-24 shrink-0 overflow-hidden rounded-md border bg-muted">
-                        <img src={formCoverImage} alt="Cover preview" className="h-full w-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <ImageUpload
+                  value={formCoverImage}
+                  onChange={setFormCoverImage}
+                  folder="posts"
+                  label="Cover Image"
+                  placeholder="Upload or paste a CDN URL…"
+                />
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className={labelCls}>Tags</label>
@@ -894,19 +889,13 @@ export default function EditorDashboard() {
                 </TabsContent>
               </Tabs>
             </div>
-            <div>
-              <label className={labelCls}>Cover Image URL</label>
-              <div className="flex items-start gap-3">
-                <div className="flex-1">
-                  <Input value={editCoverImage} onChange={e => setEditCoverImage(e.target.value)} className="font-mono text-xs" />
-                </div>
-                {editCoverImage && (
-                  <div className="h-12 w-20 shrink-0 overflow-hidden rounded-md border bg-muted">
-                    <img src={editCoverImage} alt="Cover preview" className="h-full w-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                  </div>
-                )}
-              </div>
-            </div>
+            <ImageUpload
+              value={editCoverImage}
+              onChange={setEditCoverImage}
+              folder="posts"
+              label="Cover Image"
+              placeholder="Upload or paste a CDN URL…"
+            />
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelCls}>Tags</label>

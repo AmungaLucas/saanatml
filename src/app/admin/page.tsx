@@ -16,11 +16,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   FileText, Users, Tag, Calendar, Eye, MessageSquare, Star, Pin, Trash2,
   Plus, BarChart3, ArrowLeft, BookmarkCheck, BookOpen, Mail,
-  TrendingUp, ImageIcon, Pencil, ExternalLink, Palette, Flag, CheckCircle, XCircle,
+  TrendingUp, Pencil, ExternalLink, Palette, Flag, CheckCircle, XCircle,
   Upload, Loader2, Search, Shield, AlertTriangle, ChevronRight, Filter,
   LayoutDashboard, MessagesSquare, UserCog, FolderOpen, Megaphone, Paintbrush, UsersRound,
   Menu, X, ChevronDown,
 } from 'lucide-react'
+import { ImageUpload } from '@/components/ui/image-upload'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
@@ -1353,18 +1354,13 @@ export default function AdminPage() {
                 </Tabs>
               </div>
             )}
-            <div>
-              <label className={labelCls}>Cover Image URL</label>
-              <div className="relative">
-                <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input value={artCoverImage} onChange={e => setArtCoverImage(e.target.value)} placeholder="https://images.unsplash.com/..." className="font-mono text-sm pl-10" />
-              </div>
-              {artCoverImage && (
-                <div className="mt-2 rounded-lg overflow-hidden border border-border aspect-video bg-secondary">
-                  <img src={artCoverImage} alt="Cover preview" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
-                </div>
-              )}
-            </div>
+            <ImageUpload
+              value={artCoverImage}
+              onChange={setArtCoverImage}
+              folder="posts"
+              label="Cover Image"
+              placeholder="Upload or paste a CDN URL…"
+            />
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Tags</label>
@@ -1424,15 +1420,13 @@ export default function AdminPage() {
               <label className={labelCls}>Category</label>
               <Input value={evtCategory} onChange={e => setEvtCategory(e.target.value)} placeholder="e.g. Exhibition, Workshop, Concert" />
             </div>
-            <div>
-              <label className={labelCls}>Image URL</label>
-              <Input value={evtImageUrl} onChange={e => setEvtImageUrl(e.target.value)} placeholder="https://..." className="font-mono text-sm" />
-              {evtImageUrl && (
-                <div className="mt-2 rounded-lg overflow-hidden border border-border aspect-video bg-secondary">
-                  <img src={evtImageUrl} alt="Event preview" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
-                </div>
-              )}
-            </div>
+            <ImageUpload
+              value={evtImageUrl}
+              onChange={setEvtImageUrl}
+              folder="events"
+              label="Event Image"
+              placeholder="Upload or paste a CDN URL…"
+            />
             <div>
               <label className={labelCls}>Ticket URL</label>
               <Input value={evtTicketUrl} onChange={e => setEvtTicketUrl(e.target.value)} placeholder="https://ticketsite.com/..." className="font-mono text-sm" />
@@ -1547,15 +1541,14 @@ export default function AdminPage() {
               <label className={labelCls}>Bio</label>
               <Textarea value={autBio} onChange={e => setAutBio(e.target.value)} placeholder="Author biography..." rows={3} />
             </div>
-            <div>
-              <label className={labelCls}>Avatar URL</label>
-              <Input value={autAvatar} onChange={e => setAutAvatar(e.target.value)} placeholder="https://..." className="font-mono text-sm" />
-              {autAvatar && (
-                <div className="mt-2">
-                  <img src={autAvatar} alt="Avatar preview" className="h-16 w-16 rounded-full object-cover border border-border" onError={e => (e.currentTarget.style.display = 'none')} />
-                </div>
-              )}
-            </div>
+            <ImageUpload
+              value={autAvatar}
+              onChange={setAutAvatar}
+              folder="profiles"
+              label="Avatar"
+              previewClass="aspect-square w-16 h-16 rounded-full"
+              placeholder="Upload or paste a CDN URL…"
+            />
             <div className="flex justify-end gap-3 pt-4 border-t border-border">
               <Button variant="outline" onClick={() => setAutDialog(false)}>Cancel</Button>
               <Button onClick={saveAut} disabled={autSaving || !autName || !autSlug} className="font-mono text-xs">
