@@ -178,18 +178,18 @@ export default function EditorDashboard() {
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [arts, cats, auths, evts, commentsData] = await Promise.all([
-        fetch('/api/admin/articles').then(r => r.json()),
-        fetch('/api/categories').then(r => r.json()),
-        fetch('/api/authors').then(r => r.json()),
-        fetch('/api/events').then(r => r.json()),
-        fetch('/api/admin/comments?status=flagged&limit=20').then(r => r.json()),
+      const results = await Promise.allSettled([
+        fetch('/api/admin/articles').then(r => r.ok ? r.json() : []),
+        fetch('/api/categories').then(r => r.ok ? r.json() : []),
+        fetch('/api/authors').then(r => r.ok ? r.json() : []),
+        fetch('/api/events').then(r => r.ok ? r.json() : []),
+        fetch('/api/admin/comments?status=flagged&limit=20').then(r => r.ok ? r.json() : { comments: [] }),
       ])
-      setArticles(arts)
-      setCategories(cats)
-      setAuthors(auths)
-      setEvents(evts)
-      setFlaggedComments(commentsData.comments || [])
+      if (results[0].status === 'fulfilled') setArticles(results[0].value)
+      if (results[1].status === 'fulfilled') setCategories(results[1].value)
+      if (results[2].status === 'fulfilled') setAuthors(results[2].value)
+      if (results[3].status === 'fulfilled') setEvents(results[3].value)
+      if (results[4].status === 'fulfilled') setFlaggedComments(results[4].value.comments || [])
     } catch (err) {
       console.error('Failed to fetch data', err)
     } finally {
@@ -198,12 +198,18 @@ export default function EditorDashboard() {
   }, [])
 
   const fetchComments = useCallback(async (status?: string) => {
-    const params = new URLSearchParams()
-    if (status && status !== 'all') params.set('status', status)
-    params.set('limit', '30')
-    const res = await fetch(`/api/admin/comments?${params}`)
-    const data = await res.json()
-    setAllComments(data.comments || [])
+    try {
+      const params = new URLSearchParams()
+      if (status && status !== 'all') params.set('status', status)
+      params.set('limit', '30')
+      const res = await fetch(`/api/admin/comments?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setAllComments(data.comments || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch comments', err)
+    }
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
@@ -543,7 +549,7 @@ export default function EditorDashboard() {
                           </td>
                           <td className={tdCls}>
                             <div className="flex items-center gap-1">
-                              <Link href={`/articles/${article.slug}`} target="blank">
+                              <Link href={`/articles/${article.slug}`} target="_blank">
                                 <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs"><ExternalLink className="h-3 w-3" /><span className="hidden sm:inline">View</span></Button>
                               </Link>
                               <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => openEdit(article)}>
@@ -790,7 +796,7 @@ export default function EditorDashboard() {
                             <p className="text-sm text-foreground/80 mb-1.5">{c.content}</p>
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <span className="font-mono">on:</span>
-                              <a href={`/articles/${c.article.slug}`} target="blank" className="text-primary hover:underline font-medium">{c.article.title}</a>
+                              <a href={`/articles/${c.article.slug}`} target="_blank" className="text-primary hover:underline font-medium">{c.article.title}</a>
                             </div>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">

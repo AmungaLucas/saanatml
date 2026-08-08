@@ -221,7 +221,7 @@ export default function AdminPage() {
     ] as const
     await Promise.all(
       endpoints.map(([, url, setter]) =>
-        fetch(url).then(r => r.json()).then(d => setter(d)).catch(() => {})
+        fetch(url).then(r => r.ok ? r.json() : null).then(d => { if (d) setter(d) }).catch(() => {})
       )
     )
   }, [])
@@ -605,6 +605,12 @@ export default function AdminPage() {
 
         <main className="p-4 md:p-6 lg:p-8 max-w-7xl">
           {/* ═══════════════════ OVERVIEW ═══════════════════ */}
+          {activeTab === 'overview' && !stats && (
+            <div className="flex items-center justify-center py-24">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mr-3" />
+              <span className="text-sm text-muted-foreground">Loading dashboard...</span>
+            </div>
+          )}
           {activeTab === 'overview' && stats && (
             <div className="animate-fadeIn space-y-6">
               {/* Flagged alert banner */}
@@ -870,7 +876,7 @@ export default function AdminPage() {
                               <p className="text-sm text-foreground/80 mb-2 leading-relaxed">{c.content}</p>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <span className="font-mono">on:</span>
-                                <a href={`/articles/${c.article.slug}`} target="blank" className="text-primary hover:underline font-medium">
+                                <a href={`/articles/${c.article.slug}`} target="_blank" className="text-primary hover:underline font-medium">
                                   {c.article.title}
                                 </a>
                                 <span className="text-border">|</span>

@@ -4,7 +4,7 @@ import { db } from '@/lib/db'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const status = searchParams.get('status') || '' // 'flagged' | 'published' | 'removed' | '' (all)
+    const status = searchParams.get('status') || ''
     const search = searchParams.get('search') || ''
     const page = parseInt(searchParams.get('page') || '1')
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100)
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    const [comments, total, stats] = await Promise.all([
+    const [comments, total] = await Promise.all([
       db.comment.findMany({
         where,
         orderBy: { createdAt: 'desc' },
@@ -30,20 +30,27 @@ export async function GET(request: NextRequest) {
         take: limit,
       }),
       db.comment.count({ where }),
-      db.comment.groupBy({ by: ['status'], _count: true }),
     ])
 
-    const statsMap = Object.fromEntries(stats.map(s => [s.status, s._count]))
+    // Stats may fail if 'status' column doesn't exist yet
+    let stats = { published: 0, flagged: 0, removed: 0, total }
+    try {
+      const statsResult = await db.comment.groupBy({ by: ['status'], _count: true })
+      const statsMap = Object.fromEntries(statsResult.map((s: any) => [s.status, s._count]))
+      stats = {
+        published: statsMap['published'] || 0,
+        flagged: statsMap['flagged'] || 0,
+        removed: statsMap['removed'] || 0,
+        total,
+      }
+    } catch {
+      stats = { published: total, flagged: 0, removed: 0, total }
+    }
 
     return NextResponse.json({
       comments,
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
-      stats: {
-        published: statsMap['published'] || 0,
-        flagged: statsMap['flagged'] || 0,
-        removed: statsMap['removed'] || 0,
-        total: Object.values(statsMap).reduce((a: number, b: any) => a + (b as number), 0),
-      },
+      stats,
     })
   } catch (err) {
     console.error('Admin comments GET error:', err)
