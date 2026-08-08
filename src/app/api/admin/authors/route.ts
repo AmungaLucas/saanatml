@@ -3,11 +3,16 @@ import { db } from '@/lib/db'
 
 // GET all authors
 export async function GET() {
-  const authors = await db.author.findMany({
-    include: { _count: { select: { articles: true } } },
-    orderBy: { createdAt: 'desc' },
-  })
-  return NextResponse.json(authors)
+  try {
+    const authors = await db.author.findMany({
+      include: { _count: { select: { articles: true } } },
+      orderBy: { createdAt: 'desc' },
+    })
+    return NextResponse.json(authors)
+  } catch (err) {
+    console.error('Authors GET error:', err)
+    return NextResponse.json({ error: 'Failed to fetch authors' }, { status: 500 })
+  }
 }
 
 // POST create new author

@@ -249,3 +249,20 @@ Stage Summary:
 - Commit d578b9b pushed to main
 - Vercel needs NEXT_PUBLIC_CDN_URL and CDN_API_KEY env vars added manually
 
+---
+Task ID: fix-admin-dashboard-errors
+Agent: Main Agent
+Task: Fix admin dashboard stats 500 error and category/author not loading in new article form
+
+Work Log:
+- Added try/catch error handling to 6 admin API GET routes that were missing it (articles, authors, categories, events, makers, subscribers)
+- Added independent category/author fetch (fetchFormDependencies) that triggers when the new-article tab opens and those arrays are empty
+- Added formDataLoading and formDataError states with loading spinner and error+retry UI for the new article tab
+- Added DATABASE_URL hint to the overview error message so the user knows to check Vercel env vars
+- Added partial success warning when one of categories/authors loads but the other fails
+
+Stage Summary:
+- Root cause: DATABASE_URL not configured on Vercel, causing all DB queries to return 500
+- All admin API GET routes now have proper try/catch returning structured JSON errors
+- New article form now independently retries categories/authors when tab is activated
+- Pre-existing TS errors (in examples/, skills/, store/) are unrelated to these changes

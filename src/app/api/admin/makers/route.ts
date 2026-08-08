@@ -3,10 +3,15 @@ import { db } from '@/lib/db'
 
 // GET all makers
 export async function GET() {
-  const makers = await db.maker.findMany({
-    orderBy: { createdAt: 'desc' },
-  })
-  return NextResponse.json(makers)
+  try {
+    const makers = await db.maker.findMany({
+      orderBy: { createdAt: 'desc' },
+    })
+    return NextResponse.json(makers)
+  } catch (err) {
+    console.error('Makers GET error:', err)
+    return NextResponse.json({ error: 'Failed to fetch makers' }, { status: 500 })
+  }
 }
 
 // POST create new maker

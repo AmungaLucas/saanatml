@@ -168,6 +168,8 @@ export default function AdminPage() {
   // Article form
   const [artDialog, setArtDialog] = useState(false)
   const [artEdit, setArtEdit] = useState<Article | null>(null)
+  const [formDataLoading, setFormDataLoading] = useState(false)
+  const [formDataError, setFormDataError] = useState<string | null>(null)
   const [artTitle, setArtTitle] = useState('')
   const [artSlug, setArtSlug] = useState('')
   const [artExcerpt, setArtExcerpt] = useState('')
@@ -264,6 +266,32 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  // ── Independent fetch for categories/authors (new article tab) ──
+  const fetchFormDependencies = useCallback(async () => {
+    if (categories.length > 0 && authors.length > 0) return // already loaded
+    setFormDataLoading(true)
+    setFormDataError(null)
+    try {
+      const results = await Promise.allSettled([
+        categories.length === 0 ? fetch('/api/admin/categories').then(r => { if (!r.ok) throw new Error(`categories ${r.status}`); return r.json() }) : Promise.resolve(categories),
+        authors.length === 0 ? fetch('/api/admin/authors').then(r => { if (!r.ok) throw new Error(`authors ${r.status}`); return r.json() }) : Promise.resolve(authors),
+      ])
+      if (results[0].status === 'fulfilled' && Array.isArray(results[0].value)) setCategories(results[0].value)
+      if (results[1].status === 'fulfilled' && Array.isArray(results[1].value)) setAuthors(results[1].value)
+      const failed = results.filter(r => r.status === 'rejected').map(r => (r as PromiseRejectedResult).reason?.message)
+      if (failed.length === 2) setFormDataError('Could not load categories or authors')
+      else if (failed.length === 1) setFormDataError(`Could not load ${failed[0]}`)
+    } catch (err: any) {
+      setFormDataError(err.message || 'Failed to load form data')
+    } finally {
+      setFormDataLoading(false)
+    }
+  }, [categories.length, authors.length])
+
+  useEffect(() => {
+    if (activeTab === 'new-article') fetchFormDependencies()
+  }, [activeTab, fetchFormDependencies])
 
   // ── Fetch comments for moderation ──────────────────────────
   const fetchMmodComments = useCallback(async () => {
@@ -717,6 +745,7 @@ export default function AdminPage() {
               <AlertTriangle className="h-10 w-10 text-amber-500/50 mb-3" />
               <p className="text-sm font-medium">Failed to load dashboard</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm">{fetchError}</p>
+              <p className="text-[11px] text-muted-foreground/70 mt-2 max-w-xs">Ensure <code className="font-mono bg-muted px-1 py-0.5 rounded">DATABASE_URL</code> is set in your Vercel environment variables.</p>
               <Button variant="outline" size="sm" className="mt-4 gap-1.5" onClick={() => fetchAll()}>
                 <RotateCcw className="h-3.5 w-3.5" /> Retry
               </Button>
@@ -1064,23 +1093,48 @@ export default function AdminPage() {
           {/* ═══════════════════ NEW ARTICLE (page) ═══════════════════ */}
           {activeTab === 'new-article' && (
             <div className="animate-fadeIn">
-              <ArticleForm
-                mode='create'
-                variant='page'
-                categories={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
-                authors={authors.map(a => ({ id: a.id, name: a.name, role: a.role }))}
-                onSubmit={async (data: ArticleFormData) => {
-                  const res = await fetch('/api/admin/articles', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ...data, readTime: parseInt(data.readTime) || 5 }),
-                  })
-                  if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to create article') }
-                  await fetchAll()
-                  navigate('articles')
-                }}
-                onCancel={() => navigate('articles')}
-              />
+              {formDataLoading && categories.length === 0 && (
+                <div className="flex items-center gap-2 py-8 justify-center text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading categories & authors…
+                </div>
+              )}
+              {formDataError && categories.length === 0 && authors.length === 0 && !formDataLoading && (
+                <div className="flex flex-col items-center gap-3 py-12 text-center">
+                  <AlertTriangle className="h-8 w-8 text-amber-500/50" />
+                  <p className="text-sm font-medium">{formDataError}</p>
+                  <p className="text-xs text-muted-foreground max-w-sm">Make sure your database is configured. Categories and authors are required to create an article.</p>
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => fetchFormDependencies()}>
+                    <RotateCcw className="h-3.5 w-3.5" /> Retry
+                  </Button>
+                </div>
+              )}
+              {(categories.length > 0 || authors.length > 0) && (
+                <>
+                  {formDataError && (
+                    <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/20 px-4 py-2.5 text-sm text-amber-800 dark:text-amber-200">
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      {formDataError} — some dropdowns may be empty
+                    </div>
+                  )}
+                  <ArticleForm
+                    mode='create'
+                    variant='page'
+                    categories={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+                    authors={authors.map(a => ({ id: a.id, name: a.name, role: a.role }))}
+                    onSubmit={async (data: ArticleFormData) => {
+                      const res = await fetch('/api/admin/articles', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...data, readTime: parseInt(data.readTime) || 5 }),
+                      })
+                      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to create article') }
+                      await fetchAll()
+                      navigate('articles')
+                    }}
+                    onCancel={() => navigate('articles')}
+                  />
+                </>
+              )}
             </div>
           )}
 

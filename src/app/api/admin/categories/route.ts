@@ -3,11 +3,16 @@ import { db } from '@/lib/db'
 
 // GET all categories
 export async function GET() {
-  const categories = await db.category.findMany({
-    include: { _count: { select: { articles: true, events: true } } },
-    orderBy: { name: 'asc' },
+  try {
+    const categories = await db.category.findMany({
+      include: { _count: { select: { articles: true, events: true } } },
+      orderBy: { name: 'asc' },
   })
-  return NextResponse.json(categories)
+    return NextResponse.json(categories)
+  } catch (err) {
+    console.error('Categories GET error:', err)
+    return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 })
+  }
 }
 
 // POST create new category

@@ -3,10 +3,15 @@ import { db } from '@/lib/db'
 
 // GET all events
 export async function GET() {
-  const events = await db.event.findMany({
-    orderBy: { date: 'desc' },
-  })
-  return NextResponse.json(events)
+  try {
+    const events = await db.event.findMany({
+      orderBy: { date: 'desc' },
+    })
+    return NextResponse.json(events)
+  } catch (err) {
+    console.error('Events GET error:', err)
+    return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 })
+  }
 }
 
 // POST create new event

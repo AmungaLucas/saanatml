@@ -3,11 +3,16 @@ import { db } from '@/lib/db'
 
 // GET all articles for admin
 export async function GET() {
-  const articles = await db.article.findMany({
-    include: { category: true, author: true, comments: { select: { id: true } } },
-    orderBy: { publishedAt: 'desc' },
-  })
-  return NextResponse.json(articles.map(a => ({ ...a, commentCount: a.comments.length })))
+  try {
+    const articles = await db.article.findMany({
+      include: { category: true, author: true, comments: { select: { id: true } } },
+      orderBy: { publishedAt: 'desc' },
+    })
+    return NextResponse.json(articles.map(a => ({ ...a, commentCount: a.comments.length })))
+  } catch (err) {
+    console.error('Articles GET error:', err)
+    return NextResponse.json({ error: 'Failed to fetch articles' }, { status: 500 })
+  }
 }
 
 // POST create new article
