@@ -20,7 +20,8 @@ export async function PATCH(
     })
 
     return NextResponse.json(comment)
-  } catch (err) {
+  } catch (err: any) {
+    if (err.code === 'P2025') return NextResponse.json({ error: 'Comment not found' }, { status: 404 })
     console.error('Admin comment PATCH error:', err)
     return NextResponse.json({ error: 'Failed to update comment' }, { status: 500 })
   }
@@ -34,7 +35,8 @@ export async function DELETE(
     const { id } = await params
     await db.comment.delete({ where: { id } })
     return NextResponse.json({ success: true })
-  } catch (err) {
+  } catch (err: any) {
+    if (err.code === 'P2025') return NextResponse.json({ error: 'Comment not found' }, { status: 404 })
     console.error('Admin comment DELETE error:', err)
     return NextResponse.json({ error: 'Failed to delete comment' }, { status: 500 })
   }

@@ -17,14 +17,14 @@ export async function GET() {
 
 // POST create new article
 export async function POST(request: NextRequest) {
-  const body = await request.json()
-  const { title, slug, excerpt, content, coverImage, categoryId, authorId, readTime, tags, isFeatured, isPinned } = body
-
-  if (!title || !slug || !categoryId || !authorId) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-  }
-
   try {
+    const body = await request.json()
+    const { title, slug, excerpt, content, coverImage, categoryId, authorId, readTime, tags, isFeatured, isPinned } = body
+
+    if (!title || !slug || !categoryId || !authorId) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
     const article = await db.article.create({
       data: {
         title, slug, excerpt: excerpt || '', content: content || '',
@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
     if (e.code === 'P2002') {
       return NextResponse.json({ error: 'Slug already exists' }, { status: 409 })
     }
+    console.error('Article POST error:', e)
     return NextResponse.json({ error: 'Failed to create article' }, { status: 500 })
   }
 }

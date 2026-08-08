@@ -5,36 +5,35 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  const { slug } = await params
+  try {
+    const { slug } = await params
 
-  const article = await db.article.findUnique({
-    where: { slug },
-    include: {
-      category: true,
-      author: true,
-    },
-  })
+    const article = await db.article.findUnique({
+      where: { slug },
+      include: { category: true, author: true },
+    })
 
-  if (!article) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!article) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    // Increment views and get updated count
+    const updated = await db.article.update({
+      where: { id: article.id },
+      data: { views: { increment: 1 } },
+    })
+
+    // Get related articles
+    const related = await db.article.findMany({
+      where: { id: { not: article.id }, categoryId: article.categoryId },
+      take: 4,
+      include: { category: true, author: true },
+      orderBy: { publishedAt: 'desc' },
+    })
+
+    return NextResponse.json({ article: { ...article, views: updated.views }, related })
+  } catch (err) {
+    console.error('Article slug GET error:', err)
+    return NextResponse.json({ error: 'Failed to fetch article' }, { status: 500 })
   }
-
-  // Increment views
-  await db.article.update({
-    where: { id: article.id },
-    data: { views: { increment: 1 } },
-  })
-
-  // Get related articles
-  const related = await db.article.findMany({
-    where: {
-      id: { not: article.id },
-      categoryId: article.categoryId,
-    },
-    take: 4,
-    include: { category: true, author: true },
-    orderBy: { publishedAt: 'desc' },
-  })
-
-  return NextResponse.json({ article: { ...article, views: article.views + 1 }, related })
 }

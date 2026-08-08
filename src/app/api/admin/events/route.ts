@@ -16,19 +16,24 @@ export async function GET() {
 
 // POST create new event
 export async function POST(request: NextRequest) {
-  const body = await request.json()
-  const { title, description, date, endDate, venue, city, category, imageUrl, ticketUrl, isFeatured, isPast } = body
-
-  if (!title || !date || !venue || !city) {
-    return NextResponse.json({ error: 'Missing required fields: title, date, venue, city' }, { status: 400 })
-  }
-
   try {
+    const body = await request.json()
+    const { title, description, date, endDate, venue, city, category, imageUrl, ticketUrl, isFeatured, isPast } = body
+
+    if (!title || !date || !venue || !city) {
+      return NextResponse.json({ error: 'Missing required fields: title, date, venue, city' }, { status: 400 })
+    }
+
+    const parsedDate = new Date(date)
+    if (isNaN(parsedDate.getTime())) {
+      return NextResponse.json({ error: 'Invalid date format' }, { status: 400 })
+    }
+
     const event = await db.event.create({
       data: {
         title,
         description: description || '',
-        date: new Date(date),
+        date: parsedDate,
         endDate: endDate ? new Date(endDate) : null,
         venue,
         city,
@@ -41,6 +46,7 @@ export async function POST(request: NextRequest) {
     })
     return NextResponse.json(event, { status: 201 })
   } catch (e: any) {
+    console.error('Event POST error:', e)
     return NextResponse.json({ error: 'Failed to create event' }, { status: 500 })
   }
 }

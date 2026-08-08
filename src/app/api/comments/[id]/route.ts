@@ -12,8 +12,6 @@ export async function POST(
 
     // Simple rate limit per IP for reports (max 10/min)
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-    const reportKey = `report-${ip}`
-    // We use a simple approach — the comment's reportCount is the source of truth
 
     const comment = await db.comment.findUnique({ where: { id } })
     if (!comment) {

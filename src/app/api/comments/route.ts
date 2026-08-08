@@ -77,23 +77,27 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const articleId = searchParams.get('articleId')
+  try {
+    const { searchParams } = new URL(request.url)
+    const articleId = searchParams.get('articleId')
 
-  if (!articleId) {
-    return NextResponse.json({ error: 'Missing articleId' }, { status: 400 })
+    if (!articleId) {
+      return NextResponse.json({ error: 'Missing articleId' }, { status: 400 })
+    }
+
+    // Only return published comments to public
+    const comments = await db.comment.findMany({
+      where: { articleId, status: 'published' },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    const count = await db.comment.count({
+      where: { articleId, status: 'published' },
+    })
+
+    return NextResponse.json({ comments, total: count })
+  } catch (err) {
+    console.error('Comments GET error:', err)
+    return NextResponse.json({ error: 'Failed to fetch comments' }, { status: 500 })
   }
-
-  // Only return published comments to public
-  const comments = await db.comment.findMany({
-    where: { articleId, status: 'published' },
-    orderBy: { createdAt: 'desc' },
-  })
-
-  // Get total published count for the article
-  const count = await db.comment.count({
-    where: { articleId, status: 'published' },
-  })
-
-  return NextResponse.json({ comments, total: count })
 }

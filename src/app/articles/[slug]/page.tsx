@@ -26,8 +26,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: article.title,
       description: article.excerpt,
       type: 'article',
-      publishedTime: article.publishedAt.toISOString(),
-      authors: [article.author.name],
+      publishedTime: (article.publishedAt || new Date()).toISOString(),
+      authors: [article.author?.name || 'Unknown'],
       tags: article.tags ? article.tags.split(',').map(t => t.trim()) : [],
       images: article.coverImage ? [{ url: article.coverImage, width: 1200, height: 630 }] : [],
     },
@@ -73,12 +73,12 @@ export default async function ArticlePage({ params }: Props) {
     headline: article.title,
     description: article.excerpt,
     image: article.coverImage ? `${SITE_URL}${article.coverImage}` : undefined,
-    datePublished: article.publishedAt.toISOString(),
-    dateModified: article.updatedAt.toISOString(),
+    datePublished: (article.publishedAt || new Date()).toISOString(),
+    dateModified: (article.updatedAt || new Date()).toISOString(),
     author: {
       '@type': 'Person',
-      name: article.author.name,
-      url: `${SITE_URL}/authors/${article.author.slug}`,
+      name: article.author?.name || 'Unknown',
+      url: `${SITE_URL}/authors/${article.author?.slug || ''}`,
     },
     publisher: {
       '@type': 'Organization',
@@ -96,7 +96,7 @@ export default async function ArticlePage({ params }: Props) {
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-      { '@type': 'ListItem', position: 2, name: article.category.name, item: `${SITE_URL}/category/${article.category.slug}` },
+      { '@type': 'ListItem', position: 2, name: article.category?.name || '', item: `${SITE_URL}/category/${article.category?.slug || ''}` },
       { '@type': 'ListItem', position: 3, name: article.title, item: `${SITE_URL}/articles/${article.slug}` },
     ],
   }

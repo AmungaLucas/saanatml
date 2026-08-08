@@ -47,7 +47,7 @@ export function ArticlePageClient({ article, related }: ArticlePageProps) {
 
   // Extract headings for TOC
   const headings = useMemo(() => {
-    const lines = article.content.split('\n')
+    const lines = (article.content || '').split('\n')
     return lines
       .filter(l => l.startsWith('##') || l.startsWith('###'))
       .map(l => {

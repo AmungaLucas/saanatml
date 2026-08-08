@@ -17,14 +17,14 @@ export async function GET() {
 
 // POST create new category
 export async function POST(request: NextRequest) {
-  const body = await request.json()
-  const { name, slug, description, color } = body
-
-  if (!name || !slug) {
-    return NextResponse.json({ error: 'Missing required fields: name, slug' }, { status: 400 })
-  }
-
   try {
+    const body = await request.json()
+    const { name, slug, description, color } = body
+
+    if (!name || !slug) {
+      return NextResponse.json({ error: 'Missing required fields: name, slug' }, { status: 400 })
+    }
+
     const category = await db.category.create({
       data: {
         name,
@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
     if (e.code === 'P2002') {
       return NextResponse.json({ error: 'Slug already exists' }, { status: 409 })
     }
+    console.error('Category POST error:', e)
     return NextResponse.json({ error: 'Failed to create category' }, { status: 500 })
   }
 }

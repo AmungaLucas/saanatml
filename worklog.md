@@ -266,3 +266,33 @@ Stage Summary:
 - All admin API GET routes now have proper try/catch returning structured JSON errors
 - New article form now independently retries categories/authors when tab is activated
 - Pre-existing TS errors (in examples/, skills/, store/) are unrelated to these changes
+---
+Task ID: full-site-api-page-audit
+Agent: Main Agent
+Task: Page-by-page audit of all APIs and pages, fix all issues
+
+Work Log:
+- Mapped 16 pages, 17 public API routes, 17 admin API routes, RSS, sitemap
+- Public API fixes: Added try/catch to articles, articles/[slug], authors, authors/[slug], categories, events, makers, comments GET, newsletter, login
+- Public API fixes: Fixed NaN bug in cdn/list (parseInt→Number with fallback)
+- Public API fixes: Added email validation to newsletter, differentiated P2002 vs other errors
+- Public API fixes: Added null safety to RSS feed (author?.name, category?.name)
+- Public API fixes: Added try/catch to sitemap.ts with static fallback
+- Admin API fixes: Moved request.json() inside try in POST for articles, authors, categories, events, makers
+- Admin API fixes: Added P2025→404 in all [id] DELETE routes (articles, authors, categories, events, makers, comments, subscribers)
+- Admin API fixes: Added P2025→404 in all [id] PATCH routes
+- Admin API fixes: Added field allowlists in all PATCH routes to prevent arbitrary field injection
+- Admin API fixes: Prefixed unused _request params in DELETE handlers
+- Admin API fixes: Added date validation in events POST
+- Page fixes: Created src/app/error.tsx global error boundary
+- Page fixes: Null guard on author.bio in authors/[slug] generateMetadata
+- Page fixes: Null guards on author.name, author.slug, category.name, publishedAt in articles/[slug]
+- Page fixes: Null guard on article.content.split() in ArticlePageClient
+- Pre-existing TS errors confirmed unchanged (pdf-parse, MakersPage animation, store duplicate)
+
+Stage Summary:
+- Fixed 35+ files across public APIs, admin APIs, RSS, sitemap, and pages
+- Every API route now returns structured JSON errors instead of raw Next.js error pages
+- Every DELETE/PATCH [id] route now returns 404 for missing records
+- Every POST route now handles malformed JSON gracefully
+- Global error.tsx catches any remaining unhandled errors with a user-friendly UI

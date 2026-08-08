@@ -16,25 +16,20 @@ export async function GET() {
 
 // POST create new maker
 export async function POST(request: NextRequest) {
-  const body = await request.json()
-  const { name, slug, discipline, bio, location, website, instagram, twitter, isFeatured } = body
-
-  if (!name || !slug || !discipline) {
-    return NextResponse.json({ error: 'Missing required fields: name, slug, discipline' }, { status: 400 })
-  }
-
   try {
+    const body = await request.json()
+    const { name, slug, discipline, bio, location, website, instagram, twitter, isFeatured } = body
+
+    if (!name || !slug || !discipline) {
+      return NextResponse.json({ error: 'Missing required fields: name, slug, discipline' }, { status: 400 })
+    }
+
     const maker = await db.maker.create({
       data: {
-        name,
-        slug,
-        discipline,
-        bio: bio || '',
-        location: location || '',
-        website: website || '',
-        instagram: instagram || '',
-        twitter: twitter || '',
-        isFeatured: isFeatured || false,
+        name, slug, discipline,
+        bio: bio || '', location: location || '',
+        website: website || '', instagram: instagram || '',
+        twitter: twitter || '', isFeatured: isFeatured || false,
       },
     })
     return NextResponse.json(maker, { status: 201 })
@@ -42,6 +37,7 @@ export async function POST(request: NextRequest) {
     if (e.code === 'P2002') {
       return NextResponse.json({ error: 'Slug already exists' }, { status: 409 })
     }
+    console.error('Maker POST error:', e)
     return NextResponse.json({ error: 'Failed to create maker' }, { status: 500 })
   }
 }

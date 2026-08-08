@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!author) return { title: 'Author Not Found' }
   return {
     title: `${author.name} — Sanaa Through My Lens`,
-    description: `${author.role}. ${author.bio.slice(0, 160)}`,
+    description: `${author.role}. ${(author.bio || '').slice(0, 160)}`,
   }
 }
 

@@ -2,8 +2,13 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 export async function GET() {
-  const categories = await db.category.findMany({
-    orderBy: { name: 'asc' },
-  })
-  return NextResponse.json(categories)
+  try {
+    const categories = await db.category.findMany({
+      orderBy: { name: 'asc' },
+    })
+    return NextResponse.json(categories)
+  } catch (err) {
+    console.error('Categories GET error:', err)
+    return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 })
+  }
 }

@@ -5,8 +5,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const folder = searchParams.get('folder') || undefined
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')))
+    const page = Math.max(1, Number(searchParams.get('page')) || 1)
+    const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit')) || 20))
 
     if (folder && !CDN_FOLDERS.includes(folder as CDNFolder)) {
       return NextResponse.json({ error: `Invalid folder. Use: ${CDN_FOLDERS.join(', ')}` }, { status: 400 })
