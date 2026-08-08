@@ -209,3 +209,21 @@ Stage Summary:
 - Protected routes: /admin, /dashboard (via middleware matcher)
 - Login page: /login with redirect-back-after-auth
 - Both dashboards have Admin/Editor cross-links and Logout buttons
+
+---
+Task ID: 9
+Agent: Main Agent
+Task: Fix 4 issues — data disappearing, nav category wrapping, Makers link bug, comment auth
+
+Work Log:
+- Fixed data disappearing: Removed `const store = useStore()` (whole-store subscription) from page.tsx, replaced with individual selectors (`useStore(s => s.currentView)`, `useStore(s => s.dataLoaded)`). Used `useStore.getState()` inside fetch effect. Added `hasFetched` ref to prevent double-fetch on HMR remounts. Added `.ok` checks on API responses and graceful fallback to empty arrays.
+- Fixed navbar categories: Reduced inline categories from 6 to 4. Added animated "More" dropdown (framer-motion AnimatePresence) for remaining categories with click-outside-to-close. Added all extra categories in mobile sheet menu under "More Categories" section.
+- Fixed Makers link: Changed nav item view from `'events'` to `'makers'`. Added `'makers'` to ViewType union. Created new MakersPage component (src/components/sanaa/MakersPage.tsx) with featured section, discipline filters, maker grid using ScrollReveal + StaggerContainer. Added `currentView === 'makers'` render branch in page.tsx.
+- Comments already work without auth: Verified /api/comments POST route has no auth check, middleware only protects /admin and /dashboard. Comment form in ArticleModal has name + comment fields, no login required.
+- Browser-verified: Homepage loads with 6 articles, data persists after 5 seconds, Makers page shows 8 makers with featured section, "More" dropdown shows 4 extra categories, all API calls return 200.
+
+Stage Summary:
+- 4 bugs fixed in 4 files: page.tsx, Header.tsx, useStore.ts, new MakersPage.tsx
+- Data stability fix: individual Zustand selectors + fetch guard + error resilience
+- Nav scalability: 4 inline categories + "More" dropdown handles unlimited categories
+- Makers now has its own dedicated in-app view with full maker grid

@@ -76,7 +76,7 @@ export interface Maker {
   isFeatured: boolean
 }
 
-export type ViewType = 'home' | 'about' | 'events' | 'category' | 'author'
+export type ViewType = 'home' | 'about' | 'events' | 'makers' | 'category' | 'author'
 
 // ========== localStorage helpers ==========
 function loadFromStorage<T>(key: string, fallback: T): T {
@@ -136,6 +136,7 @@ interface AppState {
   searchQuery: string
   currentView: ViewType
   selectedAuthor: Author | null
+  selectedCategoryName: string
 
   // Bookmarks
   bookmarks: string[]
@@ -146,6 +147,8 @@ interface AppState {
   // Reading History
   readingHistory: ReadingHistoryEntry[]
 
+  selectedCategoryName: string
+
   // Actions
   setArticles: (articles: Article[]) => void
   setFeaturedArticles: (articles: Article[]) => void
@@ -154,6 +157,7 @@ interface AppState {
   setAuthors: (authors: Author[]) => void
   setMakers: (makers: Maker[]) => void
   setDataLoaded: (loaded: boolean) => void
+  setSelectedCategoryName: (name: string) => void
   openArticle: (article: Article) => void
   closeArticle: () => void
   openEvent: (event: Event) => void
@@ -193,6 +197,7 @@ export const useStore = create<AppState>((set, get) => ({
   searchQuery: '',
   currentView: 'home',
   selectedAuthor: null,
+  selectedCategoryName: '',
   bookmarks: loadFromStorage<string[]>(BOOKMARKS_KEY, []),
   likes: loadFromStorage<Record<string, number>>(LIKES_KEY, {}),
   readingHistory: loadFromStorage<ReadingHistoryEntry[]>(HISTORY_KEY, []),
@@ -204,6 +209,7 @@ export const useStore = create<AppState>((set, get) => ({
   setAuthors: (authors) => set({ authors }),
   setMakers: (makers) => set({ makers }),
   setDataLoaded: (loaded) => set({ dataLoaded: loaded }),
+  setSelectedCategoryName: (name) => set({ selectedCategoryName: name }),
   openArticle: (article) => set({ selectedArticle: article, isArticleOpen: true }),
   closeArticle: () => set({ selectedArticle: null, isArticleOpen: false }),
   openEvent: (event) => set({ selectedEvent: event, isEventOpen: true }),
@@ -211,7 +217,10 @@ export const useStore = create<AppState>((set, get) => ({
   openMaker: (maker) => set({ selectedMaker: maker, isMakerOpen: true }),
   closeMaker: () => set({ selectedMaker: null, isMakerOpen: false }),
   toggleSearch: () => set((s) => ({ isSearchOpen: !s.isSearchOpen })),
-  setActiveCategory: (activeCategory) => set({ activeCategory, currentView: 'category' }),
+  setActiveCategory: (slug) => {
+    const cat = get().categories.find(c => c.slug === slug)
+    set({ activeCategory: slug, currentView: 'category', selectedCategoryName: cat?.name || '' })
+  },
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setView: (view, payload) => set({ currentView: view, selectedAuthor: payload || null }),
   goHome: () => set({ currentView: 'home', activeCategory: 'all', selectedAuthor: null }),

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useStore } from '@/store/useStore'
 import { Header } from '@/components/sanaa/Header'
 import { TrendingTicker } from '@/components/sanaa/TrendingTicker'
@@ -18,6 +18,7 @@ import { SearchModal } from '@/components/sanaa/SearchModal'
 import { Footer } from '@/components/sanaa/Footer'
 import { AboutPage } from '@/components/sanaa/AboutPage'
 import { EventsPage } from '@/components/sanaa/EventsPage'
+import { MakersPage } from '@/components/sanaa/MakersPage'
 import { CategoryPage } from '@/components/sanaa/CategoryPage'
 import { NewsletterCTA } from '@/components/sanaa/NewsletterCTA'
 import { AdPlaceholder } from '@/components/sanaa/AdPlaceholder'
@@ -26,7 +27,6 @@ import { BackToTop } from '@/components/sanaa/BackToTop'
 import { ScrollReveal } from '@/components/sanaa/ScrollReveal'
 
 function HomePage() {
-
   return (
     <div className="animate-fadeIn" key="home">
       {/* Value Proposition */}
@@ -106,42 +106,51 @@ function HomePage() {
 }
 
 export default function Home() {
-  const store = useStore()
+  // Use individual selectors to avoid re-rendering on every store change
   const currentView = useStore(s => s.currentView)
   const dataLoaded = useStore(s => s.dataLoaded)
+  const hasFetched = useRef(false)
+
+  const fetchData = useCallback(async () => {
+    // Prevent double-fetch in React 18 StrictMode or HMR remounts
+    if (hasFetched.current && useStore.getState().dataLoaded) return
+    hasFetched.current = true
+
+    try {
+      const [articlesRes, featuredRes, categoriesRes, eventsRes, authorsRes, makersRes] = await Promise.all([
+        fetch('/api/articles?limit=20'),
+        fetch('/api/articles?featured=true&limit=3'),
+        fetch('/api/categories'),
+        fetch('/api/events'),
+        fetch('/api/authors'),
+        fetch('/api/makers'),
+      ])
+      const [articles, featured, categories, events, authors, makers] = await Promise.all([
+        articlesRes.ok ? articlesRes.json() : { articles: [] },
+        featuredRes.ok ? featuredRes.json() : { articles: [] },
+        categoriesRes.ok ? categoriesRes.json() : [],
+        eventsRes.ok ? eventsRes.json() : [],
+        authorsRes.ok ? authorsRes.json() : [],
+        makersRes.ok ? makersRes.json() : [],
+      ])
+      const store = useStore.getState()
+      store.setArticles(articles.articles || [])
+      store.setFeaturedArticles(featured.articles || [])
+      store.setCategories(categories || [])
+      store.setEvents(events || [])
+      store.setAuthors(authors || [])
+      store.setMakers(makers || [])
+      store.setDataLoaded(true)
+    } catch (err) {
+      console.error('Failed to fetch data:', err)
+      // Still mark loaded so UI doesn't stay stuck on skeleton
+      useStore.getState().setDataLoaded(true)
+    }
+  }, [])
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const [articlesRes, featuredRes, categoriesRes, eventsRes, authorsRes, makersRes] = await Promise.all([
-          fetch('/api/articles?limit=20'),
-          fetch('/api/articles?featured=true&limit=3'),
-          fetch('/api/categories'),
-          fetch('/api/events'),
-          fetch('/api/authors'),
-          fetch('/api/makers'),
-        ])
-        const [articles, featured, categories, events, authors, makers] = await Promise.all([
-          articlesRes.json(),
-          featuredRes.json(),
-          categoriesRes.json(),
-          eventsRes.json(),
-          authorsRes.json(),
-          makersRes.json(),
-        ])
-        store.setArticles(articles.articles || [])
-        store.setFeaturedArticles(featured.articles || [])
-        store.setCategories(categories || [])
-        store.setEvents(events || [])
-        store.setAuthors(authors || [])
-        store.setMakers(makers || [])
-        store.setDataLoaded(true)
-      } catch (err) {
-        console.error('Failed to fetch data:', err)
-      }
-    }
     fetchData()
-  }, [])
+  }, [fetchData])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -165,6 +174,7 @@ export default function Home() {
         )}
         {currentView === 'about' && <div className="animate-fadeIn" key="about"><AboutPage /></div>}
         {currentView === 'events' && <div className="animate-fadeIn" key="events"><EventsPage /></div>}
+        {currentView === 'makers' && <div className="animate-fadeIn" key="makers"><MakersPage /></div>}
         {currentView === 'category' && <div className="animate-fadeIn" key="category"><CategoryPage /></div>}
       </main>
 

@@ -1,9 +1,9 @@
 'use client'
 
 import { useStore } from '@/store/useStore'
-import { Search, Moon, Sun, Menu, BookmarkCheck, History } from 'lucide-react'
+import { Search, Moon, Sun, Menu, BookmarkCheck, History, ChevronDown } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import Link from 'next/link'
@@ -15,6 +15,8 @@ export function Header() {
   const [mounted, setMounted] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -23,11 +25,26 @@ export function Header() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false)
+      }
+    }
+    if (moreOpen) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [moreOpen])
+
+  const MAX_INLINE_CATEGORIES = 4
+  const inlineCategories = categories.slice(0, MAX_INLINE_CATEGORIES)
+  const moreCategories = categories.slice(MAX_INLINE_CATEGORIES)
+
   const navItems = [
     { label: 'Home', slug: 'all', href: '/', view: 'home' as const },
-    ...categories.slice(0, 6).map(c => ({ label: c.name, slug: c.slug, href: `/category/${c.slug}`, view: 'category' as const })),
+    ...inlineCategories.map(c => ({ label: c.name, slug: c.slug, href: `/category/${c.slug}`, view: 'category' as const })),
     { label: 'Events', slug: 'events', href: '/events', view: 'events' as const },
-    { label: 'Makers', slug: 'makers', href: '/makers', view: 'events' as const },
+    { label: 'Makers', slug: 'makers', href: '/makers', view: 'makers' as const },
     { label: 'About', slug: 'about', href: '/about', view: 'about' as const },
   ]
 
@@ -47,6 +64,7 @@ export function Header() {
     if (item.view === 'home' && currentView === 'home' && activeCategory === 'all') return true
     if (item.view === 'category' && currentView === 'category' && activeCategory === item.slug) return true
     if (item.view === 'events' && currentView === 'events') return true
+    if (item.view === 'makers' && currentView === 'makers') return true
     if (item.view === 'about' && currentView === 'about') return true
     return false
   }
@@ -75,13 +93,13 @@ export function Header() {
           </div>
 
           {/* Desktop Nav */}
-          <nav className="hidden lg:flex items-center gap-1">
+          <nav className="hidden lg:flex items-center gap-1 overflow-visible">
             {navItems.map(item => (
               <Link
                 key={item.slug}
                 href={item.href}
                 onClick={(e) => { e.preventDefault(); handleNav(item) }}
-                className={`animated-underline relative px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                className={`animated-underline relative px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
                   isActive(item)
                     ? 'text-primary bg-primary/10 active'
                     : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
@@ -90,6 +108,54 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
+
+            {/* More Categories Dropdown */}
+            {moreCategories.length > 0 && (
+              <div ref={moreRef} className="relative">
+                <button
+                  onClick={() => setMoreOpen(!moreOpen)}
+                  className={`flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+                    moreOpen
+                      ? 'text-primary bg-primary/10'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                  }`}
+                >
+                  More
+                  <ChevronDown className={`h-3 w-3 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
+                </button>
+                <AnimatePresence>
+                  {moreOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute top-full left-0 mt-1 w-48 py-1 rounded-lg border border-border bg-popover shadow-lg z-50"
+                    >
+                      {moreCategories.map(c => (
+                        <Link
+                          key={c.slug}
+                          href={`/category/${c.slug}`}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            setActiveCategory(c.slug)
+                            setMoreOpen(false)
+                            window.scrollTo({ top: 0, behavior: 'smooth' })
+                          }}
+                          className={`block px-3 py-2 text-sm transition-colors ${
+                            currentView === 'category' && activeCategory === c.slug
+                              ? 'text-primary bg-primary/10'
+                              : 'text-foreground hover:bg-secondary'
+                          }`}
+                        >
+                          {c.name}
+                        </Link>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
           </nav>
 
           {/* Actions */}
@@ -186,6 +252,29 @@ export function Header() {
                       {item.label}
                     </Link>
                   ))}
+                  {/* All categories in mobile menu */}
+                  {moreCategories.length > 0 && (
+                    <>
+                      <div className="pt-2 mt-2 border-t border-border">
+                        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground px-3 mb-2">More Categories</p>
+                      </div>
+                      {moreCategories.map(c => (
+                        <Link
+                          key={c.slug}
+                          href={`/category/${c.slug}`}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            setActiveCategory(c.slug)
+                            setMobileOpen(false)
+                            window.scrollTo({ top: 0, behavior: 'smooth' })
+                          }}
+                          className="block w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                        >
+                          {c.name}
+                        </Link>
+                      ))}
+                    </>
+                  )}
                 </nav>
                 {/* Reading History in mobile menu */}
                 {readingHistory.length > 0 && (
