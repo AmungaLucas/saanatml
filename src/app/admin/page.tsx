@@ -33,8 +33,8 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, 
 interface Article {
   id: string; title: string; slug: string; excerpt: string; content?: string
   publishedAt: string; views: number; isFeatured: boolean; isPinned: boolean
-  category: { name: string; color: string }; author: { name: string }
-  commentCount: number; coverImage?: string
+  category: { name: string; color: string }; author: { name: string; id: string }
+  commentCount: number; coverImage?: string; tags?: string; readTime?: number
 }
 
 interface EventItem {
@@ -116,6 +116,7 @@ const navItems = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'moderation', label: 'Moderation', icon: Shield },
   { id: 'articles', label: 'Articles', icon: FileText },
+  { id: 'new-article', label: 'New Article', icon: Plus },
   { id: 'events', label: 'Events', icon: Calendar },
   { id: 'makers', label: 'Makers', icon: Paintbrush },
   { id: 'authors', label: 'Authors', icon: UserCog },
@@ -846,7 +847,7 @@ export default function AdminPage() {
                 <div className="p-6 rounded-xl border border-border bg-card">
                   <h3 className="font-serif font-bold text-lg mb-4">Quick Actions</h3>
                   <div className="space-y-2">
-                    <Button onClick={() => { navigate('articles'); setTimeout(openArtCreate, 50) }} variant="outline" className="w-full justify-start gap-2"><Plus className="h-4 w-4" /> New Article</Button>
+                    <Button onClick={() => navigate('new-article')} variant="outline" className="w-full justify-start gap-2"><Plus className="h-4 w-4" /> New Article</Button>
                     <Button onClick={() => { navigate('events'); setTimeout(openEvtCreate, 50) }} variant="outline" className="w-full justify-start gap-2"><Plus className="h-4 w-4" /> New Event</Button>
                     <Button onClick={() => { navigate('makers'); setTimeout(openMkrCreate, 50) }} variant="outline" className="w-full justify-start gap-2"><Plus className="h-4 w-4" /> New Maker</Button>
                     <Button onClick={() => { navigate('authors'); setTimeout(openAutCreate, 50) }} variant="outline" className="w-full justify-start gap-2"><Plus className="h-4 w-4" /> New Author</Button>
@@ -1060,6 +1061,29 @@ export default function AdminPage() {
             </div>
           )}
 
+          {/* ═══════════════════ NEW ARTICLE (page) ═══════════════════ */}
+          {activeTab === 'new-article' && (
+            <div className="animate-fadeIn">
+              <ArticleForm
+                mode='create'
+                variant='page'
+                categories={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+                authors={authors.map(a => ({ id: a.id, name: a.name, role: a.role }))}
+                onSubmit={async (data: ArticleFormData) => {
+                  const res = await fetch('/api/admin/articles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...data, readTime: parseInt(data.readTime) || 5 }),
+                  })
+                  if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to create article') }
+                  await fetchAll()
+                  navigate('articles')
+                }}
+                onCancel={() => navigate('articles')}
+              />
+            </div>
+          )}
+
           {/* ═══════════════════ ARTICLES ═══════════════════ */}
           {activeTab === 'articles' && (
             <div className="animate-fadeIn">
@@ -1068,7 +1092,7 @@ export default function AdminPage() {
                   <h2 className="font-serif text-2xl font-bold">Articles ({articles.length})</h2>
                   <p className="text-sm text-muted-foreground mt-1">Manage your published content</p>
                 </div>
-                <Button onClick={openArtCreate} className="gap-2"><Plus className="h-4 w-4" /> New Article</Button>
+                <Button onClick={() => navigate('new-article')} className="gap-2"><Plus className="h-4 w-4" /> New Article</Button>
               </div>
               <div className="border border-border rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
@@ -1499,45 +1523,38 @@ export default function AdminPage() {
 
       {/* ═══════════════════ DIALOGS ═══════════════════ */}
 
-      {/* Article Dialog */}
+      {/* Article Edit Dialog (create uses page tab) */}
+      {artEdit && (
       <Dialog open={artDialog} onOpenChange={setArtDialog}>
         <DialogContent className="max-w-6xl max-h-[92vh] overflow-hidden w-[97vw] sm:w-full p-0">
           <ArticleForm
-            key={artEdit?.id || 'new'}
-            mode={artEdit ? 'edit' : 'create'}
-            variant="dialog"
+            key={artEdit.id}
+            mode='edit'
+            variant='dialog'
             categories={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
             authors={authors.map(a => ({ id: a.id, name: a.name, role: a.role }))}
-            initialData={artEdit ? {
+            initialData={{
               title: artEdit.title, slug: artEdit.slug, excerpt: artEdit.excerpt,
               coverImage: artEdit.coverImage || '',
-              categoryId: artEdit.category?.name || '',
-              authorId: artEdit.author?.name || '',
-            } : undefined}
+              categoryId: categories.find(c => c.name === artEdit.category?.name)?.id || '',
+              authorId: artEdit.author?.id || '',
+              tags: artEdit.tags || '',
+              readTime: String(artEdit.readTime || 5),
+              isFeatured: artEdit.isFeatured, isPinned: artEdit.isPinned,
+            }}
             onSubmit={async (data: ArticleFormData) => {
-              if (artEdit) {
-                const catId = categories.find(c => c.name === data.categoryId)?.id || data.categoryId
-                const authId = authors.find(a => a.name === data.authorId)?.id || data.authorId
-                const res = await fetch(`/api/admin/articles/${artEdit.id}`, {
-                  method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ title: data.title, slug: data.slug, excerpt: data.excerpt, coverImage: data.coverImage, isFeatured: data.isFeatured, isPinned: data.isPinned, tags: data.tags, readTime: parseInt(data.readTime) || 5 }),
-                })
-                if (res.ok) { const updated = await res.json(); setArticles(p => p.map(a => a.id === artEdit.id ? { ...a, ...updated } : a)); fetchAll() }
-              } else {
-                const catId = categories.find(c => c.name === data.categoryId)?.id || data.categoryId
-                const authId = authors.find(a => a.name === data.authorId)?.id || data.authorId
-                const res = await fetch('/api/admin/articles', {
-                  method: 'POST', headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ ...data, categoryId: catId, authorId: authId, readTime: parseInt(data.readTime) || 5 }),
-                })
-                if (res.ok) { const created = await res.json(); setArticles(p => [created, ...p]); fetchAll() }
-              }
+              const res = await fetch(`/api/admin/articles/${artEdit.id}`, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...data, readTime: parseInt(data.readTime) || 5 }),
+              })
+              if (res.ok) { const updated = await res.json(); setArticles(p => p.map(a => a.id === artEdit.id ? { ...a, ...updated } : a)); fetchAll() }
               setArtDialog(false)
             }}
             onCancel={() => setArtDialog(false)}
           />
         </DialogContent>
       </Dialog>
+      )}
 
       {/* Event Dialog */}
       <Dialog open={evtDialog} onOpenChange={setEvtDialog}>
