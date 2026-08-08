@@ -1,0 +1,928 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useCallback } from 'react'
+     4→import { Badge } from '@/components/ui/badge'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Input } from '@/components/ui/input'
+     7→import { Textarea } from '@/components/ui/textarea'
+     8→import { Separator } from '@/components/ui/separator'
+     9→import {
+    10→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    11→} from '@/components/ui/select'
+    12→import {
+    13→  Dialog, DialogContent, DialogHeader, DialogTitle,
+    14→} from '@/components/ui/dialog'
+    15→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    16→import { ScrollArea } from '@/components/ui/scroll-area'
+    17→import {
+    18→  FileText, ArrowLeft, Eye, Pencil, Plus, Calendar,
+    19→  MapPin, ExternalLink, Send, Loader2, CheckCircle2,
+    20→} from 'lucide-react'
+    21→import Link from 'next/link'
+    22→import ReactMarkdown from 'react-markdown'
+    23→
+    24→// ── Interfaces ──────────────────────────────────────────────
+    25→
+    26→interface Article {
+    27→  id: string
+    28→  title: string
+    29→  slug: string
+    30→  excerpt: string
+    31→  content: string
+    32→  coverImage: string
+    33→  publishedAt: string
+    34→  views: number
+    35→  readTime: number
+    36→  tags: string
+    37→  isFeatured: boolean
+    38→  isPinned: boolean
+    39→  category: { name: string; color: string }
+    40→  author: { name: string; id: string }
+    41→  commentCount: number
+    42→}
+    43→
+    44→interface CategoryItem {
+    45→  id: string
+    46→  name: string
+    47→  slug: string
+    48→  description: string
+    49→  color: string
+    50→}
+    51→
+    52→interface AuthorItem {
+    53→  id: string
+    54→  name: string
+    55→  slug: string
+    56→  bio: string
+    57→  avatar: string
+    58→  role: string
+    59→}
+    60→
+    61→interface EventItem {
+    62→  id: string
+    63→  title: string
+    64→  description: string
+    65→  date: string
+    66→  endDate: string | null
+    67→  venue: string
+    68→  city: string
+    69→  category: string
+    70→  imageUrl: string
+    71→  ticketUrl: string
+    72→  isFeatured: boolean
+    73→  isPast: boolean
+    74→  categoryRef: { name: string; color: string } | null
+    75→}
+    76→
+    77→// ── Helpers ─────────────────────────────────────────────────
+    78→
+    79→const slugify = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '')
+    80→
+    81→const fmtDate = (iso: string) =>
+    82→  new Date(iso).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+    83→
+    84→const fmtDateTime = (iso: string) =>
+    85→  new Date(iso).toLocaleDateString('en-KE', {
+    86→    day: 'numeric', month: 'short', year: 'numeric',
+    87→    hour: '2-digit', minute: '2-digit',
+    88→  })
+    89→
+    90→const fmtEventDate = (iso: string, endDate: string | null) => {
+    91→  const d = new Date(iso).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })
+    92→  if (endDate) {
+    93→    const e = new Date(endDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+    94→    return `${d} – ${e}`
+    95→  }
+    96→  return d
+    97→}
+    98→
+    99→const labelCls = 'font-mono text-[10px] uppercase tracking-wider text-muted-foreground block mb-1.5'
+   100→const thCls = 'text-left px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground'
+   101→const tdCls = 'px-4 py-3'
+   102→
+   103→// ── Component ───────────────────────────────────────────────
+   104→
+   105→export default function EditorDashboard() {
+   106→  const [activeTab, setActiveTab] = useState<string>('articles')
+   107→  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+   108→
+   109→  // Data
+   110→  const [articles, setArticles] = useState<Article[]>([])
+   111→  const [categories, setCategories] = useState<CategoryItem[]>([])
+   112→  const [authors, setAuthors] = useState<AuthorItem[]>([])
+   113→  const [events, setEvents] = useState<EventItem[]>([])
+   114→  const [loading, setLoading] = useState(true)
+   115→
+   116→  // New article form
+   117→  const [formTitle, setFormTitle] = useState('')
+   118→  const [formSlug, setFormSlug] = useState('')
+   119→  const [formExcerpt, setFormExcerpt] = useState('')
+   120→  const [formContent, setFormContent] = useState('')
+   121→  const [formCoverImage, setFormCoverImage] = useState('')
+   122→  const [formCategoryId, setFormCategoryId] = useState('')
+   123→  const [formAuthorId, setFormAuthorId] = useState('')
+   124→  const [formTags, setFormTags] = useState('')
+   125→  const [formReadTime, setFormReadTime] = useState('5')
+   126→  const [formSaving, setFormSaving] = useState(false)
+   127→  const [formError, setFormError] = useState<string | null>(null)
+   128→
+   129→  // Edit dialog
+   130→  const [editDialog, setEditDialog] = useState(false)
+   131→  const [editArticle, setEditArticle] = useState<Article | null>(null)
+   132→  const [editTitle, setEditTitle] = useState('')
+   133→  const [editSlug, setEditSlug] = useState('')
+   134→  const [editExcerpt, setEditExcerpt] = useState('')
+   135→  const [editContent, setEditContent] = useState('')
+   136→  const [editCoverImage, setEditCoverImage] = useState('')
+   137→  const [editCategoryId, setEditCategoryId] = useState('')
+   138→  const [editAuthorId, setEditAuthorId] = useState('')
+   139→  const [editTags, setEditTags] = useState('')
+   140→  const [editReadTime, setEditReadTime] = useState('5')
+   141→  const [editSaving, setEditSaving] = useState(false)
+   142→
+   143→  // Markdown preview toggle
+   144→  const [mdTab, setMdTab] = useState<string>('write')
+   145→  const [editMdTab, setEditMdTab] = useState<string>('write')
+   146→
+   147→  // ── Data Fetching ─────────────────────────────────────────
+   148→
+   149→  const fetchAll = useCallback(async () => {
+   150→    setLoading(true)
+   151→    try {
+   152→      const [arts, cats, auths, evts] = await Promise.all([
+   153→        fetch('/api/admin/articles').then(r => r.json()),
+   154→        fetch('/api/categories').then(r => r.json()),
+   155→        fetch('/api/authors').then(r => r.json()),
+   156→        fetch('/api/events').then(r => r.json()),
+   157→      ])
+   158→      setArticles(arts)
+   159→      setCategories(cats)
+   160→      setAuthors(auths)
+   161→      setEvents(evts)
+   162→    } catch (err) {
+   163→      console.error('Failed to fetch data', err)
+   164→    } finally {
+   165→      setLoading(false)
+   166→    }
+   167→  }, [])
+   168→
+   169→  useEffect(() => { fetchAll() }, [fetchAll])
+   170→
+   171→  // ── Auto-slug from title ──────────────────────────────────
+   172→
+   173→  const handleTitleChange = (val: string) => {
+   174→    setFormTitle(val)
+   175→    setFormSlug(slugify(val))
+   176→  }
+   177→
+   178→  const handleEditTitleChange = (val: string) => {
+   179→    setEditTitle(val)
+   180→    setEditSlug(slugify(val))
+   181→  }
+   182→
+   183→  // ── Create Article ────────────────────────────────────────
+   184→
+   185→  const handleCreate = async () => {
+   186→    if (!formTitle || !formSlug || !formCategoryId || !formAuthorId) {
+   187→      setFormError('Title, slug, category, and author are required.')
+   188→      return
+   189→    }
+   190→    setFormError(null)
+   191→    setFormSaving(true)
+   192→    try {
+   193→      const res = await fetch('/api/admin/articles', {
+   194→        method: 'POST',
+   195→        headers: { 'Content-Type': 'application/json' },
+   196→        body: JSON.stringify({
+   197→          title: formTitle,
+   198→          slug: formSlug,
+   199→          excerpt: formExcerpt,
+   200→          content: formContent,
+   201→          coverImage: formCoverImage,
+   202→          categoryId: formCategoryId,
+   203→          authorId: formAuthorId,
+   204→          tags: formTags,
+   205→          readTime: parseInt(formReadTime) || 5,
+   206→        }),
+   207→      })
+   208→      if (!res.ok) {
+   209→        const data = await res.json()
+   210→        throw new Error(data.error || 'Failed to create article')
+   211→      }
+   212→      // Reset form
+   213→      setFormTitle(''); setFormSlug(''); setFormExcerpt(''); setFormContent('')
+   214→      setFormCoverImage(''); setFormCategoryId(''); setFormAuthorId('')
+   215→      setFormTags(''); setFormReadTime('5')
+   216→      // Show success & switch tab
+   217→      setSuccessMsg('Article created successfully!')
+   218→      await fetchAll()
+   219→      setActiveTab('articles')
+   220→      setTimeout(() => setSuccessMsg(null), 4000)
+   221→    } catch (err: any) {
+   222→      setFormError(err.message)
+   223→    } finally {
+   224→      setFormSaving(false)
+   225→    }
+   226→  }
+   227→
+   228→  // ── Edit Article ──────────────────────────────────────────
+   229→
+   230→  const openEdit = (article: Article) => {
+   231→    setEditArticle(article)
+   232→    setEditTitle(article.title)
+   233→    setEditSlug(article.slug)
+   234→    setEditExcerpt(article.excerpt)
+   235→    setEditContent(article.content)
+   236→    setEditCoverImage(article.coverImage)
+   237→    setEditCategoryId(article.category?.name ? categories.find(c => c.name === article.category.name)?.id || '' : '')
+   238→    setEditAuthorId(article.author?.id || '')
+   239→    setEditTags(article.tags)
+   240→    setEditReadTime(String(article.readTime))
+   241→    setEditDialog(true)
+   242→  }
+   243→
+   244→  const handleEditSave = async () => {
+   245→    if (!editArticle || !editTitle || !editSlug || !editCategoryId || !editAuthorId) return
+   246→    setEditSaving(true)
+   247→    try {
+   248→      const res = await fetch(`/api/admin/articles/${editArticle.id}`, {
+   249→        method: 'PATCH',
+   250→        headers: { 'Content-Type': 'application/json' },
+   251→        body: JSON.stringify({
+   252→          title: editTitle,
+   253→          slug: editSlug,
+   254→          excerpt: editExcerpt,
+   255→          content: editContent,
+   256→          coverImage: editCoverImage,
+   257→          categoryId: editCategoryId,
+   258→          authorId: editAuthorId,
+   259→          tags: editTags,
+   260→          readTime: parseInt(editReadTime) || 5,
+   261→        }),
+   262→      })
+   263→      if (!res.ok) throw new Error('Failed to update article')
+   264→      setEditDialog(false)
+   265→      setSuccessMsg('Article updated successfully!')
+   266→      await fetchAll()
+   267→      setTimeout(() => setSuccessMsg(null), 4000)
+   268→    } catch (err) {
+   269→      console.error(err)
+   270→    } finally {
+   271→      setEditSaving(false)
+   272→    }
+   273→  }
+   274→
+   275→  // ── Computed ──────────────────────────────────────────────
+   276→
+   277→  const upcomingEvents = events
+   278→    .filter(e => !e.isPast && new Date(e.date) >= new Date())
+   279→    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+   280→
+   281→  const totalViews = articles.reduce((sum, a) => sum + a.views, 0)
+   282→
+   283→  // ── Word count ────────────────────────────────────────────
+   284→
+   285→  const wordCount = (text: string) => text.trim().split(/\s+/).filter(Boolean).length
+   286→
+   287→  // ── Render ────────────────────────────────────────────────
+   288→
+   289→  return (
+   290→    <div className="min-h-screen bg-background">
+   291→      {/* Header */}
+   292→      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+   293→        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
+   294→          <div className="flex items-center gap-3">
+   295→            <h1 className="font-serif text-lg font-semibold tracking-tight">
+   296→              Sanaa <span className="text-muted-foreground">/ Editor Dashboard</span>
+   297→            </h1>
+   298→          </div>
+   299→          <div className="flex items-center gap-2">
+   300→            <Link href="/admin" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Admin</Link>
+   301→            <span className="text-border">|</span>
+   302→            <button onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login' }} className="text-xs text-muted-foreground hover:text-destructive transition-colors">Logout</button>
+   303→            <Link href="/">
+   304→              <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
+   305→                <ArrowLeft className="h-3.5 w-3.5" />
+   306→                Back to Site
+   307→              </Button>
+   308→            </Link>
+   309→          </div>
+   310→        </div>
+   311→      </header>
+   312→
+   313→      {/* Success Banner */}
+   314→      {successMsg && (
+   315→        <div className="border-b bg-emerald-50 dark:bg-emerald-950/30 px-4 py-2.5">
+   316→          <div className="mx-auto flex max-w-6xl items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400">
+   317→            <CheckCircle2 className="h-4 w-4" />
+   318→            {successMsg}
+   319→          </div>
+   320→        </div>
+   321→      )}
+   322→
+   323→      {/* Content */}
+   324→      <main className="mx-auto max-w-6xl px-4 py-6">
+   325→        <Tabs value={activeTab} onValueChange={setActiveTab}>
+   326→          <TabsList className="mb-6">
+   327→            <TabsTrigger value="articles" className="gap-1.5 text-xs">
+   328→              <FileText className="h-3.5 w-3.5" />
+   329→              My Articles
+   330→            </TabsTrigger>
+   331→            <TabsTrigger value="new" className="gap-1.5 text-xs">
+   332→              <Plus className="h-3.5 w-3.5" />
+   333→              New Article
+   334→            </TabsTrigger>
+   335→            <TabsTrigger value="calendar" className="gap-1.5 text-xs">
+   336→              <Calendar className="h-3.5 w-3.5" />
+   337→              Content Calendar
+   338→            </TabsTrigger>
+   339→          </TabsList>
+   340→
+   341→          {/* ─── MY ARTICLES TAB ──────────────────────────────── */}
+   342→          <TabsContent value="articles">
+   343→            {/* Stats row */}
+   344→            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+   345→              <div className="rounded-lg border p-4">
+   346→                <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Total Articles</p>
+   347→                <p className="mt-1 text-2xl font-semibold">{articles.length}</p>
+   348→              </div>
+   349→              <div className="rounded-lg border p-4">
+   350→                <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Total Views</p>
+   351→                <p className="mt-1 text-2xl font-semibold">{totalViews.toLocaleString()}</p>
+   352→              </div>
+   353→              <div className="rounded-lg border p-4">
+   354→                <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Categories</p>
+   355→                <p className="mt-1 text-2xl font-semibold">{new Set(articles.map(a => a.category?.name)).size}</p>
+   356→              </div>
+   357→              <div className="rounded-lg border p-4">
+   358→                <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Avg Views</p>
+   359→                <p className="mt-1 text-2xl font-semibold">
+   360→                  {articles.length ? Math.round(totalViews / articles.length).toLocaleString() : '0'}
+   361→                </p>
+   362→              </div>
+   363→            </div>
+   364→
+   365→            {loading ? (
+   366→              <div className="flex items-center justify-center py-12 text-muted-foreground">
+   367→                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading articles…
+   368→              </div>
+   369→            ) : articles.length === 0 ? (
+   370→              <div className="flex flex-col items-center justify-center py-16 text-center">
+   371→                <FileText className="mb-3 h-10 w-10 text-muted-foreground/40" />
+   372→                <p className="text-sm text-muted-foreground">No articles yet. Create your first article!</p>
+   373→                <Button
+   374→                  variant="outline"
+   375→                  size="sm"
+   376→                  className="mt-4 gap-1.5"
+   377→                  onClick={() => setActiveTab('new')}
+   378→                >
+   379→                  <Plus className="h-3.5 w-3.5" />
+   380→                  New Article
+   381→                </Button>
+   382→              </div>
+   383→            ) : (
+   384→              <div className="overflow-x-auto rounded-lg border">
+   385→                <table className="w-full text-sm">
+   386→                  <thead className="border-b bg-muted/50">
+   387→                    <tr>
+   388→                      <th className={thCls}>Title</th>
+   389→                      <th className={`${thCls} hidden sm:table-cell`}>Category</th>
+   390→                      <th className={`${thCls} hidden md:table-cell`}>Published</th>
+   391→                      <th className={`${thCls} hidden md:table-cell`}>Views</th>
+   392→                      <th className={thCls}>Actions</th>
+   393→                    </tr>
+   394→                  </thead>
+   395→                  <tbody>
+   396→                    {articles.map((article) => (
+   397→                      <tr key={article.id} className="border-b last:border-0 transition-colors hover:bg-muted/30">
+   398→                        <td className={tdCls}>
+   399→                          <div className="flex items-center gap-2">
+   400→                            {article.isFeatured && (
+   401→                              <Badge variant="secondary" className="shrink-0 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-[9px] px-1.5">
+   402→                                Featured
+   403→                              </Badge>
+   404→                            )}
+   405→                            <span className="max-w-[200px] truncate font-medium lg:max-w-[300px]">
+   406→                              {article.title}
+   407→                            </span>
+   408→                          </div>
+   409→                        </td>
+   410→                        <td className={`${tdCls} hidden sm:table-cell`}>
+   411→                          {article.category && (
+   412→                            <Badge
+   413→                              variant="outline"
+   414→                              className="text-[10px]"
+   415→                              style={{ borderColor: article.category.color, color: article.category.color }}
+   416→                            >
+   417→                              {article.category.name}
+   418→                            </Badge>
+   419→                          )}
+   420→                        </td>
+   421→                        <td className={`${tdCls} hidden md:table-cell`}>
+   422→                          <span className="font-mono text-xs text-muted-foreground">
+   423→                            {fmtDate(article.publishedAt)}
+   424→                          </span>
+   425→                        </td>
+   426→                        <td className={`${tdCls} hidden md:table-cell`}>
+   427→                          <span className="flex items-center gap-1 font-mono text-xs">
+   428→                            <Eye className="h-3 w-3 text-muted-foreground" />
+   429→                            {article.views.toLocaleString()}
+   430→                          </span>
+   431→                        </td>
+   432→                        <td className={tdCls}>
+   433→                          <div className="flex items-center gap-1">
+   434→                            <Link href={`/articles/${article.slug}`} target="_blank">
+   435→                              <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs">
+   436→                                <ExternalLink className="h-3 w-3" />
+   437→                                <span className="hidden sm:inline">View</span>
+   438→                              </Button>
+   439→                            </Link>
+   440→                            <Button
+   441→                              variant="ghost"
+   442→                              size="sm"
+   443→                              className="h-7 gap-1 px-2 text-xs"
+   444→                              onClick={() => openEdit(article)}
+   445→                            >
+   446→                              <Pencil className="h-3 w-3" />
+   447→                              <span className="hidden sm:inline">Edit</span>
+   448→                            </Button>
+   449→                          </div>
+   450→                        </td>
+   451→                      </tr>
+   452→                    ))}
+   453→                  </tbody>
+   454→                </table>
+   455→              </div>
+   456→            )}
+   457→          </TabsContent>
+   458→
+   459→          {/* ─── NEW ARTICLE TAB ──────────────────────────────── */}
+   460→          <TabsContent value="new">
+   461→            <div className="mx-auto max-w-3xl">
+   462→              <h2 className="mb-6 font-serif text-2xl font-semibold">Create New Article</h2>
+   463→
+   464→              {formError && (
+   465→                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
+   466→                  {formError}
+   467→                </div>
+   468→              )}
+   469→
+   470→              <div className="space-y-5">
+   471→                {/* Title */}
+   472→                <div>
+   473→                  <label className={labelCls}>Title *</label>
+   474→                  <Input
+   475→                    value={formTitle}
+   476→                    onChange={e => handleTitleChange(e.target.value)}
+   477→                    placeholder="Enter article title…"
+   478→                    className="font-serif text-base"
+   479→                  />
+   480→                </div>
+   481→
+   482→                {/* Slug */}
+   483→                <div>
+   484→                  <label className={labelCls}>Slug *</label>
+   485→                  <Input
+   486→                    value={formSlug}
+   487→                    onChange={e => setFormSlug(e.target.value)}
+   488→                    placeholder="article-url-slug"
+   489→                    className="font-mono text-sm"
+   490→                  />
+   491→                </div>
+   492→
+   493→                {/* Category + Author row */}
+   494→                <div className="grid gap-4 sm:grid-cols-2">
+   495→                  <div>
+   496→                    <label className={labelCls}>Category *</label>
+   497→                    <Select value={formCategoryId} onValueChange={setFormCategoryId}>
+   498→                      <SelectTrigger>
+   499→                        <SelectValue placeholder="Select category" />
+   500→                      </SelectTrigger>
+   501→                      <SelectContent>
+   502→                        {categories.map(cat => (
+   503→                          <SelectItem key={cat.id} value={cat.id}>
+   504→                            <span className="flex items-center gap-2">
+   505→                              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: cat.color }} />
+   506→                              {cat.name}
+   507→                            </span>
+   508→                          </SelectItem>
+   509→                        ))}
+   510→                      </SelectContent>
+   511→                    </Select>
+   512→                  </div>
+   513→                  <div>
+   514→                    <label className={labelCls}>Author *</label>
+   515→                    <Select value={formAuthorId} onValueChange={setFormAuthorId}>
+   516→                      <SelectTrigger>
+   517→                        <SelectValue placeholder="Select author" />
+   518→                      </SelectTrigger>
+   519→                      <SelectContent>
+   520→                        {authors.map(auth => (
+   521→                          <SelectItem key={auth.id} value={auth.id}>
+   522→                            {auth.name}{' '}
+   523→                            <span className="text-muted-foreground">({auth.role})</span>
+   524→                          </SelectItem>
+   525→                        ))}
+   526→                      </SelectContent>
+   527→                    </Select>
+   528→                  </div>
+   529→                </div>
+   530→
+   531→                {/* Excerpt */}
+   532→                <div>
+   533→                  <label className={labelCls}>Excerpt</label>
+   534→                  <Textarea
+   535→                    value={formExcerpt}
+   536→                    onChange={e => setFormExcerpt(e.target.value)}
+   537→                    placeholder="A brief summary of the article…"
+   538→                    rows={3}
+   539→                  />
+   540→                </div>
+   541→
+   542→                {/* Content with Markdown preview */}
+   543→                <div>
+   544→                  <label className={labelCls}>Content</label>
+   545→                  <Tabs value={mdTab} onValueChange={setMdTab} className="rounded-lg border">
+   546→                    <TabsList className="w-full rounded-none border-b bg-transparent px-0">
+   547→                      <TabsTrigger value="write" className="flex-1 gap-1.5 rounded-none text-xs data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">
+   548→                        <Pencil className="h-3 w-3" />
+   549→                        Write
+   550→                      </TabsTrigger>
+   551→                      <TabsTrigger value="preview" className="flex-1 gap-1.5 rounded-none text-xs data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">
+   552→                        <Eye className="h-3 w-3" />
+   553→                        Preview
+   554→                        <span className="font-mono text-[9px] text-muted-foreground">
+   555→                          {wordCount(formContent)} words
+   556→                        </span>
+   557→                      </TabsTrigger>
+   558→                    </TabsList>
+   559→                    <TabsContent value="write" className="mt-0">
+   560→                      <Textarea
+   561→                        value={formContent}
+   562→                        onChange={e => setFormContent(e.target.value)}
+   563→                        placeholder="Write your article content in Markdown…"
+   564→                        rows={16}
+   565→                        className="rounded-none border-0 font-mono text-sm resize-y focus-visible:ring-0"
+   566→                      />
+   567→                    </TabsContent>
+   568→                    <TabsContent value="preview" className="mt-0">
+   569→                      <ScrollArea className="max-h-[420px]">
+   570→                        <div className="prose prose-sm dark:prose-invert max-w-none p-4">
+   571→                          {formContent ? (
+   572→                            <ReactMarkdown>{formContent}</ReactMarkdown>
+   573→                          ) : (
+   574→                            <p className="text-muted-foreground italic">Nothing to preview yet…</p>
+   575→                          )}
+   576→                        </div>
+   577→                      </ScrollArea>
+   578→                    </TabsContent>
+   579→                  </Tabs>
+   580→                </div>
+   581→
+   582→                {/* Cover Image */}
+   583→                <div>
+   584→                  <label className={labelCls}>Cover Image URL</label>
+   585→                  <div className="flex items-start gap-3">
+   586→                    <div className="flex-1">
+   587→                      <Input
+   588→                        value={formCoverImage}
+   589→                        onChange={e => setFormCoverImage(e.target.value)}
+   590→                        placeholder="https://example.com/image.jpg"
+   591→                        className="font-mono text-xs"
+   592→                      />
+   593→                    </div>
+   594→                    {formCoverImage && (
+   595→                      <div className="h-16 w-24 shrink-0 overflow-hidden rounded-md border bg-muted">
+   596→                        <img
+   597→                          src={formCoverImage}
+   598→                          alt="Cover preview"
+   599→                          className="h-full w-full object-cover"
+   600→                          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+   601→                        />
+   602→                      </div>
+   603→                    )}
+   604→                  </div>
+   605→                </div>
+   606→
+   607→                {/* Tags + Read Time row */}
+   608→                <div className="grid gap-4 sm:grid-cols-2">
+   609→                  <div>
+   610→                    <label className={labelCls}>Tags</label>
+   611→                    <Input
+   612→                      value={formTags}
+   613→                      onChange={e => setFormTags(e.target.value)}
+   614→                      placeholder="art, nairobi, exhibition (comma-separated)"
+   615→                      className="text-sm"
+   616→                    />
+   617→                  </div>
+   618→                  <div>
+   619→                    <label className={labelCls}>Read Time (minutes)</label>
+   620→                    <Input
+   621→                      type="number"
+   622→                      min={1}
+   623→                      max={60}
+   624→                      value={formReadTime}
+   625→                      onChange={e => setFormReadTime(e.target.value)}
+   626→                      className="font-mono text-sm w-24"
+   627→                    />
+   628→                  </div>
+   629→                </div>
+   630→
+   631→                <Separator />
+   632→
+   633→                {/* Submit */}
+   634→                <div className="flex items-center gap-3">
+   635→                  <Button
+   636→                    onClick={handleCreate}
+   637→                    disabled={formSaving}
+   638→                    className="gap-2"
+   639→                  >
+   640→                    {formSaving ? (
+   641→                      <Loader2 className="h-4 w-4 animate-spin" />
+   642→                    ) : (
+   643→                      <Send className="h-4 w-4" />
+   644→                    )}
+   645→                    {formSaving ? 'Publishing…' : 'Publish Article'}
+   646→                  </Button>
+   647→                  <Button
+   648→                    variant="ghost"
+   649→                    onClick={() => setActiveTab('articles')}
+   650→                    className="text-xs"
+   651→                  >
+   652→                    Cancel
+   653→                  </Button>
+   654→                </div>
+   655→              </div>
+   656→            </div>
+   657→          </TabsContent>
+   658→
+   659→          {/* ─── CONTENT CALENDAR TAB ─────────────────────────── */}
+   660→          <TabsContent value="calendar">
+   661→            <div className="mx-auto max-w-3xl">
+   662→              <h2 className="mb-2 font-serif text-2xl font-semibold">Content Calendar</h2>
+   663→              <p className="mb-6 text-sm text-muted-foreground">
+   664→                Upcoming events and happenings for story inspiration.
+   665→              </p>
+   666→
+   667→              {loading ? (
+   668→                <div className="flex items-center justify-center py-12 text-muted-foreground">
+   669→                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading events…
+   670→                </div>
+   671→              ) : upcomingEvents.length === 0 ? (
+   672→                <div className="flex flex-col items-center justify-center py-16 text-center">
+   673→                  <Calendar className="mb-3 h-10 w-10 text-muted-foreground/40" />
+   674→                  <p className="text-sm text-muted-foreground">No upcoming events at the moment.</p>
+   675→                </div>
+   676→              ) : (
+   677→                <div className="space-y-3">
+   678→                  {upcomingEvents.map((event) => {
+   679→                    const catName = event.categoryRef?.name || event.category
+   680→                    const catColor = event.categoryRef?.color || '#888'
+   681→                    return (
+   682→                      <div
+   683→                        key={event.id}
+   684→                        className="group relative rounded-lg border p-4 transition-colors hover:bg-muted/30"
+   685→                      >
+   686→                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+   687→                          <div className="flex-1">
+   688→                            <div className="mb-1 flex flex-wrap items-center gap-2">
+   689→                              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+   690→                                {fmtEventDate(event.date, event.endDate)}
+   691→                              </span>
+   692→                              {catName && (
+   693→                                <Badge
+   694→                                  variant="outline"
+   695→                                  className="text-[9px] px-1.5"
+   696→                                  style={{ borderColor: catColor, color: catColor }}
+   697→                                >
+   698→                                  {catName}
+   699→                                </Badge>
+   700→                              )}
+   701→                              {event.isFeatured && (
+   702→                                <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-[9px] px-1.5">
+   703→                                  Featured
+   704→                                </Badge>
+   705→                              )}
+   706→                            </div>
+   707→                            <h3 className="font-serif text-base font-semibold">{event.title}</h3>
+   708→                            {event.description && (
+   709→                              <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+   710→                                {event.description}
+   711→                              </p>
+   712→                            )}
+   713→                            <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+   714→                              {(event.venue || event.city) && (
+   715→                                <span className="flex items-center gap-1">
+   716→                                  <MapPin className="h-3 w-3" />
+   717→                                  {[event.venue, event.city].filter(Boolean).join(', ')}
+   718→                                </span>
+   719→                              )}
+   720→                            </div>
+   721→                          </div>
+   722→
+   723→                          {/* Date visual accent on desktop */}
+   724→                          <div className="hidden shrink-0 sm:block">
+   725→                            <div className="flex h-12 w-12 flex-col items-center justify-center rounded-lg bg-muted text-center">
+   726→                              <span className="text-lg font-bold leading-none">
+   727→                                {new Date(event.date).getDate()}
+   728→                              </span>
+   729→                              <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+   730→                                {new Date(event.date).toLocaleDateString('en-KE', { month: 'short' })}
+   731→                              </span>
+   732→                            </div>
+   733→                          </div>
+   734→                        </div>
+   735→                      </div>
+   736→                    )
+   737→                  })}
+   738→                </div>
+   739→              )}
+   740→            </div>
+   741→          </TabsContent>
+   742→        </Tabs>
+   743→      </main>
+   744→
+   745→      {/* ─── EDIT ARTICLE DIALOG ────────────────────────────── */}
+   746→      <Dialog open={editDialog} onOpenChange={setEditDialog}>
+   747→        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+   748→          <DialogHeader>
+   749→            <DialogTitle className="font-serif">Edit Article</DialogTitle>
+   750→          </DialogHeader>
+   751→
+   752→          <div className="space-y-4 pt-2">
+   753→            {/* Title */}
+   754→            <div>
+   755→              <label className={labelCls}>Title *</label>
+   756→              <Input
+   757→                value={editTitle}
+   758→                onChange={e => handleEditTitleChange(e.target.value)}
+   759→                className="font-serif text-base"
+   760→              />
+   761→            </div>
+   762→
+   763→            {/* Slug */}
+   764→            <div>
+   765→              <label className={labelCls}>Slug *</label>
+   766→              <Input
+   767→                value={editSlug}
+   768→                onChange={e => setEditSlug(e.target.value)}
+   769→                className="font-mono text-sm"
+   770→              />
+   771→            </div>
+   772→
+   773→            {/* Category + Author */}
+   774→            <div className="grid gap-4 sm:grid-cols-2">
+   775→              <div>
+   776→                <label className={labelCls}>Category *</label>
+   777→                <Select value={editCategoryId} onValueChange={setEditCategoryId}>
+   778→                  <SelectTrigger>
+   779→                    <SelectValue placeholder="Select category" />
+   780→                  </SelectTrigger>
+   781→                  <SelectContent>
+   782→                    {categories.map(cat => (
+   783→                      <SelectItem key={cat.id} value={cat.id}>
+   784→                        <span className="flex items-center gap-2">
+   785→                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: cat.color }} />
+   786→                          {cat.name}
+   787→                        </span>
+   788→                      </SelectItem>
+   789→                    ))}
+   790→                  </SelectContent>
+   791→                </Select>
+   792→              </div>
+   793→              <div>
+   794→                <label className={labelCls}>Author *</label>
+   795→                <Select value={editAuthorId} onValueChange={setEditAuthorId}>
+   796→                  <SelectTrigger>
+   797→                    <SelectValue placeholder="Select author" />
+   798→                  </SelectTrigger>
+   799→                  <SelectContent>
+   800→                    {authors.map(auth => (
+   801→                      <SelectItem key={auth.id} value={auth.id}>
+   802→                        {auth.name}{' '}
+   803→                        <span className="text-muted-foreground">({auth.role})</span>
+   804→                      </SelectItem>
+   805→                    ))}
+   806→                  </SelectContent>
+   807→                </Select>
+   808→              </div>
+   809→            </div>
+   810→
+   811→            {/* Excerpt */}
+   812→            <div>
+   813→              <label className={labelCls}>Excerpt</label>
+   814→              <Textarea
+   815→                value={editExcerpt}
+   816→                onChange={e => setEditExcerpt(e.target.value)}
+   817→                rows={2}
+   818→              />
+   819→            </div>
+   820→
+   821→            {/* Content with preview */}
+   822→            <div>
+   823→              <label className={labelCls}>Content</label>
+   824→              <Tabs value={editMdTab} onValueChange={setEditMdTab} className="rounded-lg border">
+   825→                <TabsList className="w-full rounded-none border-b bg-transparent px-0">
+   826→                  <TabsTrigger value="write" className="flex-1 gap-1.5 rounded-none text-xs data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">
+   827→                    <Pencil className="h-3 w-3" />
+   828→                    Write
+   829→                  </TabsTrigger>
+   830→                  <TabsTrigger value="preview" className="flex-1 gap-1.5 rounded-none text-xs data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">
+   831→                    <Eye className="h-3 w-3" />
+   832→                    Preview
+   833→                    <span className="font-mono text-[9px] text-muted-foreground">
+   834→                      {wordCount(editContent)} words
+   835→                    </span>
+   836→                  </TabsTrigger>
+   837→                </TabsList>
+   838→                <TabsContent value="write" className="mt-0">
+   839→                  <Textarea
+   840→                    value={editContent}
+   841→                    onChange={e => setEditContent(e.target.value)}
+   842→                    rows={10}
+   843→                    className="rounded-none border-0 font-mono text-sm resize-y focus-visible:ring-0"
+   844→                  />
+   845→                </TabsContent>
+   846→                <TabsContent value="preview" className="mt-0">
+   847→                  <ScrollArea className="max-h-[280px]">
+   848→                    <div className="prose prose-sm dark:prose-invert max-w-none p-4">
+   849→                      {editContent ? (
+   850→                        <ReactMarkdown>{editContent}</ReactMarkdown>
+   851→                      ) : (
+   852→                        <p className="text-muted-foreground italic">Nothing to preview…</p>
+   853→                      )}
+   854→                    </div>
+   855→                  </ScrollArea>
+   856→                </TabsContent>
+   857→              </Tabs>
+   858→            </div>
+   859→
+   860→            {/* Cover Image */}
+   861→            <div>
+   862→              <label className={labelCls}>Cover Image URL</label>
+   863→              <div className="flex items-start gap-3">
+   864→                <div className="flex-1">
+   865→                  <Input
+   866→                    value={editCoverImage}
+   867→                    onChange={e => setEditCoverImage(e.target.value)}
+   868→                    className="font-mono text-xs"
+   869→                  />
+   870→                </div>
+   871→                {editCoverImage && (
+   872→                  <div className="h-12 w-20 shrink-0 overflow-hidden rounded-md border bg-muted">
+   873→                    <img
+   874→                      src={editCoverImage}
+   875→                      alt="Cover preview"
+   876→                      className="h-full w-full object-cover"
+   877→                      onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+   878→                    />
+   879→                  </div>
+   880→                )}
+   881→              </div>
+   882→            </div>
+   883→
+   884→            {/* Tags + Read Time */}
+   885→            <div className="grid gap-4 sm:grid-cols-2">
+   886→              <div>
+   887→                <label className={labelCls}>Tags</label>
+   888→                <Input
+   889→                  value={editTags}
+   890→                  onChange={e => setEditTags(e.target.value)}
+   891→                  className="text-sm"
+   892→                />
+   893→              </div>
+   894→              <div>
+   895→                <label className={labelCls}>Read Time (min)</label>
+   896→                <Input
+   897→                  type="number"
+   898→                  min={1}
+   899→                  max={60}
+   900→                  value={editReadTime}
+   901→                  onChange={e => setEditReadTime(e.target.value)}
+   902→                  className="font-mono text-sm w-24"
+   903→                />
+   904→              </div>
+   905→            </div>
+   906→
+   907→            <Separator />
+   908→
+   909→            {/* Actions */}
+   910→            <div className="flex items-center gap-3">
+   911→              <Button onClick={handleEditSave} disabled={editSaving} className="gap-2">
+   912→                {editSaving ? (
+   913→                  <Loader2 className="h-4 w-4 animate-spin" />
+   914→                ) : (
+   915→                  <Pencil className="h-4 w-4" />
+   916→                )}
+   917→                {editSaving ? 'Saving…' : 'Save Changes'}
+   918→              </Button>
+   919→              <Button variant="ghost" onClick={() => setEditDialog(false)} className="text-xs">
+   920→                Cancel
+   921→              </Button>
+   922→            </div>
+   923→          </div>
+   924→        </DialogContent>
+   925→      </Dialog>
+   926→    </div>
+   927→  )
+   928→}

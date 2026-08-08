@@ -1,0 +1,442 @@
+   560→            )}
+   561→          </TabsContent>
+   562→
+   563→          {/* ═══════════════════ ARTICLES ═══════════════════ */}
+   564→          <TabsContent value="articles">
+   565→            <div className="animate-fadeIn">
+   566→              <div className="flex items-center justify-between mb-6">
+   567→                <h2 className="font-serif text-2xl font-bold">Articles ({articles.length})</h2>
+   568→                <Button onClick={openArtCreate} className="gap-2"><Plus className="h-4 w-4" /> New Article</Button>
+   569→              </div>
+   570→              <div className="border border-border rounded-xl overflow-hidden">
+   571→                <div className="overflow-x-auto">
+   572→                  <table className="w-full">
+   573→                    <thead>
+   574→                      <tr className="bg-secondary/50 border-b border-border">
+   575→                        <th className={thCls}>Title</th>
+   576→                        <th className={`${thCls} hidden md:table-cell`}>Category</th>
+   577→                        <th className={`${thCls} hidden lg:table-cell`}>Author</th>
+   578→                        <th className={`${thCls} text-right`}>Views</th>
+   579→                        <th className={`${thCls} text-center`}>Status</th>
+   580→                        <th className={`${thCls} text-right`}>Actions</th>
+   581→                      </tr>
+   582→                    </thead>
+   583→                    <tbody>
+   584→                      {articles.map(article => (
+   585→                        <tr key={article.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+   586→                          <td className={tdCls}>
+   587→                            <p className="font-serif font-semibold text-sm line-clamp-1">{article.title}</p>
+   588→                            <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{fmtDate(article.publishedAt)}</p>
+   589→                          </td>
+   590→                          <td className={`${tdCls} hidden md:table-cell`}>
+   591→                            <Badge className="text-[10px]" style={{ backgroundColor: article.category.color + '20', color: article.category.color }}>{article.category.name}</Badge>
+   592→                          </td>
+   593→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{article.author.name}</td>
+   594→                          <td className={`${tdCls} text-right`}><span className="font-mono text-sm">{article.views}</span></td>
+   595→                          <td className={`${tdCls}`}>
+   596→                            <div className="flex items-center justify-center gap-1">
+   597→                              <button onClick={() => toggleArtFeatured(article)} className={`p-1 rounded ${article.isFeatured ? 'text-gold' : 'text-muted-foreground/30 hover:text-gold/50'}`} title="Featured">
+   598→                                <Star className="h-3.5 w-3.5" fill={article.isFeatured ? 'currentColor' : 'none'} />
+   599→                              </button>
+   600→                              <button onClick={() => toggleArtPinned(article)} className={`p-1 rounded ${article.isPinned ? 'text-primary' : 'text-muted-foreground/30 hover:text-primary/50'}`} title="Pinned">
+   601→                                <Pin className="h-3.5 w-3.5" />
+   602→                              </button>
+   603→                            </div>
+   604→                          </td>
+   605→                          <td className={`${tdCls} text-right`}>
+   606→                            <div className="flex items-center justify-end gap-1">
+   607→                              <button onClick={() => openArtEdit(article)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+   608→                              <a href={`/articles/${article.slug}`} target="_blank" className={actionBtnCls} title="View"><ExternalLink className="h-3.5 w-3.5" /></a>
+   609→                              <button onClick={() => deleteArt(article.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+   610→                            </div>
+   611→                          </td>
+   612→                        </tr>
+   613→                      ))}
+   614→                    </tbody>
+   615→                  </table>
+   616→                </div>
+   617→              </div>
+   618→            </div>
+   619→          </TabsContent>
+   620→
+   621→          {/* ═══════════════════ EVENTS ═══════════════════ */}
+   622→          <TabsContent value="events">
+   623→            <div className="animate-fadeIn">
+   624→              <div className="flex items-center justify-between mb-6">
+   625→                <h2 className="font-serif text-2xl font-bold">Events ({events.length})</h2>
+   626→                <Button onClick={openEvtCreate} className="gap-2"><Plus className="h-4 w-4" /> New Event</Button>
+   627→              </div>
+   628→              <div className="border border-border rounded-xl overflow-hidden">
+   629→                <div className="overflow-x-auto">
+   630→                  <table className="w-full">
+   631→                    <thead>
+   632→                      <tr className="bg-secondary/50 border-b border-border">
+   633→                        <th className={thCls}>Title</th>
+   634→                        <th className={`${thCls} hidden md:table-cell`}>Date</th>
+   635→                        <th className={`${thCls} hidden lg:table-cell`}>Venue</th>
+   636→                        <th className={`${thCls} hidden lg:table-cell`}>City</th>
+   637→                        <th className={`${thCls} text-center`}>Status</th>
+   638→                        <th className={`${thCls} text-right`}>Actions</th>
+   639→                      </tr>
+   640→                    </thead>
+   641→                    <tbody>
+   642→                      {events.map(evt => (
+   643→                        <tr key={evt.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+   644→                          <td className={tdCls}>
+   645→                            <p className="font-serif font-semibold text-sm line-clamp-1">{evt.title}</p>
+   646→                            <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{evt.category}</p>
+   647→                          </td>
+   648→                          <td className={`${tdCls} text-sm text-muted-foreground hidden md:table-cell`}>{fmtDate(evt.date)}</td>
+   649→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{evt.venue}</td>
+   650→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{evt.city}</td>
+   651→                          <td className={`${tdCls}`}>
+   652→                            <div className="flex items-center justify-center gap-1">
+   653→                              <Badge variant={evt.isPast ? 'secondary' : 'outline'} className="text-[10px]">{evt.isPast ? 'Past' : 'Upcoming'}</Badge>
+   654→                              {evt.isFeatured && <Star className="h-3 w-3 text-gold" fill="currentColor" />}
+   655→                            </div>
+   656→                          </td>
+   657→                          <td className={`${tdCls} text-right`}>
+   658→                            <div className="flex items-center justify-end gap-1">
+   659→                              <button onClick={() => openEvtEdit(evt)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+   660→                              <button onClick={() => deleteEvt(evt.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+   661→                            </div>
+   662→                          </td>
+   663→                        </tr>
+   664→                      ))}
+   665→                    </tbody>
+   666→                  </table>
+   667→                </div>
+   668→              </div>
+   669→            </div>
+   670→          </TabsContent>
+   671→
+   672→          {/* ═══════════════════ MAKERS ═══════════════════ */}
+   673→          <TabsContent value="makers">
+   674→            <div className="animate-fadeIn">
+   675→              <div className="flex items-center justify-between mb-6">
+   676→                <h2 className="font-serif text-2xl font-bold">Makers ({makers.length})</h2>
+   677→                <Button onClick={openMkrCreate} className="gap-2"><Plus className="h-4 w-4" /> New Maker</Button>
+   678→              </div>
+   679→              <div className="border border-border rounded-xl overflow-hidden">
+   680→                <div className="overflow-x-auto">
+   681→                  <table className="w-full">
+   682→                    <thead>
+   683→                      <tr className="bg-secondary/50 border-b border-border">
+   684→                        <th className={thCls}>Name</th>
+   685→                        <th className={`${thCls} hidden md:table-cell`}>Discipline</th>
+   686→                        <th className={`${thCls} hidden lg:table-cell`}>Location</th>
+   687→                        <th className={`${thCls} text-center`}>Featured</th>
+   688→                        <th className={`${thCls} text-right`}>Actions</th>
+   689→                      </tr>
+   690→                    </thead>
+   691→                    <tbody>
+   692→                      {makers.map(mkr => (
+   693→                        <tr key={mkr.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+   694→                          <td className={tdCls}>
+   695→                            <p className="font-serif font-semibold text-sm">{mkr.name}</p>
+   696→                            <p className="text-[10px] font-mono text-muted-foreground">{mkr.slug}</p>
+   697→                          </td>
+   698→                          <td className={`${tdCls} text-sm text-muted-foreground hidden md:table-cell`}>{mkr.discipline}</td>
+   699→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{mkr.location}</td>
+   700→                          <td className={`${tdCls}`}>
+   701→                            <div className="flex justify-center">
+   702→                              {mkr.isFeatured && <Star className="h-4 w-4 text-gold" fill="currentColor" />}
+   703→                            </div>
+   704→                          </td>
+   705→                          <td className={`${tdCls} text-right`}>
+   706→                            <div className="flex items-center justify-end gap-1">
+   707→                              <button onClick={() => openMkrEdit(mkr)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+   708→                              <button onClick={() => deleteMkr(mkr.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+   709→                            </div>
+   710→                          </td>
+   711→                        </tr>
+   712→                      ))}
+   713→                    </tbody>
+   714→                  </table>
+   715→                </div>
+   716→              </div>
+   717→            </div>
+   718→          </TabsContent>
+   719→
+   720→          {/* ═══════════════════ AUTHORS ═══════════════════ */}
+   721→          <TabsContent value="authors">
+   722→            <div className="animate-fadeIn">
+   723→              <div className="flex items-center justify-between mb-6">
+   724→                <h2 className="font-serif text-2xl font-bold">Authors ({authors.length})</h2>
+   725→                <Button onClick={openAutCreate} className="gap-2"><Plus className="h-4 w-4" /> New Author</Button>
+   726→              </div>
+   727→              <div className="border border-border rounded-xl overflow-hidden">
+   728→                <div className="overflow-x-auto">
+   729→                  <table className="w-full">
+   730→                    <thead>
+   731→                      <tr className="bg-secondary/50 border-b border-border">
+   732→                        <th className={thCls}>Name</th>
+   733→                        <th className={`${thCls} hidden md:table-cell`}>Role</th>
+   734→                        <th className={`${thCls} hidden lg:table-cell`}>Articles</th>
+   735→                        <th className={`${thCls} text-right`}>Actions</th>
+   736→                      </tr>
+   737→                    </thead>
+   738→                    <tbody>
+   739→                      {authors.map(aut => (
+   740→                        <tr key={aut.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+   741→                          <td className={tdCls}>
+   742→                            <div className="flex items-center gap-2">
+   743→                              {aut.avatar && <img src={aut.avatar} alt={aut.name} className="h-7 w-7 rounded-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />}
+   744→                              <div>
+   745→                                <p className="font-serif font-semibold text-sm">{aut.name}</p>
+   746→                                <p className="text-[10px] font-mono text-muted-foreground">{aut.slug}</p>
+   747→                              </div>
+   748→                            </div>
+   749→                          </td>
+   750→                          <td className={`${tdCls} hidden md:table-cell`}>
+   751→                            <Badge variant="outline" className="text-[10px]">{aut.role}</Badge>
+   752→                          </td>
+   753→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{aut._count?.articles || 0}</td>
+   754→                          <td className={`${tdCls} text-right`}>
+   755→                            <div className="flex items-center justify-end gap-1">
+   756→                              <button onClick={() => openAutEdit(aut)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+   757→                              <button onClick={() => deleteAut(aut.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+   758→                            </div>
+   759→                          </td>
+   760→                        </tr>
+   761→                      ))}
+   762→                    </tbody>
+   763→                  </table>
+   764→                </div>
+   765→              </div>
+   766→            </div>
+   767→          </TabsContent>
+   768→
+   769→          {/* ═══════════════════ CATEGORIES ═══════════════════ */}
+   770→          <TabsContent value="categories">
+   771→            <div className="animate-fadeIn">
+   772→              <div className="flex items-center justify-between mb-6">
+   773→                <h2 className="font-serif text-2xl font-bold">Categories ({categories.length})</h2>
+   774→                <Button onClick={openCatCreate} className="gap-2"><Plus className="h-4 w-4" /> New Category</Button>
+   775→              </div>
+   776→              <div className="border border-border rounded-xl overflow-hidden">
+   777→                <div className="overflow-x-auto">
+   778→                  <table className="w-full">
+   779→                    <thead>
+   780→                      <tr className="bg-secondary/50 border-b border-border">
+   781→                        <th className={thCls}>Color</th>
+   782→                        <th className={thCls}>Name</th>
+   783→                        <th className={`${thCls} hidden md:table-cell`}>Slug</th>
+   784→                        <th className={`${thCls} hidden lg:table-cell`}>Articles</th>
+   785→                        <th className={`${thCls} hidden lg:table-cell`}>Events</th>
+   786→                        <th className={`${thCls} text-right`}>Actions</th>
+   787→                      </tr>
+   788→                    </thead>
+   789→                    <tbody>
+   790→                      {categories.map(cat => (
+   791→                        <tr key={cat.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+   792→                          <td className={tdCls}>
+   793→                            <div className="h-6 w-6 rounded-full border border-border" style={{ backgroundColor: cat.color }} />
+   794→                          </td>
+   795→                          <td className={tdCls}>
+   796→                            <p className="font-serif font-semibold text-sm">{cat.name}</p>
+   797→                          </td>
+   798→                          <td className={`${tdCls} font-mono text-sm text-muted-foreground hidden md:table-cell`}>{cat.slug}</td>
+   799→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{cat._count?.articles || 0}</td>
+   800→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{cat._count?.events || 0}</td>
+   801→                          <td className={`${tdCls} text-right`}>
+   802→                            <div className="flex items-center justify-end gap-1">
+   803→                              <button onClick={() => openCatEdit(cat)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+   804→                              <button onClick={() => deleteCat(cat.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+   805→                            </div>
+   806→                          </td>
+   807→                        </tr>
+   808→                      ))}
+   809→                    </tbody>
+   810→                  </table>
+   811→                </div>
+   812→              </div>
+   813→            </div>
+   814→          </TabsContent>
+   815→
+   816→          {/* ═══════════════════ SUBSCRIBERS ═══════════════════ */}
+   817→          <TabsContent value="subscribers">
+   818→            <div className="animate-fadeIn">
+   819→              <div className="flex items-center justify-between mb-6">
+   820→                <h2 className="font-serif text-2xl font-bold">Newsletter Subscribers ({subscribers.length})</h2>
+   821→              </div>
+   822→              <div className="border border-border rounded-xl overflow-hidden">
+   823→                <div className="overflow-x-auto">
+   824→                  <table className="w-full">
+   825→                    <thead>
+   826→                      <tr className="bg-secondary/50 border-b border-border">
+   827→                        <th className={thCls}>Name</th>
+   828→                        <th className={thCls}>Email</th>
+   829→                        <th className={`${thCls} hidden md:table-cell`}>Subscribed</th>
+   830→                        <th className={`${thCls} text-right`}>Actions</th>
+   831→                      </tr>
+   832→                    </thead>
+   833→                    <tbody>
+   834→                      {subscribers.map(sub => (
+   835→                        <tr key={sub.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+   836→                          <td className={tdCls}>
+   837→                            <p className="font-serif font-semibold text-sm">{sub.name || '—'}</p>
+   838→                          </td>
+   839→                          <td className={tdCls}>
+   840→                            <p className="font-mono text-sm text-muted-foreground">{sub.email}</p>
+   841→                          </td>
+   842→                          <td className={`${tdCls} text-sm text-muted-foreground hidden md:table-cell`}>{fmtDate(sub.createdAt)}</td>
+   843→                          <td className={`${tdCls} text-right`}>
+   844→                            <div className="flex items-center justify-end gap-1">
+   845→                              <button onClick={() => deleteSub(sub.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Remove"><Trash2 className="h-3.5 w-3.5" /></button>
+   846→                            </div>
+   847→                          </td>
+   848→                        </tr>
+   849→                      ))}
+   850→                    </tbody>
+   851→                  </table>
+   852→                </div>
+   853→              </div>
+   854→            </div>
+   855→          </TabsContent>
+   856→
+   857→          {/* ═══════════════════ COMMENTS ═══════════════════ */}
+   858→          <TabsContent value="comments">
+   859→            <div className="animate-fadeIn">
+   860→              <h2 className="font-serif text-2xl font-bold mb-6 flex items-center gap-3">
+   861→                Comments
+   862→                {flaggedComments.length > 0 && (
+   863→                  <Badge variant="destructive" className="font-mono text-xs">
+   864→                    {flaggedComments.length} flagged
+   865→                  </Badge>
+   866→                )}
+   867→              </h2>
+   868→
+   869→              {/* Flagged Queue */}
+   870→              {flaggedComments.length > 0 && (
+   871→                <div className="mb-10">
+   872→                  <h3 className="font-serif text-lg font-bold mb-4 flex items-center gap-2">
+   873→                    <Flag className="h-4 w-4 text-destructive" />
+   874→                    Flagged for Review
+   875→                  </h3>
+   876→                  <div className="space-y-3">
+   877→                    {flaggedComments.map(c => (
+   878→                      <div key={c.id} className="p-4 rounded-xl border border-destructive/30 bg-destructive/5">
+   879→                        <div className="flex items-start justify-between gap-4">
+   880→                          <div className="flex-1 min-w-0">
+   881→                            <div className="flex items-center gap-2 mb-1">
+   882→                              <span className="font-medium text-sm">{c.author}</span>
+   883→                              <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30">
+   884→                                {c.reportCount} report{c.reportCount !== 1 ? 's' : ''}
+   885→                              </Badge>
+   886→                              <span className="text-[10px] font-mono text-muted-foreground">{fmtDateTime(c.createdAt)}</span>
+   887→                            </div>
+   888→                            <p className="text-sm text-foreground/80 line-clamp-2">{c.content}</p>
+   889→                            <p className="text-xs text-muted-foreground mt-2 font-mono">
+   890→                              on: <a href={`/articles/${c.article.slug}`} target="_blank" className="text-primary hover:underline">{c.article.title}</a>
+   891→                            </p>
+   892→                          </div>
+   893→                          <div className="flex items-center gap-1 shrink-0">
+   894→                            <button
+   895→                              onClick={async () => {
+   896→                                await fetch(`/api/admin/comments/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'published' }) })
+   897→                                setFlaggedComments(p => p.filter(x => x.id !== c.id))
+   898→                              }}
+   899→                              className="p-1.5 rounded-md hover:bg-green-500/10 text-muted-foreground hover:text-green-600 transition-colors"
+   900→                              title="Restore (publish)"
+   901→                            >
+   902→                              <CheckCircle className="h-4 w-4" />
+   903→                            </button>
+   904→                            <button
+   905→                              onClick={async () => {
+   906→                                await fetch(`/api/admin/comments/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'removed' }) })
+   907→                                setFlaggedComments(p => p.filter(x => x.id !== c.id))
+   908→                              }}
+   909→                              className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+   910→                              title="Remove"
+   911→                            >
+   912→                              <XCircle className="h-4 w-4" />
+   913→                            </button>
+   914→                            <button
+   915→                              onClick={async () => {
+   916→                                if (!confirm('Permanently delete this comment?')) return
+   917→                                await fetch(`/api/admin/comments/${c.id}`, { method: 'DELETE' })
+   918→                                setFlaggedComments(p => p.filter(x => x.id !== c.id))
+   919→                              }}
+   920→                              className={actionBtnCls}
+   921→                              title="Delete permanently"
+   922→                            >
+   923→                              <Trash2 className="h-4 w-4" />
+   924→                            </button>
+   925→                          </div>
+   926→                        </div>
+   927→                      </div>
+   928→                    ))}
+   929→                  </div>
+   930→                </div>
+   931→              )}
+   932→
+   933→              {/* Recent Comments */}
+   934→              <div>
+   935→                <h3 className="font-serif text-lg font-bold mb-4">Recent Comments</h3>
+   936→                {recentComments.length === 0 ? (
+   937→                  <p className="text-sm text-muted-foreground py-8 text-center">No comments yet.</p>
+   938→                ) : (
+   939→                  <div className="space-y-3">
+   940→                    {recentComments.map(c => (
+   941→                      <div key={c.id} className="flex items-start gap-4 p-4 rounded-xl border border-border bg-card">
+   942→                        <div className="flex-1 min-w-0">
+   943→                          <div className="flex items-center gap-2 mb-1">
+   944→                            <span className="font-medium text-sm">{c.author}</span>
+   945→                            <span className="text-[10px] font-mono text-muted-foreground">{fmtDateTime(c.createdAt)}</span>
+   946→                          </div>
+   947→                          <p className="text-sm text-foreground/80 line-clamp-2">{c.content}</p>
+   948→                          <p className="text-xs text-muted-foreground mt-1 font-mono">
+   949→                            on: <a href={`/articles/${c.article.slug}`} target="_blank" className="text-primary hover:underline">{c.article.title}</a>
+   950→                          </p>
+   951→                        </div>
+   952→                        <div className="flex items-center gap-1 shrink-0">
+   953→                          <button
+   954→                            onClick={async () => {
+   955→                              await fetch(`/api/admin/comments/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'removed' }) })
+   956→                              setRecentComments(p => p.filter(x => x.id !== c.id))
+   957→                            }}
+   958→                            className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+   959→                            title="Remove"
+   960→                          >
+   961→                            <XCircle className="h-4 w-4" />
+   962→                          </button>
+   963→                          <button
+   964→                            onClick={async () => {
+   965→                              if (!confirm('Permanently delete this comment?')) return
+   966→                              await fetch(`/api/admin/comments/${c.id}`, { method: 'DELETE' })
+   967→                              setRecentComments(p => p.filter(x => x.id !== c.id))
+   968→                            }}
+   969→                            className={actionBtnCls}
+   970→                            title="Delete permanently"
+   971→                          >
+   972→                            <Trash2 className="h-4 w-4" />
+   973→                          </button>
+   974→                        </div>
+   975→                      </div>
+   976→                    ))}
+   977→                  </div>
+   978→                )}
+   979→              </div>
+   980→            </div>
+   981→          </TabsContent>
+   982→        </Tabs>
+   983→      </main>
+   984→
+   985→      {/* ═══════════════════ ARTICLE DIALOG ═══════════════════ */}
+   986→      <Dialog open={artDialog} onOpenChange={setArtDialog}>
+   987→        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+   988→          <DialogHeader>
+   989→            <DialogTitle className="font-serif text-xl">{artEdit ? 'Edit Article' : 'New Article'}</DialogTitle>
+   990→          </DialogHeader>
+   991→          <div className="space-y-4">
+   992→            <div>
+   993→              <label className={labelCls}>Title *</label>
+   994→              <Input value={artTitle} onChange={e => { setArtTitle(e.target.value); if (!artEdit) setArtSlug(slugify(e.target.value)) }} placeholder="Article title" />
+   995→            </div>
+   996→            <div>
+   997→              <label className={labelCls}>Slug *</label>
+   998→              <Input value={artSlug} onChange={e => setArtSlug(e.target.value)} placeholder="article-slug" className="font-mono" />
+   999→            </div>
+
+[showing lines 560-999 of 1328; use offset=1000 with limit to continue reading]
