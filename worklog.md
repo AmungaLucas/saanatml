@@ -227,3 +227,25 @@ Stage Summary:
 - Data stability fix: individual Zustand selectors + fetch guard + error resilience
 - Nav scalability: 4 inline categories + "More" dropdown handles unlimited categories
 - Makers now has its own dedicated in-app view with full maker grid
+---
+Task ID: 1
+Agent: main
+Task: Integrate CDN (cdn.sanaathrumylens.co.ke) for image uploads
+
+Work Log:
+- Analyzed well-known.zip containing CDN PHP API (upload.php, delete.php, list.php, config.php)
+- Identified CDN base URL: https://cdn.sanaathrumylens.co.ke and API key from config.php
+- Added NEXT_PUBLIC_CDN_URL and CDN_API_KEY to .env and .env.example
+- Created src/lib/cdn.ts with server-side upload, delete, list functions
+- Created proxy API routes: /api/cdn/upload, /api/cdn/delete, /api/cdn/list
+- Created reusable ImageUpload component (upload + browse CDN + URL input + preview)
+- Updated admin dashboard: replaced 3 plain URL inputs (article cover, event image, author avatar)
+- Updated editor dashboard: replaced 2 plain URL inputs (new article + edit article)
+- Added cdn.sanaathrumylens.co.ke to Next.js images remotePatterns
+- Verified zero TypeScript errors in all changed files
+- Committed and pushed to GitHub
+
+Stage Summary:
+- Commit d578b9b pushed to main
+- Vercel needs NEXT_PUBLIC_CDN_URL and CDN_API_KEY env vars added manually
+
