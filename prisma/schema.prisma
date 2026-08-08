@@ -71,12 +71,14 @@ model Event {
 }
 
 model Comment {
-  id        String   @id @default(cuid())
-  articleId String
-  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  author    String
-  content   String
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  articleId   String
+  article     Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  author      String
+  content     String
+  status      String   @default("published")
+  reportCount Int      @default(0)
+  createdAt   DateTime @default(now())
 }
 
 model NewsletterSubscription {

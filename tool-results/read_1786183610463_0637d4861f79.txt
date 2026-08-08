@@ -1,0 +1,1130 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useMemo, useCallback } from 'react'
+     4→import { Badge } from '@/components/ui/badge'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Input } from '@/components/ui/input'
+     7→import { Textarea } from '@/components/ui/textarea'
+     8→import { Switch } from '@/components/ui/switch'
+     9→import {
+    10→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    11→} from '@/components/ui/select'
+    12→import {
+    13→  Dialog, DialogContent, DialogHeader, DialogTitle,
+    14→} from '@/components/ui/dialog'
+    15→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    16→import {
+    17→  FileText, Users, Tag, Calendar, Eye, MessageSquare, Star, Pin, Trash2,
+    18→  Plus, BarChart3, ArrowLeft, BookmarkCheck, BookOpen, Mail,
+    19→  TrendingUp, ImageIcon, Pencil, ExternalLink, Palette,
+    20→} from 'lucide-react'
+    21→import Link from 'next/link'
+    22→import ReactMarkdown from 'react-markdown'
+    23→import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
+    24→
+    25→// ── Interfaces ──────────────────────────────────────────────
+    26→
+    27→interface Article {
+    28→  id: string; title: string; slug: string; excerpt: string
+    29→  publishedAt: string; views: number; isFeatured: boolean; isPinned: boolean
+    30→  category: { name: string; color: string }; author: { name: string }
+    31→  commentCount: number
+    32→}
+    33→
+    34→interface EventItem {
+    35→  id: string; title: string; description: string; date: string
+    36→  endDate: string | null; venue: string; city: string; category: string
+    37→  imageUrl: string; ticketUrl: string; isFeatured: boolean; isPast: boolean
+    38→  createdAt: string
+    39→}
+    40→
+    41→interface MakerItem {
+    42→  id: string; name: string; slug: string; discipline: string; bio: string
+    43→  avatar: string; location: string; website: string; instagram: string
+    44→  twitter: string; isFeatured: boolean; createdAt: string
+    45→}
+    46→
+    47→interface AuthorItem {
+    48→  id: string; name: string; slug: string; bio: string; avatar: string
+    49→  role: string; createdAt: string; _count?: { articles: number }
+    50→}
+    51→
+    52→interface CategoryItem {
+    53→  id: string; name: string; slug: string; description: string; color: string
+    54→  createdAt: string; _count?: { articles: number; events: number }
+    55→}
+    56→
+    57→interface SubscriberItem {
+    58→  id: string; name: string; email: string; createdAt: string
+    59→}
+    60→
+    61→interface Stats {
+    62→  articles: number; authors: number; categories: number; events: number
+    63→  comments: number; makers: number; subscribers: number; totalViews: number
+    64→}
+    65→
+    66→// ── Helpers ─────────────────────────────────────────────────
+    67→
+    68→const slugify = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '')
+    69→
+    70→const toDatetimeLocal = (iso: string) => {
+    71→  if (!iso) return ''
+    72→  const d = new Date(iso)
+    73→  const pad = (n: number) => String(n).padStart(2, '0')
+    74→  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    75→}
+    76→
+    77→const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+    78→const fmtDateTime = (iso: string) => new Date(iso).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    79→
+    80→const labelCls = 'font-mono text-[10px] uppercase tracking-wider text-muted-foreground block mb-1'
+    81→const thCls = 'text-left px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground'
+    82→const tdCls = 'px-4 py-3'
+    83→const actionBtnCls = 'p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground'
+    84→
+    85→// ── Component ───────────────────────────────────────────────
+    86→
+    87→export default function AdminPage() {
+    88→  const [activeTab, setActiveTab] = useState<string>('overview')
+    89→
+    90→  // Data
+    91→  const [stats, setStats] = useState<Stats | null>(null)
+    92→  const [articles, setArticles] = useState<Article[]>([])
+    93→  const [events, setEvents] = useState<EventItem[]>([])
+    94→  const [makers, setMakers] = useState<MakerItem[]>([])
+    95→  const [authors, setAuthors] = useState<AuthorItem[]>([])
+    96→  const [categories, setCategories] = useState<CategoryItem[]>([])
+    97→  const [subscribers, setSubscribers] = useState<SubscriberItem[]>([])
+    98→
+    99→  // Article form
+   100→  const [artDialog, setArtDialog] = useState(false)
+   101→  const [artEdit, setArtEdit] = useState<Article | null>(null)
+   102→  const [artTitle, setArtTitle] = useState('')
+   103→  const [artSlug, setArtSlug] = useState('')
+   104→  const [artExcerpt, setArtExcerpt] = useState('')
+   105→  const [artContent, setArtContent] = useState('')
+   106→  const [artCoverImage, setArtCoverImage] = useState('')
+   107→  const [artCategory, setArtCategory] = useState('')
+   108→  const [artAuthor, setArtAuthor] = useState('')
+   109→  const [artTags, setArtTags] = useState('')
+   110→  const [artReadTime, setArtReadTime] = useState('5')
+   111→  const [artSaving, setArtSaving] = useState(false)
+   112→
+   113→  // Event form
+   114→  const [evtDialog, setEvtDialog] = useState(false)
+   115→  const [evtEdit, setEvtEdit] = useState<EventItem | null>(null)
+   116→  const [evtTitle, setEvtTitle] = useState('')
+   117→  const [evtDesc, setEvtDesc] = useState('')
+   118→  const [evtDate, setEvtDate] = useState('')
+   119→  const [evtEndDate, setEvtEndDate] = useState('')
+   120→  const [evtVenue, setEvtVenue] = useState('')
+   121→  const [evtCity, setEvtCity] = useState('')
+   122→  const [evtCategory, setEvtCategory] = useState('')
+   123→  const [evtImageUrl, setEvtImageUrl] = useState('')
+   124→  const [evtTicketUrl, setEvtTicketUrl] = useState('')
+   125→  const [evtFeatured, setEvtFeatured] = useState(false)
+   126→  const [evtPast, setEvtPast] = useState(false)
+   127→  const [evtSaving, setEvtSaving] = useState(false)
+   128→
+   129→  // Maker form
+   130→  const [mkrDialog, setMkrDialog] = useState(false)
+   131→  const [mkrEdit, setMkrEdit] = useState<MakerItem | null>(null)
+   132→  const [mkrName, setMkrName] = useState('')
+   133→  const [mkrSlug, setMkrSlug] = useState('')
+   134→  const [mkrDiscipline, setMkrDiscipline] = useState('')
+   135→  const [mkrBio, setMkrBio] = useState('')
+   136→  const [mkrLocation, setMkrLocation] = useState('')
+   137→  const [mkrWebsite, setMkrWebsite] = useState('')
+   138→  const [mkrInstagram, setMkrInstagram] = useState('')
+   139→  const [mkrTwitter, setMkrTwitter] = useState('')
+   140→  const [mkrFeatured, setMkrFeatured] = useState(false)
+   141→  const [mkrSaving, setMkrSaving] = useState(false)
+   142→
+   143→  // Author form
+   144→  const [autDialog, setAutDialog] = useState(false)
+   145→  const [autEdit, setAutEdit] = useState<AuthorItem | null>(null)
+   146→  const [autName, setAutName] = useState('')
+   147→  const [autSlug, setAutSlug] = useState('')
+   148→  const [autBio, setAutBio] = useState('')
+   149→  const [autAvatar, setAutAvatar] = useState('')
+   150→  const [autRole, setAutRole] = useState('Writer')
+   151→  const [autSaving, setAutSaving] = useState(false)
+   152→
+   153→  // Category form
+   154→  const [catDialog, setCatDialog] = useState(false)
+   155→  const [catEdit, setCatEdit] = useState<CategoryItem | null>(null)
+   156→  const [catName, setCatName] = useState('')
+   157→  const [catSlug, setCatSlug] = useState('')
+   158→  const [catDescription, setCatDescription] = useState('')
+   159→  const [catColor, setCatColor] = useState('#8B2252')
+   160→  const [catSaving, setCatSaving] = useState(false)
+   161→
+   162→  // ── Fetch all data ─────────────────────────────────────────
+   163→  const fetchAll = useCallback(async () => {
+   164→    const endpoints = [
+   165→      ['stats', '/api/admin/stats', setStats],
+   166→      ['articles', '/api/admin/articles', setArticles],
+   167→      ['events', '/api/admin/events', setEvents],
+   168→      ['makers', '/api/admin/makers', setMakers],
+   169→      ['authors', '/api/admin/authors', setAuthors],
+   170→      ['categories', '/api/admin/categories', setCategories],
+   171→      ['subscribers', '/api/admin/subscribers', setSubscribers],
+   172→    ] as const
+   173→    await Promise.all(
+   174→      endpoints.map(([, url, setter]) =>
+   175→        fetch(url).then(r => r.json()).then(d => setter(d)).catch(() => {})
+   176→      )
+   177→    )
+   178→  }, [])
+   179→
+   180→  useEffect(() => { fetchAll() }, [fetchAll])
+   181→
+   182→  // ── Charts data ────────────────────────────────────────────
+   183→  const viewsChartData = useMemo(() => {
+   184→    if (!articles.length) return []
+   185→    return articles.slice(0, 8).map(a => ({
+   186→      name: a.title.length > 20 ? a.title.slice(0, 20) + '...' : a.title,
+   187→      views: a.views,
+   188→    }))
+   189→  }, [articles])
+   190→
+   191→  const categoryData = useMemo(() => {
+   192→    const map: Record<string, number> = {}
+   193→    articles.forEach(a => { map[a.category.name] = (map[a.category.name] || 0) + 1 })
+   194→    return Object.entries(map).map(([name, count]) => ({ name, count }))
+   195→  }, [articles])
+   196→
+   197→  // ── Article CRUD ───────────────────────────────────────────
+   198→  const openArtCreate = () => {
+   199→    setArtEdit(null)
+   200→    setArtTitle(''); setArtSlug(''); setArtExcerpt(''); setArtContent('')
+   201→    setArtCoverImage(''); setArtCategory(''); setArtAuthor('')
+   202→    setArtTags(''); setArtReadTime('5')
+   203→    setArtDialog(true)
+   204→  }
+   205→  const openArtEdit = (a: Article) => {
+   206→    setArtEdit(a)
+   207→    setArtTitle(a.title); setArtSlug(a.slug); setArtExcerpt(a.excerpt)
+   208→    setArtContent(''); setArtCoverImage(a.coverImage || '')
+   209→    setArtCategory(a.category?.name || ''); setArtAuthor(a.author?.name || '')
+   210→    setArtTags(''); setArtReadTime(String(5))
+   211→    setArtDialog(true)
+   212→  }
+   213→  const saveArt = async () => {
+   214→    if (!artTitle || !artSlug) return
+   215→    setArtSaving(true)
+   216→    try {
+   217→      if (artEdit) {
+   218→        const res = await fetch(`/api/admin/articles/${artEdit.id}`, {
+   219→          method: 'PATCH',
+   220→          headers: { 'Content-Type': 'application/json' },
+   221→          body: JSON.stringify({ title: artTitle, slug: artSlug, excerpt: artExcerpt, coverImage: artCoverImage }),
+   222→        })
+   223→        if (res.ok) { const u = await res.json(); setArticles(p => p.map(a => a.id === u.id ? { ...a, ...u } : a)) }
+   224→      } else {
+   225→        const catId = categories.find(c => c.name === artCategory)?.id || ''
+   226→        const authId = authors.find(a => a.name === artAuthor)?.id || ''
+   227→        if (!catId || !authId) { setArtSaving(false); return }
+   228→        const res = await fetch('/api/admin/articles', {
+   229→          method: 'POST',
+   230→          headers: { 'Content-Type': 'application/json' },
+   231→          body: JSON.stringify({ title: artTitle, slug: artSlug, excerpt: artExcerpt, content: artContent, coverImage: artCoverImage, categoryId: catId, authorId: authId, readTime: parseInt(artReadTime) || 5, tags: artTags }),
+   232→        })
+   233→        if (res.ok) { const n = await res.json(); setArticles(p => [n, ...p]); fetchAll() }
+   234→      }
+   235→      setArtDialog(false)
+   236→    } catch {}
+   237→    setArtSaving(false)
+   238→  }
+   239→  const toggleArtFeatured = async (a: Article) => {
+   240→    const res = await fetch(`/api/admin/articles/${a.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isFeatured: !a.isFeatured }) })
+   241→    if (res.ok) setArticles(p => p.map(x => x.id === a.id ? { ...x, isFeatured: !x.isFeatured } : x))
+   242→  }
+   243→  const toggleArtPinned = async (a: Article) => {
+   244→    const res = await fetch(`/api/admin/articles/${a.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isPinned: !a.isPinned }) })
+   245→    if (res.ok) setArticles(p => p.map(x => x.id === a.id ? { ...x, isPinned: !x.isPinned } : x))
+   246→  }
+   247→  const deleteArt = async (id: string) => {
+   248→    if (!confirm('Delete this article? This cannot be undone.')) return
+   249→    const res = await fetch(`/api/admin/articles/${id}`, { method: 'DELETE' })
+   250→    if (res.ok) { setArticles(p => p.filter(a => a.id !== id)); fetchAll() }
+   251→  }
+   252→
+   253→  // ── Event CRUD ─────────────────────────────────────────────
+   254→  const openEvtCreate = () => {
+   255→    setEvtEdit(null)
+   256→    setEvtTitle(''); setEvtDesc(''); setEvtDate(''); setEvtEndDate('')
+   257→    setEvtVenue(''); setEvtCity(''); setEvtCategory('')
+   258→    setEvtImageUrl(''); setEvtTicketUrl('')
+   259→    setEvtFeatured(false); setEvtPast(false)
+   260→    setEvtDialog(true)
+   261→  }
+   262→  const openEvtEdit = (e: EventItem) => {
+   263→    setEvtEdit(e)
+   264→    setEvtTitle(e.title); setEvtDesc(e.description)
+   265→    setEvtDate(toDatetimeLocal(e.date)); setEvtEndDate(e.endDate ? toDatetimeLocal(e.endDate) : '')
+   266→    setEvtVenue(e.venue); setEvtCity(e.city); setEvtCategory(e.category)
+   267→    setEvtImageUrl(e.imageUrl); setEvtTicketUrl(e.ticketUrl)
+   268→    setEvtFeatured(e.isFeatured); setEvtPast(e.isPast)
+   269→    setEvtDialog(true)
+   270→  }
+   271→  const saveEvt = async () => {
+   272→    if (!evtTitle || !evtDate || !evtVenue || !evtCity) return
+   273→    setEvtSaving(true)
+   274→    try {
+   275→      const payload = {
+   276→        title: evtTitle, description: evtDesc, date: evtDate,
+   277→        endDate: evtEndDate || null, venue: evtVenue, city: evtCity,
+   278→        category: evtCategory, imageUrl: evtImageUrl, ticketUrl: evtTicketUrl,
+   279→        isFeatured: evtFeatured, isPast: evtPast,
+   280→      }
+   281→      if (evtEdit) {
+   282→        const res = await fetch(`/api/admin/events/${evtEdit.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+   283→        if (res.ok) { const u = await res.json(); setEvents(p => p.map(e => e.id === u.id ? u : e)) }
+   284→      } else {
+   285→        const res = await fetch('/api/admin/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+   286→        if (res.ok) { const n = await res.json(); setEvents(p => [n, ...p]); fetchAll() }
+   287→      }
+   288→      setEvtDialog(false)
+   289→    } catch {}
+   290→    setEvtSaving(false)
+   291→  }
+   292→  const deleteEvt = async (id: string) => {
+   293→    if (!confirm('Delete this event? This cannot be undone.')) return
+   294→    const res = await fetch(`/api/admin/events/${id}`, { method: 'DELETE' })
+   295→    if (res.ok) { setEvents(p => p.filter(e => e.id !== id)); fetchAll() }
+   296→  }
+   297→
+   298→  // ── Maker CRUD ─────────────────────────────────────────────
+   299→  const openMkrCreate = () => {
+   300→    setMkrEdit(null)
+   301→    setMkrName(''); setMkrSlug(''); setMkrDiscipline(''); setMkrBio('')
+   302→    setMkrLocation(''); setMkrWebsite(''); setMkrInstagram(''); setMkrTwitter('')
+   303→    setMkrFeatured(false)
+   304→    setMkrDialog(true)
+   305→  }
+   306→  const openMkrEdit = (m: MakerItem) => {
+   307→    setMkrEdit(m)
+   308→    setMkrName(m.name); setMkrSlug(m.slug); setMkrDiscipline(m.discipline)
+   309→    setMkrBio(m.bio); setMkrLocation(m.location); setMkrWebsite(m.website)
+   310→    setMkrInstagram(m.instagram); setMkrTwitter(m.twitter)
+   311→    setMkrFeatured(m.isFeatured)
+   312→    setMkrDialog(true)
+   313→  }
+   314→  const saveMkr = async () => {
+   315→    if (!mkrName || !mkrSlug || !mkrDiscipline) return
+   316→    setMkrSaving(true)
+   317→    try {
+   318→      const payload = { name: mkrName, slug: mkrSlug, discipline: mkrDiscipline, bio: mkrBio, location: mkrLocation, website: mkrWebsite, instagram: mkrInstagram, twitter: mkrTwitter, isFeatured: mkrFeatured }
+   319→      if (mkrEdit) {
+   320→        const res = await fetch(`/api/admin/makers/${mkrEdit.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+   321→        if (res.ok) { const u = await res.json(); setMakers(p => p.map(m => m.id === u.id ? u : m)) }
+   322→      } else {
+   323→        const res = await fetch('/api/admin/makers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+   324→        if (res.ok) { const n = await res.json(); setMakers(p => [n, ...p]); fetchAll() }
+   325→      }
+   326→      setMkrDialog(false)
+   327→    } catch {}
+   328→    setMkrSaving(false)
+   329→  }
+   330→  const deleteMkr = async (id: string) => {
+   331→    if (!confirm('Delete this maker? This cannot be undone.')) return
+   332→    const res = await fetch(`/api/admin/makers/${id}`, { method: 'DELETE' })
+   333→    if (res.ok) { setMakers(p => p.filter(m => m.id !== id)); fetchAll() }
+   334→  }
+   335→
+   336→  // ── Author CRUD ────────────────────────────────────────────
+   337→  const openAutCreate = () => {
+   338→    setAutEdit(null)
+   339→    setAutName(''); setAutSlug(''); setAutBio(''); setAutAvatar(''); setAutRole('Writer')
+   340→    setAutDialog(true)
+   341→  }
+   342→  const openAutEdit = (a: AuthorItem) => {
+   343→    setAutEdit(a)
+   344→    setAutName(a.name); setAutSlug(a.slug); setAutBio(a.bio); setAutAvatar(a.avatar); setAutRole(a.role)
+   345→    setAutDialog(true)
+   346→  }
+   347→  const saveAut = async () => {
+   348→    if (!autName || !autSlug) return
+   349→    setAutSaving(true)
+   350→    try {
+   351→      const payload = { name: autName, slug: autSlug, bio: autBio, avatar: autAvatar, role: autRole }
+   352→      if (autEdit) {
+   353→        const res = await fetch(`/api/admin/authors/${autEdit.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+   354→        if (res.ok) { const u = await res.json(); setAuthors(p => p.map(a => a.id === u.id ? u : a)) }
+   355→      } else {
+   356→        const res = await fetch('/api/admin/authors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+   357→        if (res.ok) { const n = await res.json(); setAuthors(p => [n, ...p]); fetchAll() }
+   358→      }
+   359→      setAutDialog(false)
+   360→    } catch {}
+   361→    setAutSaving(false)
+   362→  }
+   363→  const deleteAut = async (id: string) => {
+   364→    if (!confirm('Delete this author? This will also delete all their articles. This cannot be undone.')) return
+   365→    const res = await fetch(`/api/admin/authors/${id}`, { method: 'DELETE' })
+   366→    if (res.ok) { setAuthors(p => p.filter(a => a.id !== id)); fetchAll() }
+   367→  }
+   368→
+   369→  // ── Category CRUD ──────────────────────────────────────────
+   370→  const openCatCreate = () => {
+   371→    setCatEdit(null)
+   372→    setCatName(''); setCatSlug(''); setCatDescription(''); setCatColor('#8B2252')
+   373→    setCatDialog(true)
+   374→  }
+   375→  const openCatEdit = (c: CategoryItem) => {
+   376→    setCatEdit(c)
+   377→    setCatName(c.name); setCatSlug(c.slug); setCatDescription(c.description); setCatColor(c.color)
+   378→    setCatDialog(true)
+   379→  }
+   380→  const saveCat = async () => {
+   381→    if (!catName || !catSlug) return
+   382→    setCatSaving(true)
+   383→    try {
+   384→      const payload = { name: catName, slug: catSlug, description: catDescription, color: catColor }
+   385→      if (catEdit) {
+   386→        const res = await fetch(`/api/admin/categories/${catEdit.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+   387→        if (res.ok) { const u = await res.json(); setCategories(p => p.map(c => c.id === u.id ? u : c)) }
+   388→      } else {
+   389→        const res = await fetch('/api/admin/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+   390→        if (res.ok) { const n = await res.json(); setCategories(p => [...p, n]); fetchAll() }
+   391→      }
+   392→      setCatDialog(false)
+   393→    } catch {}
+   394→    setCatSaving(false)
+   395→  }
+   396→  const deleteCat = async (id: string) => {
+   397→    if (!confirm('Delete this category? This will affect associated articles and events. This cannot be undone.')) return
+   398→    const res = await fetch(`/api/admin/categories/${id}`, { method: 'DELETE' })
+   399→    if (res.ok) { setCategories(p => p.filter(c => c.id !== id)); fetchAll() }
+   400→  }
+   401→
+   402→  // ── Subscriber delete ──────────────────────────────────────
+   403→  const deleteSub = async (id: string) => {
+   404→    if (!confirm('Remove this subscriber?')) return
+   405→    const res = await fetch(`/api/admin/subscribers/${id}`, { method: 'DELETE' })
+   406→    if (res.ok) { setSubscribers(p => p.filter(s => s.id !== id)); fetchAll() }
+   407→  }
+   408→
+   409→  // ── Render ─────────────────────────────────────────────────
+   410→  return (
+   411→    <div className="min-h-screen bg-background">
+   412→      {/* Admin Header */}
+   413→      <header className="sticky top-0 z-50 glass">
+   414→        <div className="max-w-7xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between">
+   415→          <div className="flex items-center gap-3">
+   416→            <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+   417→              <ArrowLeft className="h-4 w-4" />
+   418→              <span className="font-mono text-xs">Back to Site</span>
+   419→            </Link>
+   420→            <span className="text-border">|</span>
+   421→            <span className="font-serif font-bold text-lg">Admin Dashboard</span>
+   422→          </div>
+   423→          <div className="flex items-center gap-2">
+   424→            <Link href="/dashboard" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Editor</Link>
+   425→            <span className="text-border">|</span>
+   426→            <button onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login' }} className="text-xs text-muted-foreground hover:text-destructive transition-colors">Logout</button>
+   427→            <Badge variant="outline" className="font-mono text-[10px]">Sanaa CMS</Badge>
+   428→          </div>
+   429→        </div>
+   430→      </header>
+   431→
+   432→      <main className="max-w-7xl mx-auto px-4 md:px-6 py-8">
+   433→        <Tabs value={activeTab} onValueChange={setActiveTab}>
+   434→          <TabsList className="mb-8 flex-wrap h-auto gap-1">
+   435→            <TabsTrigger value="overview"><BarChart3 className="h-4 w-4 mr-1.5" />Overview</TabsTrigger>
+   436→            <TabsTrigger value="articles"><FileText className="h-4 w-4 mr-1.5" />Articles</TabsTrigger>
+   437→            <TabsTrigger value="events"><Calendar className="h-4 w-4 mr-1.5" />Events</TabsTrigger>
+   438→            <TabsTrigger value="makers"><BookmarkCheck className="h-4 w-4 mr-1.5" />Makers</TabsTrigger>
+   439→            <TabsTrigger value="authors"><Users className="h-4 w-4 mr-1.5" />Authors</TabsTrigger>
+   440→            <TabsTrigger value="categories"><Tag className="h-4 w-4 mr-1.5" />Categories</TabsTrigger>
+   441→            <TabsTrigger value="subscribers"><Mail className="h-4 w-4 mr-1.5" />Subscribers</TabsTrigger>
+   442→          </TabsList>
+   443→
+   444→          {/* ═══════════════════ OVERVIEW ═══════════════════ */}
+   445→          <TabsContent value="overview">
+   446→            {stats && (
+   447→              <div className="animate-fadeIn">
+   448→                <h2 className="font-serif text-2xl font-bold mb-6">Dashboard Overview</h2>
+   449→                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+   450→                  {[
+   451→                    { label: 'Articles', value: stats.articles, icon: FileText, color: 'text-primary', bg: 'bg-primary/10' },
+   452→                    { label: 'Authors', value: stats.authors, icon: Users, color: 'text-gold', bg: 'bg-gold/10' },
+   453→                    { label: 'Categories', value: stats.categories, icon: Tag, color: 'text-terracotta', bg: 'bg-terracotta/10' },
+   454→                    { label: 'Events', value: stats.events, icon: Calendar, color: 'text-forest', bg: 'bg-forest/10' },
+   455→                    { label: 'Comments', value: stats.comments, icon: MessageSquare, color: 'text-primary', bg: 'bg-primary/10' },
+   456→                    { label: 'Makers', value: stats.makers, icon: Star, color: 'text-gold', bg: 'bg-gold/10' },
+   457→                    { label: 'Subscribers', value: stats.subscribers, icon: Mail, color: 'text-terracotta', bg: 'bg-terracotta/10' },
+   458→                    { label: 'Total Views', value: stats.totalViews.toLocaleString(), icon: Eye, color: 'text-forest', bg: 'bg-forest/10' },
+   459→                  ].map(stat => (
+   460→                    <div key={stat.label} className="p-5 rounded-xl border border-border bg-card hover-card">
+   461→                      <div className={`h-10 w-10 rounded-lg ${stat.bg} flex items-center justify-center mb-3`}>
+   462→                        <stat.icon className={`h-5 w-5 ${stat.color}`} />
+   463→                      </div>
+   464→                      <p className="font-serif text-2xl md:text-3xl font-bold">{stat.value}</p>
+   465→                      <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mt-1">{stat.label}</p>
+   466→                    </div>
+   467→                  ))}
+   468→                </div>
+   469→                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+   470→                  <div className="p-6 rounded-xl border border-border bg-card">
+   471→                    <h3 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+   472→                      <TrendingUp className="h-4 w-4 text-primary" /> Article Views
+   473→                    </h3>
+   474→                    {viewsChartData.length > 0 && (
+   475→                      <ResponsiveContainer width="100%" height={220}>
+   476→                        <AreaChart data={viewsChartData}>
+   477→                          <defs>
+   478→                            <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+   479→                              <stop offset="5%" stopColor="oklch(0.37 0.14 350)" stopOpacity={0.3} />
+   480→                              <stop offset="95%" stopColor="oklch(0.37 0.14 350)" stopOpacity={0} />
+   481→                            </linearGradient>
+   482→                          </defs>
+   483→                          <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+   484→                          <YAxis tick={{ fontSize: 10 }} />
+   485→                          <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card)' }} />
+   486→                          <Area type="monotone" dataKey="views" stroke="oklch(0.37 0.14 350)" fillOpacity={1} fill="url(#colorViews)" />
+   487→                        </AreaChart>
+   488→                      </ResponsiveContainer>
+   489→                    )}
+   490→                  </div>
+   491→                  <div className="p-6 rounded-xl border border-border bg-card">
+   492→                    <h3 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+   493→                      <Tag className="h-4 w-4 text-gold" /> Category Distribution
+   494→                    </h3>
+   495→                    {categoryData.length > 0 && (
+   496→                      <ResponsiveContainer width="100%" height={220}>
+   497→                        <BarChart data={categoryData}>
+   498→                          <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+   499→                          <YAxis tick={{ fontSize: 10 }} />
+   500→                          <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card)' }} />
+   501→                          <Bar dataKey="count" fill="oklch(0.72 0.14 55)" radius={[4, 4, 0, 0]} />
+   502→                        </BarChart>
+   503→                      </ResponsiveContainer>
+   504→                    )}
+   505→                  </div>
+   506→                </div>
+   507→                <div>
+   508→                  <h3 className="font-serif text-xl font-bold mb-4">Quick Actions</h3>
+   509→                  <div className="flex flex-wrap gap-3">
+   510→                    <Button onClick={() => { setActiveTab('articles'); setTimeout(openArtCreate, 50) }} className="gap-2"><Plus className="h-4 w-4" /> New Article</Button>
+   511→                    <Button variant="outline" onClick={() => { setActiveTab('events'); setTimeout(openEvtCreate, 50) }} className="gap-2"><Plus className="h-4 w-4" /> New Event</Button>
+   512→                    <Button variant="outline" onClick={() => { setActiveTab('makers'); setTimeout(openMkrCreate, 50) }} className="gap-2"><Plus className="h-4 w-4" /> New Maker</Button>
+   513→                    <Button variant="outline" onClick={() => { setActiveTab('authors'); setTimeout(openAutCreate, 50) }} className="gap-2"><Plus className="h-4 w-4" /> New Author</Button>
+   514→                  </div>
+   515→                </div>
+   516→              </div>
+   517→            )}
+   518→          </TabsContent>
+   519→
+   520→          {/* ═══════════════════ ARTICLES ═══════════════════ */}
+   521→          <TabsContent value="articles">
+   522→            <div className="animate-fadeIn">
+   523→              <div className="flex items-center justify-between mb-6">
+   524→                <h2 className="font-serif text-2xl font-bold">Articles ({articles.length})</h2>
+   525→                <Button onClick={openArtCreate} className="gap-2"><Plus className="h-4 w-4" /> New Article</Button>
+   526→              </div>
+   527→              <div className="border border-border rounded-xl overflow-hidden">
+   528→                <div className="overflow-x-auto">
+   529→                  <table className="w-full">
+   530→                    <thead>
+   531→                      <tr className="bg-secondary/50 border-b border-border">
+   532→                        <th className={thCls}>Title</th>
+   533→                        <th className={`${thCls} hidden md:table-cell`}>Category</th>
+   534→                        <th className={`${thCls} hidden lg:table-cell`}>Author</th>
+   535→                        <th className={`${thCls} text-right`}>Views</th>
+   536→                        <th className={`${thCls} text-center`}>Status</th>
+   537→                        <th className={`${thCls} text-right`}>Actions</th>
+   538→                      </tr>
+   539→                    </thead>
+   540→                    <tbody>
+   541→                      {articles.map(article => (
+   542→                        <tr key={article.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+   543→                          <td className={tdCls}>
+   544→                            <p className="font-serif font-semibold text-sm line-clamp-1">{article.title}</p>
+   545→                            <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{fmtDate(article.publishedAt)}</p>
+   546→                          </td>
+   547→                          <td className={`${tdCls} hidden md:table-cell`}>
+   548→                            <Badge className="text-[10px]" style={{ backgroundColor: article.category.color + '20', color: article.category.color }}>{article.category.name}</Badge>
+   549→                          </td>
+   550→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{article.author.name}</td>
+   551→                          <td className={`${tdCls} text-right`}><span className="font-mono text-sm">{article.views}</span></td>
+   552→                          <td className={`${tdCls}`}>
+   553→                            <div className="flex items-center justify-center gap-1">
+   554→                              <button onClick={() => toggleArtFeatured(article)} className={`p-1 rounded ${article.isFeatured ? 'text-gold' : 'text-muted-foreground/30 hover:text-gold/50'}`} title="Featured">
+   555→                                <Star className="h-3.5 w-3.5" fill={article.isFeatured ? 'currentColor' : 'none'} />
+   556→                              </button>
+   557→                              <button onClick={() => toggleArtPinned(article)} className={`p-1 rounded ${article.isPinned ? 'text-primary' : 'text-muted-foreground/30 hover:text-primary/50'}`} title="Pinned">
+   558→                                <Pin className="h-3.5 w-3.5" />
+   559→                              </button>
+   560→                            </div>
+   561→                          </td>
+   562→                          <td className={`${tdCls} text-right`}>
+   563→                            <div className="flex items-center justify-end gap-1">
+   564→                              <button onClick={() => openArtEdit(article)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+   565→                              <a href={`/articles/${article.slug}`} target="_blank" className={actionBtnCls} title="View"><ExternalLink className="h-3.5 w-3.5" /></a>
+   566→                              <button onClick={() => deleteArt(article.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+   567→                            </div>
+   568→                          </td>
+   569→                        </tr>
+   570→                      ))}
+   571→                    </tbody>
+   572→                  </table>
+   573→                </div>
+   574→              </div>
+   575→            </div>
+   576→          </TabsContent>
+   577→
+   578→          {/* ═══════════════════ EVENTS ═══════════════════ */}
+   579→          <TabsContent value="events">
+   580→            <div className="animate-fadeIn">
+   581→              <div className="flex items-center justify-between mb-6">
+   582→                <h2 className="font-serif text-2xl font-bold">Events ({events.length})</h2>
+   583→                <Button onClick={openEvtCreate} className="gap-2"><Plus className="h-4 w-4" /> New Event</Button>
+   584→              </div>
+   585→              <div className="border border-border rounded-xl overflow-hidden">
+   586→                <div className="overflow-x-auto">
+   587→                  <table className="w-full">
+   588→                    <thead>
+   589→                      <tr className="bg-secondary/50 border-b border-border">
+   590→                        <th className={thCls}>Title</th>
+   591→                        <th className={`${thCls} hidden md:table-cell`}>Date</th>
+   592→                        <th className={`${thCls} hidden lg:table-cell`}>Venue</th>
+   593→                        <th className={`${thCls} hidden lg:table-cell`}>City</th>
+   594→                        <th className={`${thCls} text-center`}>Status</th>
+   595→                        <th className={`${thCls} text-right`}>Actions</th>
+   596→                      </tr>
+   597→                    </thead>
+   598→                    <tbody>
+   599→                      {events.map(evt => (
+   600→                        <tr key={evt.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+   601→                          <td className={tdCls}>
+   602→                            <p className="font-serif font-semibold text-sm line-clamp-1">{evt.title}</p>
+   603→                            <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{evt.category}</p>
+   604→                          </td>
+   605→                          <td className={`${tdCls} text-sm text-muted-foreground hidden md:table-cell`}>{fmtDate(evt.date)}</td>
+   606→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{evt.venue}</td>
+   607→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{evt.city}</td>
+   608→                          <td className={`${tdCls}`}>
+   609→                            <div className="flex items-center justify-center gap-1">
+   610→                              <Badge variant={evt.isPast ? 'secondary' : 'outline'} className="text-[10px]">{evt.isPast ? 'Past' : 'Upcoming'}</Badge>
+   611→                              {evt.isFeatured && <Star className="h-3 w-3 text-gold" fill="currentColor" />}
+   612→                            </div>
+   613→                          </td>
+   614→                          <td className={`${tdCls} text-right`}>
+   615→                            <div className="flex items-center justify-end gap-1">
+   616→                              <button onClick={() => openEvtEdit(evt)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+   617→                              <button onClick={() => deleteEvt(evt.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+   618→                            </div>
+   619→                          </td>
+   620→                        </tr>
+   621→                      ))}
+   622→                    </tbody>
+   623→                  </table>
+   624→                </div>
+   625→              </div>
+   626→            </div>
+   627→          </TabsContent>
+   628→
+   629→          {/* ═══════════════════ MAKERS ═══════════════════ */}
+   630→          <TabsContent value="makers">
+   631→            <div className="animate-fadeIn">
+   632→              <div className="flex items-center justify-between mb-6">
+   633→                <h2 className="font-serif text-2xl font-bold">Makers ({makers.length})</h2>
+   634→                <Button onClick={openMkrCreate} className="gap-2"><Plus className="h-4 w-4" /> New Maker</Button>
+   635→              </div>
+   636→              <div className="border border-border rounded-xl overflow-hidden">
+   637→                <div className="overflow-x-auto">
+   638→                  <table className="w-full">
+   639→                    <thead>
+   640→                      <tr className="bg-secondary/50 border-b border-border">
+   641→                        <th className={thCls}>Name</th>
+   642→                        <th className={`${thCls} hidden md:table-cell`}>Discipline</th>
+   643→                        <th className={`${thCls} hidden lg:table-cell`}>Location</th>
+   644→                        <th className={`${thCls} text-center`}>Featured</th>
+   645→                        <th className={`${thCls} text-right`}>Actions</th>
+   646→                      </tr>
+   647→                    </thead>
+   648→                    <tbody>
+   649→                      {makers.map(mkr => (
+   650→                        <tr key={mkr.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+   651→                          <td className={tdCls}>
+   652→                            <p className="font-serif font-semibold text-sm">{mkr.name}</p>
+   653→                            <p className="text-[10px] font-mono text-muted-foreground">{mkr.slug}</p>
+   654→                          </td>
+   655→                          <td className={`${tdCls} text-sm text-muted-foreground hidden md:table-cell`}>{mkr.discipline}</td>
+   656→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{mkr.location}</td>
+   657→                          <td className={`${tdCls}`}>
+   658→                            <div className="flex justify-center">
+   659→                              {mkr.isFeatured && <Star className="h-4 w-4 text-gold" fill="currentColor" />}
+   660→                            </div>
+   661→                          </td>
+   662→                          <td className={`${tdCls} text-right`}>
+   663→                            <div className="flex items-center justify-end gap-1">
+   664→                              <button onClick={() => openMkrEdit(mkr)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+   665→                              <button onClick={() => deleteMkr(mkr.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+   666→                            </div>
+   667→                          </td>
+   668→                        </tr>
+   669→                      ))}
+   670→                    </tbody>
+   671→                  </table>
+   672→                </div>
+   673→              </div>
+   674→            </div>
+   675→          </TabsContent>
+   676→
+   677→          {/* ═══════════════════ AUTHORS ═══════════════════ */}
+   678→          <TabsContent value="authors">
+   679→            <div className="animate-fadeIn">
+   680→              <div className="flex items-center justify-between mb-6">
+   681→                <h2 className="font-serif text-2xl font-bold">Authors ({authors.length})</h2>
+   682→                <Button onClick={openAutCreate} className="gap-2"><Plus className="h-4 w-4" /> New Author</Button>
+   683→              </div>
+   684→              <div className="border border-border rounded-xl overflow-hidden">
+   685→                <div className="overflow-x-auto">
+   686→                  <table className="w-full">
+   687→                    <thead>
+   688→                      <tr className="bg-secondary/50 border-b border-border">
+   689→                        <th className={thCls}>Name</th>
+   690→                        <th className={`${thCls} hidden md:table-cell`}>Role</th>
+   691→                        <th className={`${thCls} hidden lg:table-cell`}>Articles</th>
+   692→                        <th className={`${thCls} text-right`}>Actions</th>
+   693→                      </tr>
+   694→                    </thead>
+   695→                    <tbody>
+   696→                      {authors.map(aut => (
+   697→                        <tr key={aut.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+   698→                          <td className={tdCls}>
+   699→                            <div className="flex items-center gap-2">
+   700→                              {aut.avatar && <img src={aut.avatar} alt={aut.name} className="h-7 w-7 rounded-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />}
+   701→                              <div>
+   702→                                <p className="font-serif font-semibold text-sm">{aut.name}</p>
+   703→                                <p className="text-[10px] font-mono text-muted-foreground">{aut.slug}</p>
+   704→                              </div>
+   705→                            </div>
+   706→                          </td>
+   707→                          <td className={`${tdCls} hidden md:table-cell`}>
+   708→                            <Badge variant="outline" className="text-[10px]">{aut.role}</Badge>
+   709→                          </td>
+   710→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{aut._count?.articles || 0}</td>
+   711→                          <td className={`${tdCls} text-right`}>
+   712→                            <div className="flex items-center justify-end gap-1">
+   713→                              <button onClick={() => openAutEdit(aut)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+   714→                              <button onClick={() => deleteAut(aut.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+   715→                            </div>
+   716→                          </td>
+   717→                        </tr>
+   718→                      ))}
+   719→                    </tbody>
+   720→                  </table>
+   721→                </div>
+   722→              </div>
+   723→            </div>
+   724→          </TabsContent>
+   725→
+   726→          {/* ═══════════════════ CATEGORIES ═══════════════════ */}
+   727→          <TabsContent value="categories">
+   728→            <div className="animate-fadeIn">
+   729→              <div className="flex items-center justify-between mb-6">
+   730→                <h2 className="font-serif text-2xl font-bold">Categories ({categories.length})</h2>
+   731→                <Button onClick={openCatCreate} className="gap-2"><Plus className="h-4 w-4" /> New Category</Button>
+   732→              </div>
+   733→              <div className="border border-border rounded-xl overflow-hidden">
+   734→                <div className="overflow-x-auto">
+   735→                  <table className="w-full">
+   736→                    <thead>
+   737→                      <tr className="bg-secondary/50 border-b border-border">
+   738→                        <th className={thCls}>Color</th>
+   739→                        <th className={thCls}>Name</th>
+   740→                        <th className={`${thCls} hidden md:table-cell`}>Slug</th>
+   741→                        <th className={`${thCls} hidden lg:table-cell`}>Articles</th>
+   742→                        <th className={`${thCls} hidden lg:table-cell`}>Events</th>
+   743→                        <th className={`${thCls} text-right`}>Actions</th>
+   744→                      </tr>
+   745→                    </thead>
+   746→                    <tbody>
+   747→                      {categories.map(cat => (
+   748→                        <tr key={cat.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+   749→                          <td className={tdCls}>
+   750→                            <div className="h-6 w-6 rounded-full border border-border" style={{ backgroundColor: cat.color }} />
+   751→                          </td>
+   752→                          <td className={tdCls}>
+   753→                            <p className="font-serif font-semibold text-sm">{cat.name}</p>
+   754→                          </td>
+   755→                          <td className={`${tdCls} font-mono text-sm text-muted-foreground hidden md:table-cell`}>{cat.slug}</td>
+   756→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{cat._count?.articles || 0}</td>
+   757→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{cat._count?.events || 0}</td>
+   758→                          <td className={`${tdCls} text-right`}>
+   759→                            <div className="flex items-center justify-end gap-1">
+   760→                              <button onClick={() => openCatEdit(cat)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+   761→                              <button onClick={() => deleteCat(cat.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+   762→                            </div>
+   763→                          </td>
+   764→                        </tr>
+   765→                      ))}
+   766→                    </tbody>
+   767→                  </table>
+   768→                </div>
+   769→              </div>
+   770→            </div>
+   771→          </TabsContent>
+   772→
+   773→          {/* ═══════════════════ SUBSCRIBERS ═══════════════════ */}
+   774→          <TabsContent value="subscribers">
+   775→            <div className="animate-fadeIn">
+   776→              <div className="flex items-center justify-between mb-6">
+   777→                <h2 className="font-serif text-2xl font-bold">Newsletter Subscribers ({subscribers.length})</h2>
+   778→              </div>
+   779→              <div className="border border-border rounded-xl overflow-hidden">
+   780→                <div className="overflow-x-auto">
+   781→                  <table className="w-full">
+   782→                    <thead>
+   783→                      <tr className="bg-secondary/50 border-b border-border">
+   784→                        <th className={thCls}>Name</th>
+   785→                        <th className={thCls}>Email</th>
+   786→                        <th className={`${thCls} hidden md:table-cell`}>Subscribed</th>
+   787→                        <th className={`${thCls} text-right`}>Actions</th>
+   788→                      </tr>
+   789→                    </thead>
+   790→                    <tbody>
+   791→                      {subscribers.map(sub => (
+   792→                        <tr key={sub.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+   793→                          <td className={tdCls}>
+   794→                            <p className="font-serif font-semibold text-sm">{sub.name || '—'}</p>
+   795→                          </td>
+   796→                          <td className={tdCls}>
+   797→                            <p className="font-mono text-sm text-muted-foreground">{sub.email}</p>
+   798→                          </td>
+   799→                          <td className={`${tdCls} text-sm text-muted-foreground hidden md:table-cell`}>{fmtDate(sub.createdAt)}</td>
+   800→                          <td className={`${tdCls} text-right`}>
+   801→                            <div className="flex items-center justify-end gap-1">
+   802→                              <button onClick={() => deleteSub(sub.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Remove"><Trash2 className="h-3.5 w-3.5" /></button>
+   803→                            </div>
+   804→                          </td>
+   805→                        </tr>
+   806→                      ))}
+   807→                    </tbody>
+   808→                  </table>
+   809→                </div>
+   810→              </div>
+   811→            </div>
+   812→          </TabsContent>
+   813→        </Tabs>
+   814→      </main>
+   815→
+   816→      {/* ═══════════════════ ARTICLE DIALOG ═══════════════════ */}
+   817→      <Dialog open={artDialog} onOpenChange={setArtDialog}>
+   818→        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+   819→          <DialogHeader>
+   820→            <DialogTitle className="font-serif text-xl">{artEdit ? 'Edit Article' : 'New Article'}</DialogTitle>
+   821→          </DialogHeader>
+   822→          <div className="space-y-4">
+   823→            <div>
+   824→              <label className={labelCls}>Title *</label>
+   825→              <Input value={artTitle} onChange={e => { setArtTitle(e.target.value); if (!artEdit) setArtSlug(slugify(e.target.value)) }} placeholder="Article title" />
+   826→            </div>
+   827→            <div>
+   828→              <label className={labelCls}>Slug *</label>
+   829→              <Input value={artSlug} onChange={e => setArtSlug(e.target.value)} placeholder="article-slug" className="font-mono" />
+   830→            </div>
+   831→            <div className="grid grid-cols-2 gap-4">
+   832→              <div>
+   833→                <label className={labelCls}>Category</label>
+   834→                <Select value={artCategory} onValueChange={setArtCategory}>
+   835→                  <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+   836→                  <SelectContent>
+   837→                    {categories.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+   838→                  </SelectContent>
+   839→                </Select>
+   840→              </div>
+   841→              <div>
+   842→                <label className={labelCls}>Author</label>
+   843→                <Select value={artAuthor} onValueChange={setArtAuthor}>
+   844→                  <SelectTrigger><SelectValue placeholder="Select author" /></SelectTrigger>
+   845→                  <SelectContent>
+   846→                    {authors.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
+   847→                  </SelectContent>
+   848→                </Select>
+   849→              </div>
+   850→            </div>
+   851→            <div>
+   852→              <label className={labelCls}>Excerpt</label>
+   853→              <Textarea value={artExcerpt} onChange={e => setArtExcerpt(e.target.value)} placeholder="Brief summary..." rows={2} />
+   854→            </div>
+   855→            {!artEdit && (
+   856→              <div>
+   857→                <div className="flex items-center justify-between mb-1">
+   858→                  <label className={labelCls}>Content (Markdown)</label>
+   859→                  {artContent && <span className="font-mono text-[10px] text-muted-foreground">{artContent.split(/\s+/).filter(Boolean).length} words</span>}
+   860→                </div>
+   861→                <Tabs defaultValue="write" className="mt-2">
+   862→                  <TabsList className="mb-2">
+   863→                    <TabsTrigger value="write" className="text-xs">Write</TabsTrigger>
+   864→                    <TabsTrigger value="preview" className="text-xs">Preview</TabsTrigger>
+   865→                  </TabsList>
+   866→                  <TabsContent value="write">
+   867→                    <Textarea value={artContent} onChange={e => setArtContent(e.target.value)} placeholder="Write your article in Markdown..." rows={8} className="font-mono text-sm" />
+   868→                  </TabsContent>
+   869→                  <TabsContent value="preview">
+   870→                    <div className="border border-border rounded-xl p-4 min-h-[200px] prose-article">
+   871→                      {artContent ? <ReactMarkdown>{artContent}</ReactMarkdown> : <p className="text-muted-foreground text-sm italic">Start writing to see a preview...</p>}
+   872→                    </div>
+   873→                  </TabsContent>
+   874→                </Tabs>
+   875→              </div>
+   876→            )}
+   877→            <div>
+   878→              <label className={labelCls}>Cover Image URL</label>
+   879→              <div className="relative">
+   880→                <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   881→                <Input value={artCoverImage} onChange={e => setArtCoverImage(e.target.value)} placeholder="https://images.unsplash.com/..." className="font-mono text-sm pl-10" />
+   882→              </div>
+   883→              {artCoverImage && (
+   884→                <div className="mt-2 rounded-lg overflow-hidden border border-border aspect-video bg-secondary">
+   885→                  <img src={artCoverImage} alt="Cover preview" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
+   886→                </div>
+   887→              )}
+   888→            </div>
+   889→            <div className="grid grid-cols-2 gap-4">
+   890→              <div>
+   891→                <label className={labelCls}>Tags</label>
+   892→                <Input value={artTags} onChange={e => setArtTags(e.target.value)} placeholder="tag1, tag2, tag3" />
+   893→              </div>
+   894→              <div>
+   895→                <label className={labelCls}>Read Time (min)</label>
+   896→                <Input type="number" value={artReadTime} onChange={e => setArtReadTime(e.target.value)} />
+   897→              </div>
+   898→            </div>
+   899→            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+   900→              <Button variant="outline" onClick={() => setArtDialog(false)}>Cancel</Button>
+   901→              <Button onClick={saveArt} disabled={artSaving || !artTitle || !artSlug} className="font-mono text-xs">
+   902→                {artSaving ? 'Saving...' : artEdit ? 'Update' : 'Create Article'}
+   903→              </Button>
+   904→            </div>
+   905→          </div>
+   906→        </DialogContent>
+   907→      </Dialog>
+   908→
+   909→      {/* ═══════════════════ EVENT DIALOG ═══════════════════ */}
+   910→      <Dialog open={evtDialog} onOpenChange={setEvtDialog}>
+   911→        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+   912→          <DialogHeader>
+   913→            <DialogTitle className="font-serif text-xl">{evtEdit ? 'Edit Event' : 'New Event'}</DialogTitle>
+   914→          </DialogHeader>
+   915→          <div className="space-y-4">
+   916→            <div>
+   917→              <label className={labelCls}>Title *</label>
+   918→              <Input value={evtTitle} onChange={e => setEvtTitle(e.target.value)} placeholder="Event title" />
+   919→            </div>
+   920→            <div>
+   921→              <label className={labelCls}>Description</label>
+   922→              <Textarea value={evtDesc} onChange={e => setEvtDesc(e.target.value)} placeholder="Event description..." rows={3} />
+   923→            </div>
+   924→            <div className="grid grid-cols-2 gap-4">
+   925→              <div>
+   926→                <label className={labelCls}>Date *</label>
+   927→                <Input type="datetime-local" value={evtDate} onChange={e => setEvtDate(e.target.value)} />
+   928→              </div>
+   929→              <div>
+   930→                <label className={labelCls}>End Date (optional)</label>
+   931→                <Input type="datetime-local" value={evtEndDate} onChange={e => setEvtEndDate(e.target.value)} />
+   932→              </div>
+   933→            </div>
+   934→            <div className="grid grid-cols-2 gap-4">
+   935→              <div>
+   936→                <label className={labelCls}>Venue *</label>
+   937→                <Input value={evtVenue} onChange={e => setEvtVenue(e.target.value)} placeholder="Venue name" />
+   938→              </div>
+   939→              <div>
+   940→                <label className={labelCls}>City *</label>
+   941→                <Input value={evtCity} onChange={e => setEvtCity(e.target.value)} placeholder="Nairobi" />
+   942→              </div>
+   943→            </div>
+   944→            <div>
+   945→              <label className={labelCls}>Category</label>
+   946→              <Input value={evtCategory} onChange={e => setEvtCategory(e.target.value)} placeholder="e.g. Exhibition, Workshop, Concert" />
+   947→            </div>
+   948→            <div>
+   949→              <label className={labelCls}>Image URL</label>
+   950→              <Input value={evtImageUrl} onChange={e => setEvtImageUrl(e.target.value)} placeholder="https://..." className="font-mono text-sm" />
+   951→              {evtImageUrl && (
+   952→                <div className="mt-2 rounded-lg overflow-hidden border border-border aspect-video bg-secondary">
+   953→                  <img src={evtImageUrl} alt="Event preview" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
+   954→                </div>
+   955→              )}
+   956→            </div>
+   957→            <div>
+   958→              <label className={labelCls}>Ticket URL</label>
+   959→              <Input value={evtTicketUrl} onChange={e => setEvtTicketUrl(e.target.value)} placeholder="https://ticketsite.com/..." className="font-mono text-sm" />
+   960→            </div>
+   961→            <div className="flex items-center justify-between">
+   962→              <div className="flex items-center gap-2">
+   963→                <Switch checked={evtFeatured} onCheckedChange={setEvtFeatured} />
+   964→                <label className={labelCls + ' mb-0'}>Featured</label>
+   965→              </div>
+   966→              <div className="flex items-center gap-2">
+   967→                <Switch checked={evtPast} onCheckedChange={setEvtPast} />
+   968→                <label className={labelCls + ' mb-0'}>Past Event</label>
+   969→              </div>
+   970→            </div>
+   971→            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+   972→              <Button variant="outline" onClick={() => setEvtDialog(false)}>Cancel</Button>
+   973→              <Button onClick={saveEvt} disabled={evtSaving || !evtTitle || !evtDate || !evtVenue || !evtCity} className="font-mono text-xs">
+   974→                {evtSaving ? 'Saving...' : evtEdit ? 'Update' : 'Create Event'}
+   975→              </Button>
+   976→            </div>
+   977→          </div>
+   978→        </DialogContent>
+   979→      </Dialog>
+   980→
+   981→      {/* ═══════════════════ MAKER DIALOG ═══════════════════ */}
+   982→      <Dialog open={mkrDialog} onOpenChange={setMkrDialog}>
+   983→        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+   984→          <DialogHeader>
+   985→            <DialogTitle className="font-serif text-xl">{mkrEdit ? 'Edit Maker' : 'New Maker'}</DialogTitle>
+   986→          </DialogHeader>
+   987→          <div className="space-y-4">
+   988→            <div className="grid grid-cols-2 gap-4">
+   989→              <div>
+   990→                <label className={labelCls}>Name *</label>
+   991→                <Input value={mkrName} onChange={e => { setMkrName(e.target.value); if (!mkrEdit) setMkrSlug(slugify(e.target.value)) }} placeholder="Maker name" />
+   992→              </div>
+   993→              <div>
+   994→                <label className={labelCls}>Slug *</label>
+   995→                <Input value={mkrSlug} onChange={e => setMkrSlug(e.target.value)} placeholder="maker-slug" className="font-mono" />
+   996→              </div>
+   997→            </div>
+   998→            <div>
+   999→              <label className={labelCls}>Discipline *</label>
+  1000→              <Input value={mkrDiscipline} onChange={e => setMkrDiscipline(e.target.value)} placeholder="e.g. Ceramicist, Painter, Sculptor" />
+  1001→            </div>
+  1002→            <div>
+  1003→              <label className={labelCls}>Bio</label>
+  1004→              <Textarea value={mkrBio} onChange={e => setMkrBio(e.target.value)} placeholder="Biography..." rows={3} />
+  1005→            </div>
+  1006→            <div>
+  1007→              <label className={labelCls}>Location</label>
+  1008→              <Input value={mkrLocation} onChange={e => setMkrLocation(e.target.value)} placeholder="Nairobi, Kenya" />
+  1009→            </div>
+  1010→            <div className="grid grid-cols-2 gap-4">
+  1011→              <div>
+  1012→                <label className={labelCls}>Website</label>
+  1013→                <Input value={mkrWebsite} onChange={e => setMkrWebsite(e.target.value)} placeholder="https://..." className="font-mono text-sm" />
+  1014→              </div>
+  1015→              <div>
+  1016→                <label className={labelCls}>Instagram</label>
+  1017→                <Input value={mkrInstagram} onChange={e => setMkrInstagram(e.target.value)} placeholder="@handle" className="font-mono text-sm" />
+  1018→              </div>
+  1019→            </div>
+  1020→            <div>
+  1021→              <label className={labelCls}>Twitter / X</label>
+  1022→              <Input value={mkrTwitter} onChange={e => setMkrTwitter(e.target.value)} placeholder="@handle" className="font-mono text-sm" />
+  1023→            </div>
+  1024→            <div className="flex items-center gap-2">
+  1025→              <Switch checked={mkrFeatured} onCheckedChange={setMkrFeatured} />
+  1026→              <label className={labelCls + ' mb-0'}>Featured</label>
+  1027→            </div>
+  1028→            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+  1029→              <Button variant="outline" onClick={() => setMkrDialog(false)}>Cancel</Button>
+  1030→              <Button onClick={saveMkr} disabled={mkrSaving || !mkrName || !mkrSlug || !mkrDiscipline} className="font-mono text-xs">
+  1031→                {mkrSaving ? 'Saving...' : mkrEdit ? 'Update' : 'Create Maker'}
+  1032→              </Button>
+  1033→            </div>
+  1034→          </div>
+  1035→        </DialogContent>
+  1036→      </Dialog>
+  1037→
+  1038→      {/* ═══════════════════ AUTHOR DIALOG ═══════════════════ */}
+  1039→      <Dialog open={autDialog} onOpenChange={setAutDialog}>
+  1040→        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+  1041→          <DialogHeader>
+  1042→            <DialogTitle className="font-serif text-xl">{autEdit ? 'Edit Author' : 'New Author'}</DialogTitle>
+  1043→          </DialogHeader>
+  1044→          <div className="space-y-4">
+  1045→            <div className="grid grid-cols-2 gap-4">
+  1046→              <div>
+  1047→                <label className={labelCls}>Name *</label>
+  1048→                <Input value={autName} onChange={e => { setAutName(e.target.value); if (!autEdit) setAutSlug(slugify(e.target.value)) }} placeholder="Author name" />
+  1049→              </div>
+  1050→              <div>
+  1051→                <label className={labelCls}>Slug *</label>
+  1052→                <Input value={autSlug} onChange={e => setAutSlug(e.target.value)} placeholder="author-slug" className="font-mono" />
+  1053→              </div>
+  1054→            </div>
+  1055→            <div>
+  1056→              <label className={labelCls}>Role</label>
+  1057→              <Select value={autRole} onValueChange={setAutRole}>
+  1058→                <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+  1059→                <SelectContent>
+  1060→                  <SelectItem value="Writer">Writer</SelectItem>
+  1061→                  <SelectItem value="Editor">Editor</SelectItem>
+  1062→                  <SelectItem value="Contributor">Contributor</SelectItem>
+  1063→                  <SelectItem value="Columnist">Columnist</SelectItem>
+  1064→                </SelectContent>
+  1065→              </Select>
+  1066→            </div>
+  1067→            <div>
+  1068→              <label className={labelCls}>Bio</label>
+  1069→              <Textarea value={autBio} onChange={e => setAutBio(e.target.value)} placeholder="Author biography..." rows={3} />
+  1070→            </div>
+  1071→            <div>
+  1072→              <label className={labelCls}>Avatar URL</label>
+  1073→              <Input value={autAvatar} onChange={e => setAutAvatar(e.target.value)} placeholder="https://..." className="font-mono text-sm" />
+  1074→              {autAvatar && (
+  1075→                <div className="mt-2">
+  1076→                  <img src={autAvatar} alt="Avatar preview" className="h-16 w-16 rounded-full object-cover border border-border" onError={e => (e.currentTarget.style.display = 'none')} />
+  1077→                </div>
+  1078→              )}
+  1079→            </div>
+  1080→            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+  1081→              <Button variant="outline" onClick={() => setAutDialog(false)}>Cancel</Button>
+  1082→              <Button onClick={saveAut} disabled={autSaving || !autName || !autSlug} className="font-mono text-xs">
+  1083→                {autSaving ? 'Saving...' : autEdit ? 'Update' : 'Create Author'}
+  1084→              </Button>
+  1085→            </div>
+  1086→          </div>
+  1087→        </DialogContent>
+  1088→      </Dialog>
+  1089→
+  1090→      {/* ═══════════════════ CATEGORY DIALOG ═══════════════════ */}
+  1091→      <Dialog open={catDialog} onOpenChange={setCatDialog}>
+  1092→        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+  1093→          <DialogHeader>
+  1094→            <DialogTitle className="font-serif text-xl">{catEdit ? 'Edit Category' : 'New Category'}</DialogTitle>
+  1095→          </DialogHeader>
+  1096→          <div className="space-y-4">
+  1097→            <div className="grid grid-cols-2 gap-4">
+  1098→              <div>
+  1099→                <label className={labelCls}>Name *</label>
+  1100→                <Input value={catName} onChange={e => { setCatName(e.target.value); if (!catEdit) setCatSlug(slugify(e.target.value)) }} placeholder="Category name" />
+  1101→              </div>
+  1102→              <div>
+  1103→                <label className={labelCls}>Slug *</label>
+  1104→                <Input value={catSlug} onChange={e => setCatSlug(e.target.value)} placeholder="category-slug" className="font-mono" />
+  1105→              </div>
+  1106→            </div>
+  1107→            <div>
+  1108→              <label className={labelCls}>Description</label>
+  1109→              <Textarea value={catDescription} onChange={e => setCatDescription(e.target.value)} placeholder="Category description..." rows={2} />
+  1110→            </div>
+  1111→            <div>
+  1112→              <label className={labelCls}>Color</label>
+  1113→              <div className="flex items-center gap-3">
+  1114→                <input type="color" value={catColor} onChange={e => setCatColor(e.target.value)} className="h-10 w-10 rounded-md border border-border cursor-pointer p-0" />
+  1115→                <Input value={catColor} onChange={e => setCatColor(e.target.value)} placeholder="#8B2252" className="font-mono text-sm w-32" />
+  1116→              </div>
+  1117→            </div>
+  1118→            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+  1119→              <Button variant="outline" onClick={() => setCatDialog(false)}>Cancel</Button>
+  1120→              <Button onClick={saveCat} disabled={catSaving || !catName || !catSlug} className="font-mono text-xs">
+  1121→                {catSaving ? 'Saving...' : catEdit ? 'Update' : 'Create Category'}
+  1122→              </Button>
+  1123→            </div>
+  1124→          </div>
+  1125→        </DialogContent>
+  1126→      </Dialog>
+  1127→    </div>
+  1128→  )
+  1129→}
+  1130→

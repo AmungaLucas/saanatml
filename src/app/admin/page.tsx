@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   FileText, Users, Tag, Calendar, Eye, MessageSquare, Star, Pin, Trash2,
   Plus, BarChart3, ArrowLeft, BookmarkCheck, BookOpen, Mail,
-  TrendingUp, ImageIcon, Pencil, ExternalLink, Palette,
+  TrendingUp, ImageIcon, Pencil, ExternalLink, Palette, Flag, CheckCircle, XCircle,
 } from 'lucide-react'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
@@ -58,6 +58,12 @@ interface SubscriberItem {
   id: string; name: string; email: string; createdAt: string
 }
 
+interface CommentItem {
+  id: string; author: string; content: string; status: string
+  reportCount: number; createdAt: string; articleId: string
+  article: { id: string; title: string; slug: string }
+}
+
 interface Stats {
   articles: number; authors: number; categories: number; events: number
   comments: number; makers: number; subscribers: number; totalViews: number
@@ -95,6 +101,8 @@ export default function AdminPage() {
   const [authors, setAuthors] = useState<AuthorItem[]>([])
   const [categories, setCategories] = useState<CategoryItem[]>([])
   const [subscribers, setSubscribers] = useState<SubscriberItem[]>([])
+  const [flaggedComments, setFlaggedComments] = useState<CommentItem[]>([])
+  const [recentComments, setRecentComments] = useState<CommentItem[]>([])
 
   // Article form
   const [artDialog, setArtDialog] = useState(false)
@@ -175,6 +183,11 @@ export default function AdminPage() {
         fetch(url).then(r => r.json()).then(d => setter(d)).catch(() => {})
       )
     )
+    // Comments endpoint returns { flagged, recent, stats }
+    fetch('/api/admin/comments')
+      .then(r => r.json())
+      .then(d => { setFlaggedComments(d.flagged || []); setRecentComments(d.recent || []) })
+      .catch(() => {})
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
@@ -439,6 +452,7 @@ export default function AdminPage() {
             <TabsTrigger value="authors"><Users className="h-4 w-4 mr-1.5" />Authors</TabsTrigger>
             <TabsTrigger value="categories"><Tag className="h-4 w-4 mr-1.5" />Categories</TabsTrigger>
             <TabsTrigger value="subscribers"><Mail className="h-4 w-4 mr-1.5" />Subscribers</TabsTrigger>
+            <TabsTrigger value="comments"><MessageSquare className="h-4 w-4 mr-1.5" />Comments{flaggedComments.length > 0 && <span className="ml-1.5 px-1.5 py-0.5 text-[10px] bg-destructive text-destructive-foreground rounded-full">{flaggedComments.length}</span>}</TabsTrigger>
           </TabsList>
 
           {/* ═══════════════════ OVERVIEW ═══════════════════ */}
@@ -807,6 +821,132 @@ export default function AdminPage() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ═══════════════════ COMMENTS ═══════════════════ */}
+          <TabsContent value="comments">
+            <div className="animate-fadeIn">
+              <h2 className="font-serif text-2xl font-bold mb-6 flex items-center gap-3">
+                Comments
+                {flaggedComments.length > 0 && (
+                  <Badge variant="destructive" className="font-mono text-xs">
+                    {flaggedComments.length} flagged
+                  </Badge>
+                )}
+              </h2>
+
+              {/* Flagged Queue */}
+              {flaggedComments.length > 0 && (
+                <div className="mb-10">
+                  <h3 className="font-serif text-lg font-bold mb-4 flex items-center gap-2">
+                    <Flag className="h-4 w-4 text-destructive" />
+                    Flagged for Review
+                  </h3>
+                  <div className="space-y-3">
+                    {flaggedComments.map(c => (
+                      <div key={c.id} className="p-4 rounded-xl border border-destructive/30 bg-destructive/5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-sm">{c.author}</span>
+                              <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30">
+                                {c.reportCount} report{c.reportCount !== 1 ? 's' : ''}
+                              </Badge>
+                              <span className="text-[10px] font-mono text-muted-foreground">{fmtDateTime(c.createdAt)}</span>
+                            </div>
+                            <p className="text-sm text-foreground/80 line-clamp-2">{c.content}</p>
+                            <p className="text-xs text-muted-foreground mt-2 font-mono">
+                              on: <a href={`/articles/${c.article.slug}`} target="_blank" className="text-primary hover:underline">{c.article.title}</a>
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={async () => {
+                                await fetch(`/api/admin/comments/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'published' }) })
+                                setFlaggedComments(p => p.filter(x => x.id !== c.id))
+                              }}
+                              className="p-1.5 rounded-md hover:bg-green-500/10 text-muted-foreground hover:text-green-600 transition-colors"
+                              title="Restore (publish)"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                await fetch(`/api/admin/comments/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'removed' }) })
+                                setFlaggedComments(p => p.filter(x => x.id !== c.id))
+                              }}
+                              className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                              title="Remove"
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (!confirm('Permanently delete this comment?')) return
+                                await fetch(`/api/admin/comments/${c.id}`, { method: 'DELETE' })
+                                setFlaggedComments(p => p.filter(x => x.id !== c.id))
+                              }}
+                              className={actionBtnCls}
+                              title="Delete permanently"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recent Comments */}
+              <div>
+                <h3 className="font-serif text-lg font-bold mb-4">Recent Comments</h3>
+                {recentComments.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-8 text-center">No comments yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {recentComments.map(c => (
+                      <div key={c.id} className="flex items-start gap-4 p-4 rounded-xl border border-border bg-card">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-sm">{c.author}</span>
+                            <span className="text-[10px] font-mono text-muted-foreground">{fmtDateTime(c.createdAt)}</span>
+                          </div>
+                          <p className="text-sm text-foreground/80 line-clamp-2">{c.content}</p>
+                          <p className="text-xs text-muted-foreground mt-1 font-mono">
+                            on: <a href={`/articles/${c.article.slug}`} target="_blank" className="text-primary hover:underline">{c.article.title}</a>
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={async () => {
+                              await fetch(`/api/admin/comments/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'removed' }) })
+                              setRecentComments(p => p.filter(x => x.id !== c.id))
+                            }}
+                            className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                            title="Remove"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!confirm('Permanently delete this comment?')) return
+                              await fetch(`/api/admin/comments/${c.id}`, { method: 'DELETE' })
+                              setRecentComments(p => p.filter(x => x.id !== c.id))
+                            }}
+                            className={actionBtnCls}
+                            title="Delete permanently"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </TabsContent>

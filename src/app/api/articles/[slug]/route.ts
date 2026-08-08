@@ -12,9 +12,6 @@ export async function GET(
     include: {
       category: true,
       author: true,
-      comments: {
-        orderBy: { createdAt: 'desc' },
-      },
     },
   })
 

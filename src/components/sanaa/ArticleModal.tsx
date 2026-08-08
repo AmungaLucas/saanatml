@@ -12,7 +12,7 @@ import {
   X, Clock, Eye, Share2, Bookmark, BookmarkCheck, ChevronRight,
   User, Calendar, ArrowLeft, Send, Heart,
   MessageSquare, Twitter, Facebook, Linkedin, Copy, Check,
-  List, BookOpen
+  List, BookOpen, Flag
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import Link from 'next/link'
@@ -32,16 +32,27 @@ export function ArticleModal() {
   const [related, setRelated] = useState<any[]>([])
   const [copied, setCopied] = useState(false)
   const [activeHeading, setActiveHeading] = useState('')
+  const [commentTotal, setCommentTotal] = useState(0)
+  const [submitTime, setSubmitTime] = useState(0)
+  const [reportedComments, setReportedComments] = useState<Set<string>>(new Set())
+  const [submitting, setSubmitting] = useState(false)
+  const [honeypot, setHoneypot] = useState('')
 
   useEffect(() => {
     if (isArticleOpen && article) {
-      fetch(`/api/articles/${article.slug}`)
-        .then(r => r.json())
-        .then(data => {
-          setComments(data.article?.comments || [])
-          setRelated(data.related || [])
+      // Fetch article detail + published comments separately
+      Promise.all([
+        fetch(`/api/articles/${article.slug}`).then(r => r.json()),
+        fetch(`/api/comments?articleId=${article.id}`).then(r => r.json()),
+      ])
+        .then(([articleData, commentsData]) => {
+          setRelated(articleData.related || [])
+          setComments(commentsData.comments || [])
+          setCommentTotal(commentsData.total || 0)
         })
         .catch(() => {})
+      // Record form open time for min-time gate
+      setSubmitTime(Date.now())
       // Track in reading history
       addToHistory(article)
       document.body.style.overflow = 'hidden'
@@ -102,17 +113,48 @@ export function ArticleModal() {
   }, [isArticleOpen, article])
 
   const handleComment = async () => {
-    if (!article || !commentText.trim() || !commentName.trim()) return
+    if (!article || !commentText.trim() || !commentName.trim() || submitting) return
+    setSubmitting(true)
     try {
       const res = await fetch('/api/comments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ articleId: article.id, author: commentName, content: commentText }),
+        body: JSON.stringify({
+          articleId: article.id,
+          author: commentName,
+          content: commentText,
+          website: honeypot, // honeypot field
+          _submitTime: submitTime,
+        }),
       })
-      const newComment = await res.json()
-      setComments(prev => [newComment, ...prev])
-      setCommentText('')
-      showToast({ type: 'comment', message: 'Comment posted' })
+      if (res.ok) {
+        const newComment = await res.json()
+        if (newComment.id) {
+          setComments(prev => [newComment, ...prev])
+          setCommentTotal(prev => prev + 1)
+          setCommentText('')
+          setSubmitTime(Date.now()) // Reset timer for next comment
+          showToast({ type: 'comment', message: 'Comment posted' })
+        }
+      } else {
+        const data = await res.json()
+        showToast({ type: 'comment', message: data.error || 'Failed to post' })
+      }
+    } catch {
+      showToast({ type: 'comment', message: 'Failed to post comment' })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleReport = async (commentId: string) => {
+    if (reportedComments.has(commentId)) return
+    try {
+      const res = await fetch(`/api/comments/${commentId}`, { method: 'POST' })
+      if (res.ok) {
+        setReportedComments(prev => new Set(prev).add(commentId))
+        showToast({ type: 'comment', message: 'Reported — thanks for keeping the conversation clean' })
+      }
     } catch {}
   }
 
@@ -390,7 +432,7 @@ export function ArticleModal() {
         <div className="max-w-3xl mt-12">
           <h3 className="font-serif font-bold text-xl mb-6 flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
-            Comments ({comments.length})
+            Comments ({commentTotal})
           </h3>
 
           {/* Add Comment */}
@@ -407,14 +449,28 @@ export function ArticleModal() {
               onChange={e => setCommentText(e.target.value)}
               className="min-h-[80px] text-sm"
             />
-            <div className="flex justify-end">
+            {/* Honeypot — hidden from humans, traps bots */}
+            <div className="overflow-hidden h-0 max-h-0 opacity-0 absolute" aria-hidden="true">
+              <label htmlFor="website_hp">Website</label>
+              <input
+                id="website_hp"
+                type="text"
+                name="website"
+                value={honeypot}
+                onChange={e => setHoneypot(e.target.value)}
+                autoComplete="off"
+                tabIndex={-1}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] text-muted-foreground font-mono">Be respectful. Spam will be removed.</p>
               <Button
                 size="sm"
                 onClick={handleComment}
-                disabled={!commentText.trim() || !commentName.trim()}
+                disabled={!commentText.trim() || !commentName.trim() || submitting}
                 className="gap-1.5 text-xs font-mono"
               >
-                <Send className="h-3 w-3" /> Post Comment
+                <Send className="h-3 w-3" /> {submitting ? 'Posting...' : 'Post Comment'}
               </Button>
             </div>
           </div>
@@ -443,6 +499,20 @@ export function ArticleModal() {
                     </div>
                   </div>
                   <p className="text-sm text-foreground/80 leading-relaxed">{comment.content}</p>
+                  <div className="flex justify-end mt-2">
+                    <button
+                      onClick={() => handleReport(comment.id)}
+                      className={`flex items-center gap-1 text-[10px] font-mono transition-colors ${
+                        reportedComments.has(comment.id)
+                          ? 'text-muted-foreground/50'
+                          : 'text-muted-foreground hover:text-destructive'
+                      }`}
+                      disabled={reportedComments.has(comment.id)}
+                    >
+                      <Flag className="h-3 w-3" />
+                      {reportedComments.has(comment.id) ? 'Reported' : 'Report'}
+                    </button>
+                  </div>
                 </motion.div>
               ))}
             </AnimatePresence>
