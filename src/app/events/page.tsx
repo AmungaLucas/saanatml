@@ -11,10 +11,15 @@ export const metadata: Metadata = {
 }
 
 export default async function EventsPageRoute() {
-  const events = await db.event.findMany({
-    orderBy: [{ isPast: 'asc' }, { date: 'asc' }],
-    include: { categoryRef: true },
-  })
+  let events: any[] = []
+  try {
+    events = await db.event.findMany({
+      orderBy: [{ isPast: 'asc' }, { date: 'asc' }],
+      include: { categoryRef: true },
+    })
+  } catch {
+    // Show page with empty events list on DB failure
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

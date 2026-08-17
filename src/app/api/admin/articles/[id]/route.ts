@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAuth } from '@/lib/auth-guard'
 
 // PATCH update article
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const { id } = await params
     const body = await request.json()
@@ -46,9 +50,12 @@ export async function PATCH(
 
 // DELETE article
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const { id } = await params
     await db.article.delete({ where: { id } })

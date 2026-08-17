@@ -1,8 +1,12 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAuth } from '@/lib/auth-guard'
 
 // GET all subscribers
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const subscribers = await db.newsletterSubscription.findMany({
       orderBy: { createdAt: 'desc' },

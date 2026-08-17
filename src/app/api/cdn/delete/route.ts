@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { deleteFromCDN } from '@/lib/cdn'
+import { requireAuth } from '@/lib/auth-guard'
 
 export async function POST(request: NextRequest) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const { path } = await request.json()
     if (!path) {

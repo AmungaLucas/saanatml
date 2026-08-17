@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -96,11 +96,18 @@ export function ArticlePageClient({ article, related }: ArticlePageProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ articleId: article.id, author: commentName, content: commentText }),
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        showToast({ type: 'comment', message: data.error || 'Failed to post comment' })
+        return
+      }
       const newComment = await res.json()
       setComments(prev => [newComment, ...prev])
       setCommentText('')
       showToast({ type: 'comment', message: 'Comment posted' })
-    } catch {}
+    } catch {
+      showToast({ type: 'comment', message: 'Network error. Please try again.' })
+    }
   }
 
   const handleCopyLink = async () => {
@@ -109,7 +116,9 @@ export function ArticlePageClient({ article, related }: ArticlePageProps) {
       setCopied(true)
       showToast({ type: 'copy', message: 'Link copied' })
       setTimeout(() => setCopied(false), 2000)
-    } catch {}
+    } catch {
+      showToast({ type: 'copy', message: 'Failed to copy link' })
+    }
   }
 
   const handleBookmark = () => {
@@ -161,16 +170,20 @@ export function ArticlePageClient({ article, related }: ArticlePageProps) {
         <nav className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-6">
           <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
           <ChevronRight className="h-3 w-3" />
-          <Link href={`/category/${article.category.slug}`} className="hover:text-foreground transition-colors" style={{ color: article.category.color }}>
-            {article.category.name}
-          </Link>
+          {article.category && (
+            <Link href={`/category/${article.category.slug}`} className="hover:text-foreground transition-colors" style={{ color: article.category.color }}>
+              {article.category.name}
+            </Link>
+          )}
         </nav>
 
         {/* Header */}
         <header className="mb-8">
-          <Badge className="mb-4" style={{ backgroundColor: article.category.color + '15', color: article.category.color }}>
-            {article.category.name}
-          </Badge>
+          {article.category && (
+            <Badge className="mb-4" style={{ backgroundColor: article.category.color + '15', color: article.category.color }}>
+              {article.category.name}
+            </Badge>
+          )}
           <h1 className="font-serif text-3xl md:text-4xl lg:text-5xl font-bold leading-tight mb-4">
             {article.title}
           </h1>
@@ -180,15 +193,17 @@ export function ArticlePageClient({ article, related }: ArticlePageProps) {
 
           {/* Author + Meta */}
           <div className="flex flex-wrap items-center gap-4 mt-6 pt-6 border-t border-border">
-            <Link href={`/authors/${article.author.slug}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium text-sm">{article.author.name}</p>
-                <p className="text-xs text-muted-foreground">{article.author.role}</p>
-              </div>
-            </Link>
+            {article.author && (
+              <Link href={`/authors/${article.author.slug}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm">{article.author.name}</p>
+                  <p className="text-xs text-muted-foreground">{article.author.role}</p>
+                </div>
+              </Link>
+            )}
             <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono ml-auto">
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
@@ -299,6 +314,7 @@ export function ArticlePageClient({ article, related }: ArticlePageProps) {
         </div>
 
         {/* Author Bio */}
+        {article.author && (
         <div className="max-w-3xl mt-10 p-6 rounded-xl border border-border bg-card hover-card">
           <div className="flex items-start gap-4">
             <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -316,6 +332,7 @@ export function ArticlePageClient({ article, related }: ArticlePageProps) {
             </div>
           </div>
         </div>
+        )}
 
         {/* Tags */}
         {article.tags && (

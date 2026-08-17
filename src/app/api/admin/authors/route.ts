@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAuth } from '@/lib/auth-guard'
 
 // GET all authors
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const authors = await db.author.findMany({
       include: { _count: { select: { articles: true } } },
@@ -17,6 +21,9 @@ export async function GET() {
 
 // POST create new author
 export async function POST(request: NextRequest) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const body = await request.json()
     const { name, slug, bio, avatar, role } = body

@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAuth } from '@/lib/auth-guard'
 
 // DELETE subscriber
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const { id } = await params
     await db.newsletterSubscription.delete({ where: { id } })

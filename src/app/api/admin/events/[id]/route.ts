@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAuth } from '@/lib/auth-guard'
 
 // PATCH update event
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const { id } = await params
     const body = await request.json()
@@ -19,7 +23,15 @@ export async function PATCH(
       if (isNaN(d.getTime())) return NextResponse.json({ error: 'Invalid date' }, { status: 400 })
       data.date = d
     }
-    if (endDate !== undefined) data.endDate = endDate ? new Date(endDate) : null
+    if (endDate !== undefined) {
+      if (endDate) {
+        const ed = new Date(endDate)
+        if (isNaN(ed.getTime())) return NextResponse.json({ error: 'Invalid endDate' }, { status: 400 })
+        data.endDate = ed
+      } else {
+        data.endDate = null
+      }
+    }
     if (venue !== undefined) data.venue = venue
     if (city !== undefined) data.city = city
     if (category !== undefined) data.category = category
@@ -40,9 +52,12 @@ export async function PATCH(
 
 // DELETE event
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const { id } = await params
     await db.event.delete({ where: { id } })

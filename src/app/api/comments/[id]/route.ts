@@ -3,6 +3,21 @@ import { db } from '@/lib/db'
 
 const AUTO_FLAG_THRESHOLD = 2
 
+// Simple in-memory rate limiter for reports (per IP, per minute)
+const reportRateLimit = new Map<string, { count: number; resetAt: number }>()
+const MAX_REPORTS_PER_MINUTE = 10
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now()
+  const entry = reportRateLimit.get(ip)
+  if (!entry || now > entry.resetAt) {
+    reportRateLimit.set(ip, { count: 1, resetAt: now + 60_000 })
+    return false
+  }
+  entry.count++
+  return entry.count > MAX_REPORTS_PER_MINUTE
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -10,8 +25,11 @@ export async function POST(
   try {
     const { id } = await params
 
-    // Simple rate limit per IP for reports (max 10/min)
+    // Rate limit reports per IP
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    if (isRateLimited(ip)) {
+      return NextResponse.json({ error: 'Too many reports. Please wait.' }, { status: 429 })
+    }
 
     const comment = await db.comment.findUnique({ where: { id } })
     if (!comment) {

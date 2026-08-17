@@ -296,3 +296,36 @@ Stage Summary:
 - Every DELETE/PATCH [id] route now returns 404 for missing records
 - Every POST route now handles malformed JSON gracefully
 - Global error.tsx catches any remaining unhandled errors with a user-friendly UI
+---
+Task ID: connection-pool-security-audit
+Agent: Main Agent
+Task: Fix Prisma connection pool exhaustion + full security audit
+
+Work Log:
+- Diagnosed 'Too many database connections' error — root cause: no connection_limit in DATABASE_URL for serverless Vercel environment
+- Updated src/lib/db.ts with graceful shutdown and explicit datasource URL
+- Updated .env.example with connection_limit=3 guidance for Vercel/serverless
+- **CRITICAL SECURITY FIX**: Updated src/middleware.ts to protect /api/admin/* and /api/cdn/delete routes (previously only protected /admin and /dashboard pages — all 16 admin API endpoints were publicly accessible)
+- Created src/lib/auth-guard.ts reusable requireAuth() helper
+- Added requireAuth() to ALL 16 admin API route handlers + CDN delete (defense-in-depth)
+- Fixed endDate validation in events POST and PATCH (previously accepted Invalid Date)
+- Added try/catch to logout route
+- Fixed dead rate limit code in comments/[id]/route.ts (ip variable extracted but never used)
+- **SECURITY FIX**: Fixed open redirect vulnerability in login page (?redirect= parameter allowed arbitrary URLs)
+- **SECURITY FIX**: Moved hardcoded credentials to dev-only (process.env.NODE_ENV === 'development')
+- Created src/lib/constants.ts to centralize SITE_URL
+- Updated 4 files to use centralized SITE_URL (layout.tsx, articles/[slug]/page.tsx, rss/route.ts, sitemap.ts)
+- Added try/catch to all server pages (articles, category, authors, events, makers, about) for DB failure resilience
+- Made article view increment fire-and-forget (non-blocking)
+- Fixed ArticlePageClient: empty catch blocks now show error toasts, added res.ok check before parsing JSON
+- Added null safety for article.category and article.author throughout ArticlePageClient
+- Removed unused useRef import from ArticlePageClient
+- Created 7 loading.tsx files: root, articles/[slug], category/[slug], authors/[slug], events, makers, admin
+
+Stage Summary:
+- P0 security: All admin API routes now require authentication (middleware + per-route guard)
+- P0 security: Open redirect fixed, credentials hidden in production
+- Connection pool: connection_limit=3 guidance for Vercel serverless
+- Reliability: All server pages handle DB failures gracefully
+- UX: 7 loading skeleton pages added
+- 30+ files modified, zero new TypeScript errors introduced

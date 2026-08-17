@@ -8,8 +8,17 @@ export const metadata: Metadata = {
 }
 
 export default async function AboutPage() {
-  const categories = await db.category.findMany({ orderBy: { name: 'asc' } })
-  const authors = await db.author.findMany({ orderBy: { name: 'asc' } })
+  let categories: any[] = []
+  let authors: any[] = []
+
+  try {
+    ;[categories, authors] = await Promise.all([
+      db.category.findMany({ orderBy: { name: 'asc' } }),
+      db.author.findMany({ orderBy: { name: 'asc' } }),
+    ])
+  } catch {
+    // Show page with empty data on DB failure
+  }
 
   return <AboutContent categories={JSON.parse(JSON.stringify(categories))} authors={JSON.parse(JSON.stringify(authors))} />
 }

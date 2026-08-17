@@ -1,6 +1,5 @@
 import { db } from '@/lib/db'
-
-const SITE_URL = 'https://sanaathrumylens.co.ke'
+import { SITE_URL } from '@/lib/constants'
 
 export async function GET() {
   try {
@@ -17,7 +16,7 @@ export async function GET() {
       <link>${SITE_URL}/articles/${a.slug}</link>
       <guid isPermaLink="true">${SITE_URL}/articles/${a.slug}</guid>
       <description><![CDATA[${a.excerpt}]]></description>
-      <pubDate>${new Date(a.publishedAt).toUTCString()}</pubDate>
+      <pubDate>${a.publishedAt ? new Date(a.publishedAt).toUTCString() : new Date().toUTCString()}</pubDate>
       <author>${a.author?.name || 'Unknown'}</author>
       <category>${a.category?.name || 'Uncategorized'}</category>
     </item>`)

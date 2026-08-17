@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mammoth from 'mammoth'
+import { requireAuth } from '@/lib/auth-guard'
 
 export async function POST(request: NextRequest) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File | null

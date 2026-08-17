@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAuth } from '@/lib/auth-guard'
 
 // GET all makers
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const makers = await db.maker.findMany({
       orderBy: { createdAt: 'desc' },
@@ -16,6 +20,9 @@ export async function GET() {
 
 // POST create new maker
 export async function POST(request: NextRequest) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const body = await request.json()
     const { name, slug, discipline, bio, location, website, instagram, twitter, isFeatured } = body

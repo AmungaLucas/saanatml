@@ -62,15 +62,17 @@ function LoginClient() {
           </button>
         </form>
 
-        <div className="mt-6 rounded-lg border bg-muted/40 p-3">
-          <p className="mb-1.5 text-center font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-            Test Credentials
-          </p>
-          <div className="space-y-1 text-xs text-muted-foreground">
-            <p><span className="font-medium text-foreground">Admin:</span> admin@sanaathrumylens.co.ke / sanaa2025</p>
-            <p><span className="font-medium text-foreground">Editor:</span> editor@sanaathrumylens.co.ke / editor2025</p>
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-6 rounded-lg border bg-muted/40 p-3">
+            <p className="mb-1.5 text-center font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+              Dev Credentials
+            </p>
+            <div className="space-y-1 text-xs text-muted-foreground">
+              <p><span className="font-medium text-foreground">Admin:</span> admin@sanaathrumylens.co.ke / sanaa2025</p>
+              <p><span className="font-medium text-foreground">Editor:</span> editor@sanaathrumylens.co.ke / editor2025</p>
+            </div>
           </div>
-        </div>
+        )}
 
         <script
           dangerouslySetInnerHTML={{
@@ -105,7 +107,11 @@ function LoginClient() {
                     return;
                   }
 
-                  const redirect = new URLSearchParams(window.location.search).get('redirect') || '/admin';
+                  let redirect = new URLSearchParams(window.location.search).get('redirect') || '/admin';
+                  // Prevent open redirect: only allow relative paths starting with /
+                  if (!redirect.startsWith('/') || redirect.startsWith('//')) {
+                    redirect = '/admin';
+                  }
                   window.location.href = redirect;
                 } catch (err) {
                   errorEl.textContent = 'Network error. Please try again.';

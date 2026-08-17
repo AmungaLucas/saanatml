@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAuth } from '@/lib/auth-guard'
 
 // GET all categories
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const categories = await db.category.findMany({
       include: { _count: { select: { articles: true, events: true } } },
@@ -17,6 +21,9 @@ export async function GET() {
 
 // POST create new category
 export async function POST(request: NextRequest) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const body = await request.json()
     const { name, slug, description, color } = body

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAuth } from '@/lib/auth-guard'
 
 // GET all events
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const events = await db.event.findMany({
       orderBy: { date: 'desc' },
@@ -16,6 +20,9 @@ export async function GET() {
 
 // POST create new event
 export async function POST(request: NextRequest) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const body = await request.json()
     const { title, description, date, endDate, venue, city, category, imageUrl, ticketUrl, isFeatured, isPast } = body
@@ -34,7 +41,7 @@ export async function POST(request: NextRequest) {
         title,
         description: description || '',
         date: parsedDate,
-        endDate: endDate ? new Date(endDate) : null,
+        endDate: endDate ? (() => { const d = new Date(endDate); if (isNaN(d.getTime())) return null; return d })() : null,
         venue,
         city,
         category: category || '',

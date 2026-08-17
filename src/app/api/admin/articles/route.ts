@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAuth } from '@/lib/auth-guard'
 
 // GET all articles for admin
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const articles = await db.article.findMany({
       include: { category: true, author: true, comments: { select: { id: true } } },
@@ -17,6 +21,9 @@ export async function GET() {
 
 // POST create new article
 export async function POST(request: NextRequest) {
+  const guard = requireAuth(request)
+  if (guard) return guard
+
   try {
     const body = await request.json()
     const { title, slug, excerpt, content, coverImage, categoryId, authorId, readTime, tags, isFeatured, isPinned } = body

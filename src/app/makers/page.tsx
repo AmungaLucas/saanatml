@@ -11,9 +11,14 @@ export const metadata: Metadata = {
 }
 
 export default async function MakersPage() {
-  const makers = await db.maker.findMany({
-    orderBy: [{ isFeatured: 'desc' }, { name: 'asc' }],
-  })
+  let makers: any[] = []
+  try {
+    makers = await db.maker.findMany({
+      orderBy: [{ isFeatured: 'desc' }, { name: 'asc' }],
+    })
+  } catch {
+    // Show page with empty makers list on DB failure
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

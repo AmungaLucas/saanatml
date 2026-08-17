@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/sanaa/ThemeProvider";
 import { ToastProvider } from "@/components/sanaa/ActionToast";
 
-const SITE_URL = 'https://sanaathrumylens.co.ke'
+import { SITE_URL } from '@/lib/constants'
 
 export const viewport: Viewport = {
   themeColor: [

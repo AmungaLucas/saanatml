@@ -13,25 +13,35 @@ export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  const author = await db.author.findUnique({ where: { slug } })
-  if (!author) return { title: 'Author Not Found' }
-  return {
-    title: `${author.name} — Sanaa Through My Lens`,
-    description: `${author.role}. ${(author.bio || '').slice(0, 160)}`,
+  try {
+    const author = await db.author.findUnique({ where: { slug } })
+    if (!author) return { title: 'Author Not Found' }
+    return {
+      title: `${author.name} — Sanaa Through My Lens`,
+      description: `${author.role}. ${(author.bio || '').slice(0, 160)}`,
+    }
+  } catch {
+    return { title: 'Author Not Found' }
   }
 }
 
 export default async function AuthorPage({ params }: Props) {
   const { slug } = await params
-  const author = await db.author.findUnique({
-    where: { slug },
-    include: {
-      articles: {
-        include: { category: true, author: true, comments: { select: { id: true } } },
-        orderBy: { publishedAt: 'desc' },
+  let author: any
+
+  try {
+    author = await db.author.findUnique({
+      where: { slug },
+      include: {
+        articles: {
+          include: { category: true, author: true, comments: { select: { id: true } } },
+          orderBy: { publishedAt: 'desc' },
+        },
       },
-    },
-  })
+    })
+  } catch {
+    notFound()
+  }
 
   if (!author) notFound()
 
