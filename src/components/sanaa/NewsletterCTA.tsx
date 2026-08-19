@@ -8,7 +8,7 @@ import { Check, Mail } from 'lucide-react'
 export function NewsletterCTA({ variant = 'inline' }: { variant?: 'inline' | 'hero' }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error' | 'duplicate'>('idle')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -24,6 +24,8 @@ export function NewsletterCTA({ variant = 'inline' }: { variant?: 'inline' | 'he
         setStatus('success')
         setName('')
         setEmail('')
+      } else if (res.status === 409) {
+        setStatus('duplicate')
       } else {
         setStatus('error')
       }
@@ -75,6 +77,12 @@ export function NewsletterCTA({ variant = 'inline' }: { variant?: 'inline' | 'he
             {status === 'loading' ? 'Subscribing...' : 'Subscribe'}
           </button>
         </form>
+        {status === 'duplicate' && (
+          <p className="text-sm text-primary-foreground/90 mt-3">You&rsquo;re already subscribed with this email.</p>
+        )}
+        {status === 'error' && status !== 'duplicate' && (
+          <p className="text-sm text-primary-foreground/90 mt-3">Something went wrong. Please try again.</p>
+        )}
       </div>
     )
   }
@@ -109,7 +117,10 @@ export function NewsletterCTA({ variant = 'inline' }: { variant?: 'inline' | 'he
           {status === 'loading' ? '...' : 'Subscribe'}
         </Button>
       </form>
-      {status === 'error' && (
+      {status === 'duplicate' && (
+        <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">You&rsquo;re already subscribed with this email.</p>
+      )}
+      {status === 'error' && status !== 'duplicate' && (
         <p className="text-xs text-destructive mt-2">Something went wrong. Please try again.</p>
       )}
     </div>

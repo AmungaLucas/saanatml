@@ -6,24 +6,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   FileText, ArrowLeft, Eye, Pencil, Plus, Calendar,
-  MapPin, ExternalLink, Send, Loader2, CheckCircle2,
+  MapPin, ExternalLink, Loader2, CheckCircle2,
   BookOpen, Shield, Flag, XCircle, CheckCircle, Trash2,
-  MessageSquare, TrendingUp, ChevronRight, Menu, X, Upload,
+  MessageSquare, ChevronRight, Menu, X,
 } from 'lucide-react'
-import { ImageUpload } from '@/components/ui/image-upload'
 import { ArticleForm, type ArticleFormData } from '@/components/article-form'
 import Link from 'next/link'
-import ReactMarkdown from 'react-markdown'
 
 // ── Interfaces ──────────────────────────────────────────────
 
@@ -158,8 +149,7 @@ export default function EditorDashboard() {
   const [formError, setFormError] = useState<string | null>(null)
   const [parsing, setParsing] = useState(false)
 
-  // Edit dialog
-  const [editDialog, setEditDialog] = useState(false)
+  // Edit article (inline tab, not dialog)
   const [editArticle, setEditArticle] = useState<Article | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editSlug, setEditSlug] = useState('')
@@ -175,6 +165,14 @@ export default function EditorDashboard() {
   // Markdown preview toggle
   const [mdTab, setMdTab] = useState<string>('write')
   const [editMdTab, setEditMdTab] = useState<string>('write')
+
+  // ── Auth context (from cookies) ─────────────────────────
+  const isEditor = typeof document !== 'undefined'
+    ? (document.cookie.split('; ').find(c => c.startsWith('sanaa_role='))?.split('=')[1]) === 'editor'
+    : false
+  const editorAuthorId = typeof document !== 'undefined'
+    ? (document.cookie.split('; ').find(c => c.startsWith('sanaa_author_id='))?.split('=')[1]) || ''
+    : ''
 
   // ── Data Fetching ─────────────────────────────────────────
 
@@ -308,26 +306,30 @@ export default function EditorDashboard() {
     setEditAuthorId(article.author?.id || '')
     setEditTags(article.tags)
     setEditReadTime(String(article.readTime))
-    setEditDialog(true)
+    setActiveTab('edit')
   }
 
   const handleEditSave = async () => {
-    if (!editArticle || !editTitle || !editSlug || !editCategoryId || !editAuthorId) return
+    if (!editArticle || !editTitle || !editSlug || !editCategoryId) return
+    if (!isEditor && !editAuthorId) return
     setEditSaving(true)
     try {
+      const body: Record<string, any> = {
+        title: editTitle, slug: editSlug, excerpt: editExcerpt, content: editContent,
+        coverImage: editCoverImage, categoryId: editCategoryId, tags: editTags,
+        readTime: parseInt(editReadTime) || 5,
+      }
+      if (editAuthorId) body.authorId = editAuthorId
       const res = await fetch(`/api/admin/articles/${editArticle.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: editTitle, slug: editSlug, excerpt: editExcerpt, content: editContent,
-          coverImage: editCoverImage, categoryId: editCategoryId, authorId: editAuthorId,
-          tags: editTags, readTime: parseInt(editReadTime) || 5,
-        }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) throw new Error('Failed to update article')
-      setEditDialog(false)
+      setEditArticle(null)
       setSuccessMsg('Article updated successfully!')
       await fetchAll()
+      setActiveTab('articles')
       setTimeout(() => setSuccessMsg(null), 4000)
     } catch (err) {
       console.error(err)
@@ -590,6 +592,8 @@ export default function EditorDashboard() {
               <ArticleForm
                 mode='create'
                 variant='page'
+                hideAuthor={isEditor}
+                defaultAuthorId={editorAuthorId}
                 categories={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
                 authors={authors.map(a => ({ id: a.id, name: a.name, role: a.role }))}
                 onSubmit={handleCreate}
@@ -750,39 +754,51 @@ export default function EditorDashboard() {
               )}
             </div>
           )}
+
+          {/* ─── EDIT ARTICLE TAB ────────────────────────── */}
+          {activeTab === 'edit' && editArticle && (
+            <div className="animate-fadeIn">
+              <div className="mb-4">
+                <button
+                  onClick={() => { setEditArticle(null); setActiveTab('articles') }}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ArrowLeft className="h-4 w-4" /> Back to articles
+                </button>
+              </div>
+              <ArticleForm
+                key={editArticle.id}
+                mode='edit'
+                variant='page'
+                hideAuthor={isEditor}
+                defaultAuthorId={editorAuthorId}
+                initialData={{
+                  title: editArticle.title, slug: editArticle.slug, excerpt: editArticle.excerpt,
+                  coverImage: editArticle.coverImage, categoryId: categories.find(c => c.name === editArticle.category?.name)?.id || '',
+                  authorId: editArticle.author?.id || '', tags: editArticle.tags,
+                  readTime: String(editArticle.readTime || 5),
+                  isFeatured: editArticle.isFeatured, isPinned: editArticle.isPinned,
+                }}
+                categories={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+                authors={authors.map(a => ({ id: a.id, name: a.name, role: a.role }))}
+                onSubmit={async (data: ArticleFormData) => {
+                  const res = await fetch(`/api/admin/articles/${editArticle.id}`, {
+                    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...data, readTime: parseInt(data.readTime) || 5 }),
+                  })
+                  if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to update') }
+                  await fetchAll()
+                  setEditArticle(null)
+                  setActiveTab('articles')
+                  setSuccessMsg('Article updated successfully!')
+                  setTimeout(() => setSuccessMsg(null), 4000)
+                }}
+                onCancel={() => { setEditArticle(null); setActiveTab('articles') }}
+              />
+            </div>
+          )}
         </main>
       </div>
-
-      {/* ─── EDIT ARTICLE DIALOG ────────────────────────────── */}
-      <Dialog open={editDialog} onOpenChange={setEditDialog}>
-        <DialogContent className="max-w-6xl max-h-[92vh] overflow-hidden w-[97vw] sm:w-full p-0">
-          <ArticleForm
-            key={editArticle?.id || 'edit'}
-            mode='edit'
-            variant='dialog'
-            categories={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
-            authors={authors.map(a => ({ id: a.id, name: a.name, role: a.role }))}
-            initialData={editArticle ? {
-              title: editArticle.title, slug: editArticle.slug, excerpt: editArticle.excerpt,
-              coverImage: editArticle.coverImage, categoryId: categories.find(c => c.name === editArticle.category?.name)?.id || '',
-              authorId: editArticle.author?.id || '', tags: editArticle.tags,
-              readTime: String(editArticle.readTime || 5),
-              isFeatured: editArticle.isFeatured, isPinned: editArticle.isPinned,
-            } : undefined}
-            onSubmit={async (data: ArticleFormData) => {
-              if (!editArticle) return
-              const res = await fetch(`/api/admin/articles/${editArticle.id}`, {
-                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...data, readTime: parseInt(data.readTime) || 5 }),
-              })
-              if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to update') }
-              await fetchAll()
-              setEditDialog(false)
-            }}
-            onCancel={() => setEditDialog(false)}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

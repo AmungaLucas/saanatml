@@ -39,6 +39,8 @@ interface ArticleFormProps {
   categories: CategoryOption[]
   authors: AuthorOption[]
   variant?: 'dialog' | 'page'
+  hideAuthor?: boolean
+  defaultAuthorId?: string
 }
 
 const slugify = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '')
@@ -143,6 +145,8 @@ export function ArticleForm({
   mode,
   categories, authors,
   variant = 'dialog',
+  hideAuthor = false,
+  defaultAuthorId,
 }: ArticleFormProps) {
   const [title, setTitle] = useState(initialData.title || '')
   const [slug, setSlug] = useState(initialData.slug || '')
@@ -150,7 +154,7 @@ export function ArticleForm({
   const [content, setContent] = useState(initialData.content || '')
   const [coverImage, setCoverImage] = useState(initialData.coverImage || '')
   const [categoryId, setCategoryId] = useState(initialData.categoryId || '')
-  const [authorId, setAuthorId] = useState(initialData.authorId || '')
+  const [authorId, setAuthorId] = useState(initialData.authorId || defaultAuthorId || '')
   const [readTime, setReadTime] = useState(initialData.readTime || '5')
   const [tags, setTags] = useState(initialData.tags || '')
   const [featured, setFeatured] = useState(initialData.isFeatured || false)
@@ -189,7 +193,7 @@ export function ArticleForm({
     }
   }
 
-  const canSubmit = title && slug && categoryId && authorId
+  const canSubmit = title && slug && categoryId && (hideAuthor || authorId)
 
   const handleSubmit = async () => {
     if (!canSubmit || saving) return
@@ -439,6 +443,8 @@ export function ArticleForm({
               </Select>
             </div>
 
+            {/* Author — hidden for editors who are auto-assigned */}
+            {!hideAuthor && (
             <div>
               <label className={FIELD_LABEL}>Author</label>
               <Select value={authorId} onValueChange={setAuthorId}>
@@ -452,6 +458,7 @@ export function ArticleForm({
                 </SelectContent>
               </Select>
             </div>
+            )}
 
             <div className="flex items-center justify-between py-1">
               <div className="flex items-center gap-2">
