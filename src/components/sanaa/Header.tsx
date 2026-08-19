@@ -193,7 +193,7 @@ export function Header() {
               <Search className="h-4 w-4" />
             </button>
 
-            {/* Theme toggle */
+            {/* Theme toggle */}
             {mounted && (
               <motion.button
                 key={theme}
@@ -208,7 +208,7 @@ export function Header() {
               </motion.button>
             )}
 
-            {/* Mobile menu */
+            {/* Mobile menu */}
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild className="lg:hidden">
                 <Button variant="ghost" size="icon" className="p-2">
