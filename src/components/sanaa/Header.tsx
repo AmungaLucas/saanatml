@@ -105,7 +105,7 @@ export function Header() {
               </Link>
             ))}
 
-            {/* Categories Dropdown */
+            {/* Categories Dropdown */}
             <div ref={catRef} className="relative">
               <button
                 onClick={() => setCatDropdownOpen(!catDropdownOpen)}
@@ -242,7 +242,7 @@ export function Header() {
                       {item.label}
                     </Link>
                   ))}
-                  {/* All categories in mobile menu */
+                  {/* All categories in mobile menu */}
                   {categories.length > 0 && (
                     <>
                       <div className="pt-2 mt-2 border-t border-border">
@@ -266,7 +266,7 @@ export function Header() {
                     </>
                   )}
                 </nav>
-                {/* Reading History in mobile menu */
+                {/* Reading History in mobile menu */}
                 {readingHistory.length > 0 && (
                   <div className="px-4 pb-4 border-t border-border pt-4">
                     <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
