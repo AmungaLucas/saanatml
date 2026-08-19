@@ -1,0 +1,722 @@
+  1020→                      <span className="text-sm text-muted-foreground font-mono">
+  1021→                        Page {modPage} of {modTotalPages}
+  1022→                      </span>
+  1023→                      <Button
+  1024→                        size="sm" variant="outline"
+  1025→                        disabled={modPage >= modTotalPages}
+  1026→                        onClick={() => setMmodPage(p => p + 1)}
+  1027→                      >Next</Button>
+  1028→                    </div>
+  1029→                  )}
+  1030→                </>
+  1031→              )}
+  1032→            </div>
+  1033→          )}
+  1034→
+  1035→          {/* ═══════════════════ NEW ARTICLE (page) ═══════════════════ */}
+  1036→          {activeTab === 'new-article' && (
+  1037→            <div className="animate-fadeIn">
+  1038→              {formDataLoading && categories.length === 0 && (
+  1039→                <div className="flex items-center gap-2 py-8 justify-center text-sm text-muted-foreground">
+  1040→                  <Loader2 className="h-4 w-4 animate-spin" /> Loading categories & authors…
+  1041→                </div>
+  1042→              )}
+  1043→              {formDataError && categories.length === 0 && authors.length === 0 && !formDataLoading && (
+  1044→                <div className="flex flex-col items-center gap-3 py-12 text-center">
+  1045→                  <AlertTriangle className="h-8 w-8 text-amber-500/50" />
+  1046→                  <p className="text-sm font-medium">{formDataError}</p>
+  1047→                  <p className="text-xs text-muted-foreground max-w-sm">Make sure your database is configured. Categories and authors are required to create an article.</p>
+  1048→                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => fetchFormDependencies()}>
+  1049→                    <RotateCcw className="h-3.5 w-3.5" /> Retry
+  1050→                  </Button>
+  1051→                </div>
+  1052→              )}
+  1053→              {(categories.length > 0 || authors.length > 0) && (
+  1054→                <>
+  1055→                  {formDataError && (
+  1056→                    <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/20 px-4 py-2.5 text-sm text-amber-800 dark:text-amber-200">
+  1057→                      <AlertTriangle className="h-4 w-4 shrink-0" />
+  1058→                      {formDataError} — some dropdowns may be empty
+  1059→                    </div>
+  1060→                  )}
+  1061→                  <ArticleForm
+  1062→                    mode='create'
+  1063→                    variant='page'
+  1064→                    categories={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+  1065→                    authors={authors.map(a => ({ id: a.id, name: a.name, role: a.role }))}
+  1066→                    onSubmit={async (data: ArticleFormData) => {
+  1067→                      const res = await fetch('/api/admin/articles', {
+  1068→                        method: 'POST',
+  1069→                        headers: { 'Content-Type': 'application/json' },
+  1070→                        body: JSON.stringify({ ...data, readTime: parseInt(data.readTime) || 5 }),
+  1071→                      })
+  1072→                      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to create article') }
+  1073→                      await fetchAll()
+  1074→                      navigate('articles')
+  1075→                    }}
+  1076→                    onCancel={() => navigate('articles')}
+  1077→                  />
+  1078→                </>
+  1079→              )}
+  1080→            </div>
+  1081→          )}
+  1082→
+  1083→          {/* ═══════════════════ ARTICLES ═══════════════════ */}
+  1084→          {activeTab === 'articles' && (
+  1085→            <div className="animate-fadeIn">
+  1086→              <div className="flex items-center justify-between mb-6">
+  1087→                <div>
+  1088→                  <h2 className="font-serif text-2xl font-bold">Articles ({articles.length})</h2>
+  1089→                  <p className="text-sm text-muted-foreground mt-1">Manage your published content</p>
+  1090→                </div>
+  1091→                <Button onClick={() => navigate('new-article')} className="gap-2"><Plus className="h-4 w-4" /> New Article</Button>
+  1092→              </div>
+  1093→              <div className="border border-border rounded-xl overflow-hidden">
+  1094→                <div className="overflow-x-auto">
+  1095→                  <table className="w-full">
+  1096→                    <thead>
+  1097→                      <tr className="bg-secondary/50 border-b border-border">
+  1098→                        <th className={thCls}>Title</th>
+  1099→                        <th className={`${thCls} hidden md:table-cell`}>Category</th>
+  1100→                        <th className={`${thCls} hidden lg:table-cell`}>Author</th>
+  1101→                        <th className={`${thCls} text-right`}>Views</th>
+  1102→                        <th className={`${thCls} text-center`}>Status</th>
+  1103→                        <th className={`${thCls} text-right`}>Actions</th>
+  1104→                      </tr>
+  1105→                    </thead>
+  1106→                    <tbody>
+  1107→                      {articles.map(article => (
+  1108→                        <tr key={article.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+  1109→                          <td className={tdCls}>
+  1110→                            <p className="font-serif font-semibold text-sm line-clamp-1">{article.title}</p>
+  1111→                            <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{fmtDate(article.publishedAt)}</p>
+  1112→                          </td>
+  1113→                          <td className={`${tdCls} hidden md:table-cell`}>
+  1114→                            <Badge className="text-[10px]" style={{ backgroundColor: article.category.color + '20', color: article.category.color }}>{article.category.name}</Badge>
+  1115→                          </td>
+  1116→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{article.author.name}</td>
+  1117→                          <td className={`${tdCls} text-right`}><span className="font-mono text-sm">{article.views}</span></td>
+  1118→                          <td className={`${tdCls}`}>
+  1119→                            <div className="flex items-center justify-center gap-1">
+  1120→                              <button onClick={() => toggleArtFeatured(article)} className={`p-1 rounded ${article.isFeatured ? 'text-gold' : 'text-muted-foreground/30 hover:text-gold/50'}`} title="Featured">
+  1121→                                <Star className="h-3.5 w-3.5" fill={article.isFeatured ? 'currentColor' : 'none'} />
+  1122→                              </button>
+  1123→                              <button onClick={() => toggleArtPinned(article)} className={`p-1 rounded ${article.isPinned ? 'text-primary' : 'text-muted-foreground/30 hover:text-primary/50'}`} title="Pinned">
+  1124→                                <Pin className="h-3.5 w-3.5" />
+  1125→                              </button>
+  1126→                            </div>
+  1127→                          </td>
+  1128→                          <td className={`${tdCls} text-right`}>
+  1129→                            <div className="flex items-center justify-end gap-1">
+  1130→                              <button onClick={() => openArtEdit(article)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+  1131→                              <a href={`/articles/${article.slug}`} target="_blank" className={actionBtnCls} title="View"><ExternalLink className="h-3.5 w-3.5" /></a>
+  1132→                              <button onClick={() => deleteArt(article.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+  1133→                            </div>
+  1134→                          </td>
+  1135→                        </tr>
+  1136→                      ))}
+  1137→                    </tbody>
+  1138→                  </table>
+  1139→                </div>
+  1140→              </div>
+  1141→            </div>
+  1142→          )}
+  1143→
+  1144→          {/* ═══════════════════ EVENTS ═══════════════════ */}
+  1145→          {activeTab === 'events' && (
+  1146→            <div className="animate-fadeIn">
+  1147→              <div className="flex items-center justify-between mb-6">
+  1148→                <div>
+  1149→                  <h2 className="font-serif text-2xl font-bold">Events ({events.length})</h2>
+  1150→                  <p className="text-sm text-muted-foreground mt-1">Manage upcoming and past events</p>
+  1151→                </div>
+  1152→                <Button onClick={openEvtCreate} className="gap-2"><Plus className="h-4 w-4" /> New Event</Button>
+  1153→              </div>
+  1154→              <div className="border border-border rounded-xl overflow-hidden">
+  1155→                <div className="overflow-x-auto">
+  1156→                  <table className="w-full">
+  1157→                    <thead>
+  1158→                      <tr className="bg-secondary/50 border-b border-border">
+  1159→                        <th className={thCls}>Title</th>
+  1160→                        <th className={`${thCls} hidden md:table-cell`}>Date</th>
+  1161→                        <th className={`${thCls} hidden lg:table-cell`}>Venue</th>
+  1162→                        <th className={`${thCls} hidden lg:table-cell`}>City</th>
+  1163→                        <th className={`${thCls} text-center`}>Status</th>
+  1164→                        <th className={`${thCls} text-right`}>Actions</th>
+  1165→                      </tr>
+  1166→                    </thead>
+  1167→                    <tbody>
+  1168→                      {events.map(evt => (
+  1169→                        <tr key={evt.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+  1170→                          <td className={tdCls}>
+  1171→                            <p className="font-serif font-semibold text-sm line-clamp-1">{evt.title}</p>
+  1172→                            <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{evt.category}</p>
+  1173→                          </td>
+  1174→                          <td className={`${tdCls} text-sm text-muted-foreground hidden md:table-cell`}>{fmtDate(evt.date)}</td>
+  1175→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{evt.venue}</td>
+  1176→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{evt.city}</td>
+  1177→                          <td className={`${tdCls}`}>
+  1178→                            <div className="flex items-center justify-center gap-1">
+  1179→                              <Badge variant={evt.isPast ? 'secondary' : 'outline'} className="text-[10px]">{evt.isPast ? 'Past' : 'Upcoming'}</Badge>
+  1180→                              {evt.isFeatured && <Star className="h-3 w-3 text-gold" fill="currentColor" />}
+  1181→                            </div>
+  1182→                          </td>
+  1183→                          <td className={`${tdCls} text-right`}>
+  1184→                            <div className="flex items-center justify-end gap-1">
+  1185→                              <button onClick={() => openEvtEdit(evt)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+  1186→                              <button onClick={() => deleteEvt(evt.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+  1187→                            </div>
+  1188→                          </td>
+  1189→                        </tr>
+  1190→                      ))}
+  1191→                    </tbody>
+  1192→                  </table>
+  1193→                </div>
+  1194→              </div>
+  1195→            </div>
+  1196→          )}
+  1197→
+  1198→          {/* ═══════════════════ MAKERS ═══════════════════ */}
+  1199→          {activeTab === 'makers' && (
+  1200→            <div className="animate-fadeIn">
+  1201→              <div className="flex items-center justify-between mb-6">
+  1202→                <div>
+  1203→                  <h2 className="font-serif text-2xl font-bold">Makers ({makers.length})</h2>
+  1204→                  <p className="text-sm text-muted-foreground mt-1">Cultural artisans and creatives</p>
+  1205→                </div>
+  1206→                <Button onClick={openMkrCreate} className="gap-2"><Plus className="h-4 w-4" /> New Maker</Button>
+  1207→              </div>
+  1208→              <div className="border border-border rounded-xl overflow-hidden">
+  1209→                <div className="overflow-x-auto">
+  1210→                  <table className="w-full">
+  1211→                    <thead>
+  1212→                      <tr className="bg-secondary/50 border-b border-border">
+  1213→                        <th className={thCls}>Name</th>
+  1214→                        <th className={`${thCls} hidden md:table-cell`}>Discipline</th>
+  1215→                        <th className={`${thCls} hidden lg:table-cell`}>Location</th>
+  1216→                        <th className={`${thCls} text-center`}>Featured</th>
+  1217→                        <th className={`${thCls} text-right`}>Actions</th>
+  1218→                      </tr>
+  1219→                    </thead>
+  1220→                    <tbody>
+  1221→                      {makers.map(mkr => (
+  1222→                        <tr key={mkr.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+  1223→                          <td className={tdCls}>
+  1224→                            <div className="flex items-center gap-2">
+  1225→                              {mkr.avatar ? (
+  1226→                                <img src={mkr.avatar} alt={mkr.name} className="h-7 w-7 rounded-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+  1227→                              ) : (
+  1228→                                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">{mkr.name.charAt(0)}</div>
+  1229→                              )}
+  1230→                              <div>
+  1231→                                <p className="font-serif font-semibold text-sm">{mkr.name}</p>
+  1232→                                <p className="text-[10px] font-mono text-muted-foreground">{mkr.slug}</p>
+  1233→                              </div>
+  1234→                            </div>
+  1235→                          </td>
+  1236→                          <td className={`${tdCls} text-sm text-muted-foreground hidden md:table-cell`}>{mkr.discipline}</td>
+  1237→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{mkr.location}</td>
+  1238→                          <td className={`${tdCls}`}>
+  1239→                            <div className="flex justify-center">
+  1240→                              {mkr.isFeatured ? <Star className="h-4 w-4 text-gold" fill="currentColor" /> : <span className="text-muted-foreground/30">—</span>}
+  1241→                            </div>
+  1242→                          </td>
+  1243→                          <td className={`${tdCls} text-right`}>
+  1244→                            <div className="flex items-center justify-end gap-1">
+  1245→                              <button onClick={() => openMkrEdit(mkr)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+  1246→                              <button onClick={() => deleteMkr(mkr.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+  1247→                            </div>
+  1248→                          </td>
+  1249→                        </tr>
+  1250→                      ))}
+  1251→                    </tbody>
+  1252→                  </table>
+  1253→                </div>
+  1254→              </div>
+  1255→            </div>
+  1256→          )}
+  1257→
+  1258→          {/* ═══════════════════ AUTHORS ═══════════════════ */}
+  1259→          {activeTab === 'authors' && (
+  1260→            <div className="animate-fadeIn">
+  1261→              <div className="flex items-center justify-between mb-6">
+  1262→                <div>
+  1263→                  <h2 className="font-serif text-2xl font-bold">Authors ({authors.length})</h2>
+  1264→                  <p className="text-sm text-muted-foreground mt-1">Writers, editors, and contributors</p>
+  1265→                </div>
+  1266→                <Button onClick={openAutCreate} className="gap-2"><Plus className="h-4 w-4" /> New Author</Button>
+  1267→              </div>
+  1268→              <div className="border border-border rounded-xl overflow-hidden">
+  1269→                <div className="overflow-x-auto">
+  1270→                  <table className="w-full">
+  1271→                    <thead>
+  1272→                      <tr className="bg-secondary/50 border-b border-border">
+  1273→                        <th className={thCls}>Name</th>
+  1274→                        <th className={`${thCls} hidden md:table-cell`}>Role</th>
+  1275→                        <th className={`${thCls} hidden lg:table-cell`}>Articles</th>
+  1276→                        <th className={`${thCls} text-right`}>Actions</th>
+  1277→                      </tr>
+  1278→                    </thead>
+  1279→                    <tbody>
+  1280→                      {authors.map(aut => (
+  1281→                        <tr key={aut.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+  1282→                          <td className={tdCls}>
+  1283→                            <div className="flex items-center gap-2">
+  1284→                              {aut.avatar ? (
+  1285→                                <img src={aut.avatar} alt={aut.name} className="h-7 w-7 rounded-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+  1286→                              ) : (
+  1287→                                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">{aut.name.charAt(0)}</div>
+  1288→                              )}
+  1289→                              <div>
+  1290→                                <p className="font-serif font-semibold text-sm">{aut.name}</p>
+  1291→                                <p className="text-[10px] font-mono text-muted-foreground">{aut.slug}</p>
+  1292→                              </div>
+  1293→                            </div>
+  1294→                          </td>
+  1295→                          <td className={`${tdCls} hidden md:table-cell`}>
+  1296→                            <Badge variant="outline" className="text-[10px]">{aut.role}</Badge>
+  1297→                          </td>
+  1298→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{aut._count?.articles || 0}</td>
+  1299→                          <td className={`${tdCls} text-right`}>
+  1300→                            <div className="flex items-center justify-end gap-1">
+  1301→                              <button onClick={() => openAutEdit(aut)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+  1302→                              <button onClick={() => deleteAut(aut.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+  1303→                            </div>
+  1304→                          </td>
+  1305→                        </tr>
+  1306→                      ))}
+  1307→                    </tbody>
+  1308→                  </table>
+  1309→                </div>
+  1310→              </div>
+  1311→            </div>
+  1312→          )}
+  1313→
+  1314→          {/* ═══════════════════ CATEGORIES ═══════════════════ */}
+  1315→          {activeTab === 'categories' && (
+  1316→            <div className="animate-fadeIn">
+  1317→              <div className="flex items-center justify-between mb-6">
+  1318→                <div>
+  1319→                  <h2 className="font-serif text-2xl font-bold">Categories ({categories.length})</h2>
+  1320→                  <p className="text-sm text-muted-foreground mt-1">Organize your content sections</p>
+  1321→                </div>
+  1322→                <Button onClick={openCatCreate} className="gap-2"><Plus className="h-4 w-4" /> New Category</Button>
+  1323→              </div>
+  1324→              <div className="border border-border rounded-xl overflow-hidden">
+  1325→                <div className="overflow-x-auto">
+  1326→                  <table className="w-full">
+  1327→                    <thead>
+  1328→                      <tr className="bg-secondary/50 border-b border-border">
+  1329→                        <th className={thCls}>Color</th>
+  1330→                        <th className={thCls}>Name</th>
+  1331→                        <th className={`${thCls} hidden md:table-cell`}>Slug</th>
+  1332→                        <th className={`${thCls} hidden lg:table-cell`}>Articles</th>
+  1333→                        <th className={`${thCls} hidden lg:table-cell`}>Events</th>
+  1334→                        <th className={`${thCls} text-right`}>Actions</th>
+  1335→                      </tr>
+  1336→                    </thead>
+  1337→                    <tbody>
+  1338→                      {categories.map(cat => (
+  1339→                        <tr key={cat.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+  1340→                          <td className={tdCls}>
+  1341→                            <div className="h-6 w-6 rounded-full border border-border" style={{ backgroundColor: cat.color }} />
+  1342→                          </td>
+  1343→                          <td className={tdCls}>
+  1344→                            <p className="font-serif font-semibold text-sm">{cat.name}</p>
+  1345→                          </td>
+  1346→                          <td className={`${tdCls} font-mono text-sm text-muted-foreground hidden md:table-cell`}>{cat.slug}</td>
+  1347→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{cat._count?.articles || 0}</td>
+  1348→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{cat._count?.events || 0}</td>
+  1349→                          <td className={`${tdCls} text-right`}>
+  1350→                            <div className="flex items-center justify-end gap-1">
+  1351→                              <button onClick={() => openCatEdit(cat)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+  1352→                              <button onClick={() => deleteCat(cat.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+  1353→                            </div>
+  1354→                          </td>
+  1355→                        </tr>
+  1356→                      ))}
+  1357→                    </tbody>
+  1358→                  </table>
+  1359→                </div>
+  1360→              </div>
+  1361→            </div>
+  1362→          )}
+  1363→
+  1364→          {/* ═══════════════════ SUBSCRIBERS ═══════════════════ */}
+  1365→          {activeTab === 'media' && (
+  1366→            <div className="animate-fadeIn">
+  1367→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+  1368→                <div>
+  1369→                  <h2 className="font-serif text-2xl font-bold">Media Library{mediaTotal > 0 ? ` (${mediaTotal})` : ''}</h2>
+  1370→                  <p className="text-sm text-muted-foreground mt-1">Upload, browse, and manage CDN images</p>
+  1371→                </div>
+  1372→                <div className="flex items-center gap-2">
+  1373→                  <Select value={mediaUploadFolder} onValueChange={v => setMediaUploadFolder(v as CDNFolder)}>
+  1374→                    <SelectTrigger className="w-32 text-xs h-9"><SelectValue /></SelectTrigger>
+  1375→                    <SelectContent>
+  1376→                      {CDN_FOLDERS.map(f => <SelectItem key={f} value={f} className="text-xs capitalize">{f}</SelectItem>)}
+  1377→                    </SelectContent>
+  1378→                  </Select>
+  1379→                  <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer">
+  1380→                    {mediaUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+  1381→                    {mediaUploading ? 'Uploading…' : 'Upload'}
+  1382→                    <input type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml,image/avif" onChange={handleMediaUpload} disabled={mediaUploading} className="hidden" />
+  1383→                  </label>
+  1384→                </div>
+  1385→              </div>
+  1386→
+  1387→              {/* Filters */}
+  1388→              <div className="flex flex-col sm:flex-row gap-3 mb-6">
+  1389→                <div className="relative flex-1">
+  1390→                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+  1391→                  <Input value={mediaSearch} onChange={e => { setMediaSearch(e.target.value); setMediaPage(1) }} placeholder="Search files…" className="pl-9 text-sm" />
+  1392→                </div>
+  1393→                <div className="flex gap-1.5 flex-wrap">
+  1394→                  <button onClick={() => { setMediaFolder(''); setMediaPage(1) }} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${mediaFolder === '' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}>All</button>
+  1395→                  {CDN_FOLDERS.map(f => (
+  1396→                    <button key={f} onClick={() => { setMediaFolder(f); setMediaPage(1) }} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize ${mediaFolder === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}>{f}</button>
+  1397→                  ))}
+  1398→                </div>
+  1399→              </div>
+  1400→
+  1401→              {/* Grid */}
+  1402→              {mediaLoading ? (
+  1403→                <div className="flex items-center justify-center py-24 text-muted-foreground">
+  1404→                  <Loader2 className="h-5 w-5 animate-spin mr-3" /> Loading media…
+  1405→                </div>
+  1406→              ) : mediaFiles.length === 0 ? (
+  1407→                <div className="flex flex-col items-center justify-center py-24 text-center">
+  1408→                  <ImageIcon className="h-12 w-12 text-muted-foreground/20 mb-4" />
+  1409→                  <p className="text-sm font-medium text-muted-foreground">No media files found</p>
+  1410→                  <p className="text-xs text-muted-foreground/60 mt-1">Upload images or change the folder filter</p>
+  1411→                </div>
+  1412→              ) : (
+  1413→                <>
+  1414→                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+  1415→                    {mediaFiles.map(file => (
+  1416→                      <div key={file.path} className="group relative rounded-xl overflow-hidden border border-border bg-secondary aspect-square">
+  1417→                        <img src={file.url} alt={file.filename} className="w-full h-full object-cover" loading="lazy" />
+  1418→                        {/* Hover overlay */}
+  1419→                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
+  1420→                          <p className="text-[10px] font-mono text-white truncate mb-1">{file.filename}</p>
+  1421→                          <p className="text-[9px] text-white/60 font-mono">{formatSize(file.size)}</p>
+  1422→                        </div>
+  1423→                        {/* Action buttons */}
+  1424→                        <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+  1425→                          <button onClick={() => copyToClipboard(file.url)} className="p-1.5 rounded-md bg-black/60 text-white hover:bg-black/80 transition-colors" title="Copy URL">
+  1426→                            {copiedUrl === file.url ? <Check className="h-3 w-3 text-green-400" /> : <Copy className="h-3 w-3" />}
+  1427→                          </button>
+  1428→                          <button onClick={() => setMediaPreview(file)} className="p-1.5 rounded-md bg-black/60 text-white hover:bg-black/80 transition-colors" title="Preview">
+  1429→                            <Eye className="h-3 w-3" />
+  1430→                          </button>
+  1431→                          <button onClick={() => handleMediaDelete(file)} disabled={mediaDeleting === file.path} className="p-1.5 rounded-md bg-black/60 text-white hover:bg-red-600 transition-colors" title="Delete">
+  1432→                            {mediaDeleting === file.path ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+  1433→                          </button>
+  1434→                        </div>
+  1435→                      </div>
+  1436→                    ))}
+  1437→                  </div>
+  1438→
+  1439→                  {/* Pagination */}
+  1440→                  {mediaTotalPages > 1 && (
+  1441→                    <div className="flex items-center justify-center gap-2 mt-8">
+  1442→                      <button onClick={() => setMediaPage(p => Math.max(1, p - 1))} disabled={mediaPage <= 1} className="px-3 py-1.5 rounded-lg text-xs bg-secondary hover:bg-secondary/80 disabled:opacity-40 transition-colors">Prev</button>
+  1443→                      <span className="text-xs text-muted-foreground font-mono">Page {mediaPage} of {mediaTotalPages}</span>
+  1444→                      <button onClick={() => setMediaPage(p => Math.min(mediaTotalPages, p + 1))} disabled={mediaPage >= mediaTotalPages} className="px-3 py-1.5 rounded-lg text-xs bg-secondary hover:bg-secondary/80 disabled:opacity-40 transition-colors">Next</button>
+  1445→                    </div>
+  1446→                  )}
+  1447→                </>
+  1448→              )}
+  1449→            </div>
+  1450→          )}
+  1451→
+  1452→          {/* Image Preview Modal */}
+  1453→          {mediaPreview && (
+  1454→            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setMediaPreview(null)}>
+  1455→              <div className="relative max-w-4xl w-[92vw] max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+  1456→                <div className="flex items-center justify-between mb-3">
+  1457→                  <div>
+  1458→                    <p className="text-sm font-medium text-white truncate max-w-[60vw]">{mediaPreview.filename}</p>
+  1459→                    <p className="text-[10px] font-mono text-white/50">{mediaPreview.path} · {formatSize(mediaPreview.size)}</p>
+  1460→                  </div>
+  1461→                  <div className="flex items-center gap-2">
+  1462→                    <button onClick={() => copyToClipboard(mediaPreview.url)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/10 text-white text-xs hover:bg-white/20 transition-colors">
+  1463→                      {copiedUrl === mediaPreview.url ? <><Check className="h-3 w-3 text-green-400" /> Copied</> : <><Copy className="h-3 w-3" /> Copy URL</>}
+  1464→                    </button>
+  1465→                    <button onClick={() => setMediaPreview(null)} className="p-1.5 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors">
+  1466→                      <X className="h-5 w-5" />
+  1467→                    </button>
+  1468→                  </div>
+  1469→                </div>
+  1470→                <div className="flex-1 overflow-hidden rounded-xl">
+  1471→                  <img src={mediaPreview.url} alt={mediaPreview.filename} className="w-full h-full max-h-[75vh] object-contain rounded-xl" />
+  1472→                </div>
+  1473→              </div>
+  1474→            </div>
+  1475→          )}
+  1476→
+  1477→          {activeTab === 'subscribers' && (
+  1478→            <div className="animate-fadeIn">
+  1479→              <div className="mb-6">
+  1480→                <h2 className="font-serif text-2xl font-bold">Newsletter Subscribers ({subscribers.length})</h2>
+  1481→                <p className="text-sm text-muted-foreground mt-1">Manage your mailing list</p>
+  1482→              </div>
+  1483→              <div className="border border-border rounded-xl overflow-hidden">
+  1484→                <div className="overflow-x-auto">
+  1485→                  <table className="w-full">
+  1486→                    <thead>
+  1487→                      <tr className="bg-secondary/50 border-b border-border">
+  1488→                        <th className={thCls}>Name</th>
+  1489→                        <th className={thCls}>Email</th>
+  1490→                        <th className={`${thCls} hidden md:table-cell`}>Subscribed</th>
+  1491→                        <th className={`${thCls} text-right`}>Actions</th>
+  1492→                      </tr>
+  1493→                    </thead>
+  1494→                    <tbody>
+  1495→                      {subscribers.map(sub => (
+  1496→                        <tr key={sub.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+  1497→                          <td className={tdCls}>
+  1498→                            <p className="font-serif font-semibold text-sm">{sub.name || '—'}</p>
+  1499→                          </td>
+  1500→                          <td className={tdCls}>
+  1501→                            <p className="font-mono text-sm text-muted-foreground">{sub.email}</p>
+  1502→                          </td>
+  1503→                          <td className={`${tdCls} text-sm text-muted-foreground hidden md:table-cell`}>{fmtDate(sub.createdAt)}</td>
+  1504→                          <td className={`${tdCls} text-right`}>
+  1505→                            <div className="flex items-center justify-end gap-1">
+  1506→                              <button onClick={() => deleteSub(sub.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Remove"><Trash2 className="h-3.5 w-3.5" /></button>
+  1507→                            </div>
+  1508→                          </td>
+  1509→                        </tr>
+  1510→                      ))}
+  1511→                    </tbody>
+  1512→                  </table>
+  1513→                </div>
+  1514→              </div>
+  1515→            </div>
+  1516→          )}
+  1517→        </main>
+  1518→      </div>
+  1519→
+  1520→      {/* ═══════════════════ DIALOGS ═══════════════════ */}
+  1521→
+  1522→      {/* Article edit now uses full-page tab (edit-article) — no dialog */}
+  1523→
+  1524→      {/* Event Dialog */}
+  1525→      <Dialog open={evtDialog} onOpenChange={setEvtDialog}>
+  1526→        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+  1527→          <DialogHeader>
+  1528→            <DialogTitle className="font-serif text-xl">{evtEdit ? 'Edit Event' : 'New Event'}</DialogTitle>
+  1529→          </DialogHeader>
+  1530→          <div className="space-y-4">
+  1531→            <div>
+  1532→              <label className={labelCls}>Title *</label>
+  1533→              <Input value={evtTitle} onChange={e => setEvtTitle(e.target.value)} placeholder="Event title" />
+  1534→            </div>
+  1535→            <div>
+  1536→              <label className={labelCls}>Description</label>
+  1537→              <Textarea value={evtDesc} onChange={e => setEvtDesc(e.target.value)} placeholder="Event description..." rows={3} />
+  1538→            </div>
+  1539→            <div className="grid grid-cols-2 gap-4">
+  1540→              <div>
+  1541→                <label className={labelCls}>Date *</label>
+  1542→                <Input type="datetime-local" value={evtDate} onChange={e => setEvtDate(e.target.value)} />
+  1543→              </div>
+  1544→              <div>
+  1545→                <label className={labelCls}>End Date (optional)</label>
+  1546→                <Input type="datetime-local" value={evtEndDate} onChange={e => setEvtEndDate(e.target.value)} />
+  1547→              </div>
+  1548→            </div>
+  1549→            <div className="grid grid-cols-2 gap-4">
+  1550→              <div>
+  1551→                <label className={labelCls}>Venue *</label>
+  1552→                <Input value={evtVenue} onChange={e => setEvtVenue(e.target.value)} placeholder="Venue name" />
+  1553→              </div>
+  1554→              <div>
+  1555→                <label className={labelCls}>City *</label>
+  1556→                <Input value={evtCity} onChange={e => setEvtCity(e.target.value)} placeholder="Nairobi" />
+  1557→              </div>
+  1558→            </div>
+  1559→            <div>
+  1560→              <label className={labelCls}>Category</label>
+  1561→              <Input value={evtCategory} onChange={e => setEvtCategory(e.target.value)} placeholder="e.g. Exhibition, Workshop, Concert" />
+  1562→            </div>
+  1563→            <ImageUpload
+  1564→              value={evtImageUrl}
+  1565→              onChange={setEvtImageUrl}
+  1566→              folder="events"
+  1567→              label="Event Image"
+  1568→              placeholder="Upload or paste a CDN URL…"
+  1569→            />
+  1570→            <div>
+  1571→              <label className={labelCls}>Ticket URL</label>
+  1572→              <Input value={evtTicketUrl} onChange={e => setEvtTicketUrl(e.target.value)} placeholder="https://ticketsite.com/..." className="font-mono text-sm" />
+  1573→            </div>
+  1574→            <div className="flex items-center justify-between">
+  1575→              <div className="flex items-center gap-2">
+  1576→                <Switch checked={evtFeatured} onCheckedChange={setEvtFeatured} />
+  1577→                <label className={labelCls + ' mb-0'}>Featured</label>
+  1578→              </div>
+  1579→              <div className="flex items-center gap-2">
+  1580→                <Switch checked={evtPast} onCheckedChange={setEvtPast} />
+  1581→                <label className={labelCls + ' mb-0'}>Past Event</label>
+  1582→              </div>
+  1583→            </div>
+  1584→            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+  1585→              <Button variant="outline" onClick={() => setEvtDialog(false)}>Cancel</Button>
+  1586→              <Button onClick={saveEvt} disabled={evtSaving || !evtTitle || !evtDate || !evtVenue || !evtCity} className="font-mono text-xs">
+  1587→                {evtSaving ? 'Saving...' : evtEdit ? 'Update' : 'Create Event'}
+  1588→              </Button>
+  1589→            </div>
+  1590→          </div>
+  1591→        </DialogContent>
+  1592→      </Dialog>
+  1593→
+  1594→      {/* Maker Dialog */}
+  1595→      <Dialog open={mkrDialog} onOpenChange={setMkrDialog}>
+  1596→        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+  1597→          <DialogHeader>
+  1598→            <DialogTitle className="font-serif text-xl">{mkrEdit ? 'Edit Maker' : 'New Maker'}</DialogTitle>
+  1599→          </DialogHeader>
+  1600→          <div className="space-y-4">
+  1601→            <div className="grid grid-cols-2 gap-4">
+  1602→              <div>
+  1603→                <label className={labelCls}>Name *</label>
+  1604→                <Input value={mkrName} onChange={e => { setMkrName(e.target.value); if (!mkrEdit) setMkrSlug(slugify(e.target.value)) }} placeholder="Maker name" />
+  1605→              </div>
+  1606→              <div>
+  1607→                <label className={labelCls}>Slug *</label>
+  1608→                <Input value={mkrSlug} onChange={e => setMkrSlug(e.target.value)} placeholder="maker-slug" className="font-mono" />
+  1609→              </div>
+  1610→            </div>
+  1611→            <div>
+  1612→              <label className={labelCls}>Discipline *</label>
+  1613→              <Input value={mkrDiscipline} onChange={e => setMkrDiscipline(e.target.value)} placeholder="e.g. Ceramicist, Painter, Sculptor" />
+  1614→            </div>
+  1615→            <div>
+  1616→              <label className={labelCls}>Bio</label>
+  1617→              <Textarea value={mkrBio} onChange={e => setMkrBio(e.target.value)} placeholder="Biography..." rows={3} />
+  1618→            </div>
+  1619→            <div>
+  1620→              <label className={labelCls}>Location</label>
+  1621→              <Input value={mkrLocation} onChange={e => setMkrLocation(e.target.value)} placeholder="Nairobi, Kenya" />
+  1622→            </div>
+  1623→            <div className="grid grid-cols-2 gap-4">
+  1624→              <div>
+  1625→                <label className={labelCls}>Website</label>
+  1626→                <Input value={mkrWebsite} onChange={e => setMkrWebsite(e.target.value)} placeholder="https://..." className="font-mono text-sm" />
+  1627→              </div>
+  1628→              <div>
+  1629→                <label className={labelCls}>Instagram</label>
+  1630→                <Input value={mkrInstagram} onChange={e => setMkrInstagram(e.target.value)} placeholder="@handle" className="font-mono text-sm" />
+  1631→              </div>
+  1632→            </div>
+  1633→            <div>
+  1634→              <label className={labelCls}>Twitter / X</label>
+  1635→              <Input value={mkrTwitter} onChange={e => setMkrTwitter(e.target.value)} placeholder="@handle" className="font-mono text-sm" />
+  1636→            </div>
+  1637→            <div className="flex items-center gap-2">
+  1638→              <Switch checked={mkrFeatured} onCheckedChange={setMkrFeatured} />
+  1639→              <label className={labelCls + ' mb-0'}>Featured</label>
+  1640→            </div>
+  1641→            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+  1642→              <Button variant="outline" onClick={() => setMkrDialog(false)}>Cancel</Button>
+  1643→              <Button onClick={saveMkr} disabled={mkrSaving || !mkrName || !mkrSlug || !mkrDiscipline} className="font-mono text-xs">
+  1644→                {mkrSaving ? 'Saving...' : mkrEdit ? 'Update' : 'Create Maker'}
+  1645→              </Button>
+  1646→            </div>
+  1647→          </div>
+  1648→        </DialogContent>
+  1649→      </Dialog>
+  1650→
+  1651→      {/* Author Dialog */}
+  1652→      <Dialog open={autDialog} onOpenChange={setAutDialog}>
+  1653→        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+  1654→          <DialogHeader>
+  1655→            <DialogTitle className="font-serif text-xl">{autEdit ? 'Edit Author' : 'New Author'}</DialogTitle>
+  1656→          </DialogHeader>
+  1657→          <div className="space-y-4">
+  1658→            <div className="grid grid-cols-2 gap-4">
+  1659→              <div>
+  1660→                <label className={labelCls}>Name *</label>
+  1661→                <Input value={autName} onChange={e => { setAutName(e.target.value); if (!autEdit) setAutSlug(slugify(e.target.value)) }} placeholder="Author name" />
+  1662→              </div>
+  1663→              <div>
+  1664→                <label className={labelCls}>Slug *</label>
+  1665→                <Input value={autSlug} onChange={e => setAutSlug(e.target.value)} placeholder="author-slug" className="font-mono" />
+  1666→              </div>
+  1667→            </div>
+  1668→            <div>
+  1669→              <label className={labelCls}>Role</label>
+  1670→              <Select value={autRole} onValueChange={setAutRole}>
+  1671→                <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+  1672→                <SelectContent>
+  1673→                  <SelectItem value="Writer">Writer</SelectItem>
+  1674→                  <SelectItem value="Editor">Editor</SelectItem>
+  1675→                  <SelectItem value="Contributor">Contributor</SelectItem>
+  1676→                  <SelectItem value="Columnist">Columnist</SelectItem>
+  1677→                </SelectContent>
+  1678→              </Select>
+  1679→            </div>
+  1680→            <div>
+  1681→              <label className={labelCls}>Bio</label>
+  1682→              <Textarea value={autBio} onChange={e => setAutBio(e.target.value)} placeholder="Author biography..." rows={3} />
+  1683→            </div>
+  1684→            <ImageUpload
+  1685→              value={autAvatar}
+  1686→              onChange={setAutAvatar}
+  1687→              folder="profiles"
+  1688→              label="Avatar"
+  1689→              previewClass="aspect-square w-16 h-16 rounded-full"
+  1690→              placeholder="Upload or paste a CDN URL…"
+  1691→            />
+  1692→            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+  1693→              <Button variant="outline" onClick={() => setAutDialog(false)}>Cancel</Button>
+  1694→              <Button onClick={saveAut} disabled={autSaving || !autName || !autSlug} className="font-mono text-xs">
+  1695→                {autSaving ? 'Saving...' : autEdit ? 'Update' : 'Create Author'}
+  1696→              </Button>
+  1697→            </div>
+  1698→          </div>
+  1699→        </DialogContent>
+  1700→      </Dialog>
+  1701→
+  1702→      {/* Category Dialog */}
+  1703→      <Dialog open={catDialog} onOpenChange={setCatDialog}>
+  1704→        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+  1705→          <DialogHeader>
+  1706→            <DialogTitle className="font-serif text-xl">{catEdit ? 'Edit Category' : 'New Category'}</DialogTitle>
+  1707→          </DialogHeader>
+  1708→          <div className="space-y-4">
+  1709→            <div className="grid grid-cols-2 gap-4">
+  1710→              <div>
+  1711→                <label className={labelCls}>Name *</label>
+  1712→                <Input value={catName} onChange={e => { setCatName(e.target.value); if (!catEdit) setCatSlug(slugify(e.target.value)) }} placeholder="Category name" />
+  1713→              </div>
+  1714→              <div>
+  1715→                <label className={labelCls}>Slug *</label>
+  1716→                <Input value={catSlug} onChange={e => setCatSlug(e.target.value)} placeholder="category-slug" className="font-mono" />
+  1717→              </div>
+  1718→            </div>
+  1719→            <div>
+  1720→              <label className={labelCls}>Description</label>
+  1721→              <Textarea value={catDescription} onChange={e => setCatDescription(e.target.value)} placeholder="Category description..." rows={2} />
+  1722→            </div>
+  1723→            <div>
+  1724→              <label className={labelCls}>Color</label>
+  1725→              <div className="flex items-center gap-3">
+  1726→                <input type="color" value={catColor} onChange={e => setCatColor(e.target.value)} className="h-10 w-10 rounded-md border border-border cursor-pointer p-0" />
+  1727→                <Input value={catColor} onChange={e => setCatColor(e.target.value)} placeholder="#8B2252" className="font-mono text-sm w-32" />
+  1728→              </div>
+  1729→            </div>
+  1730→            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+  1731→              <Button variant="outline" onClick={() => setCatDialog(false)}>Cancel</Button>
+  1732→              <Button onClick={saveCat} disabled={catSaving || !catName || !catSlug} className="font-mono text-xs">
+  1733→                {catSaving ? 'Saving...' : catEdit ? 'Update' : 'Create Category'}
+  1734→              </Button>
+  1735→            </div>
+  1736→          </div>
+  1737→        </DialogContent>
+  1738→      </Dialog>
+  1739→    </div>
+  1740→  )
+  1741→}
