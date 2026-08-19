@@ -166,21 +166,9 @@ export default function AdminPage() {
   const [mediaPreview, setMediaPreview] = useState<CDNFile | null>(null)
 
   // Article form
-  const [artDialog, setArtDialog] = useState(false)
   const [artEdit, setArtEdit] = useState<Article | null>(null)
   const [formDataLoading, setFormDataLoading] = useState(false)
   const [formDataError, setFormDataError] = useState<string | null>(null)
-  const [artTitle, setArtTitle] = useState('')
-  const [artSlug, setArtSlug] = useState('')
-  const [artExcerpt, setArtExcerpt] = useState('')
-  const [artContent, setArtContent] = useState('')
-  const [artCoverImage, setArtCoverImage] = useState('')
-  const [artCategory, setArtCategory] = useState('')
-  const [artAuthor, setArtAuthor] = useState('')
-  const [artTags, setArtTags] = useState('')
-  const [artReadTime, setArtReadTime] = useState('5')
-  const [artSaving, setArtSaving] = useState(false)
-  const [parsing, setParsing] = useState(false)
 
   // Event form
   const [evtDialog, setEvtDialog] = useState(false)
@@ -290,7 +278,7 @@ export default function AdminPage() {
   }, [categories.length, authors.length])
 
   useEffect(() => {
-    if (activeTab === 'new-article') fetchFormDependencies()
+    if (activeTab === 'new-article' || activeTab === 'edit-article') fetchFormDependencies()
   }, [activeTab, fetchFormDependencies])
 
   // ── Fetch comments for moderation ──────────────────────────
@@ -373,55 +361,9 @@ export default function AdminPage() {
   }, [modStats])
 
   // ── Article CRUD ───────────────────────────────────────────
-  const openArtCreate = () => {
-    setArtEdit(null)
-    setArtTitle(''); setArtSlug(''); setArtExcerpt(''); setArtContent('')
-    setArtCoverImage(''); setArtCategory(''); setArtAuthor('')
-    setArtTags(''); setArtReadTime('5')
-    setArtDialog(true)
-  }
   const openArtEdit = (a: Article) => {
     setArtEdit(a)
-    setArtTitle(a.title); setArtSlug(a.slug); setArtExcerpt(a.excerpt)
-    setArtContent(''); setArtCoverImage(a.coverImage || '')
-    setArtCategory(a.category?.name || ''); setArtAuthor(a.author?.name || '')
-    setArtTags(''); setArtReadTime(String(5))
-    setArtDialog(true)
-  }
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setParsing(true)
-    try {
-      const form = new FormData()
-      form.append('file', file)
-      const res = await fetch('/api/admin/parse-file', { method: 'POST', body: form })
-      if (!res.ok) { const data = await res.json(); alert(data.error || 'Failed to parse file'); return }
-      const data = await res.json()
-      if (data.titleHint && !artTitle) setArtTitle(data.titleHint)
-      if (data.excerpt && !artExcerpt) setArtExcerpt(data.excerpt)
-      if (data.readTime) setArtReadTime(String(data.readTime))
-      if (data.tags && !artTags) setArtTags(data.tags)
-      if (data.markdown) setArtContent(data.markdown)
-    } catch { alert('Failed to parse file') } finally { setParsing(false); e.target.value = '' }
-  }
-  const saveArt = async () => {
-    if (!artTitle || !artSlug) return
-    setArtSaving(true)
-    try {
-      if (artEdit) {
-        const res = await fetch(`/api/admin/articles/${artEdit.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: artTitle, slug: artSlug, excerpt: artExcerpt, coverImage: artCoverImage }) })
-        if (res.ok) { const u = await res.json(); setArticles(p => p.map(a => a.id === u.id ? { ...a, ...u } : a)) }
-      } else {
-        const catId = categories.find(c => c.name === artCategory)?.id || ''
-        const authId = authors.find(a => a.name === artAuthor)?.id || ''
-        if (!catId || !authId) { setArtSaving(false); return }
-        const res = await fetch('/api/admin/articles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: artTitle, slug: artSlug, excerpt: artExcerpt, content: artContent, coverImage: artCoverImage, categoryId: catId, authorId: authId, readTime: parseInt(artReadTime) || 5, tags: artTags }) })
-        if (res.ok) { const n = await res.json(); setArticles(p => [n, ...p]); fetchAll() }
-      }
-      setArtDialog(false)
-    } catch {}
-    setArtSaving(false)
+    navigate('edit-article')
   }
   const toggleArtFeatured = async (a: Article) => {
     const res = await fetch(`/api/admin/articles/${a.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isFeatured: !a.isFeatured }) })
@@ -1138,6 +1080,62 @@ export default function AdminPage() {
             </div>
           )}
 
+          {/* ═══════════════════ EDIT ARTICLE (full page) ═══════════════════ */}
+          {activeTab === 'edit-article' && artEdit && (
+            <div className="animate-fadeIn">
+              {formDataLoading && categories.length === 0 && (
+                <div className="flex items-center gap-2 py-8 justify-center text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading categories & authors…
+                </div>
+              )}
+              {formDataError && categories.length === 0 && authors.length === 0 && !formDataLoading && (
+                <div className="flex flex-col items-center gap-3 py-12 text-center">
+                  <AlertTriangle className="h-8 w-8 text-amber-500/50" />
+                  <p className="text-sm font-medium">{formDataError}</p>
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => fetchFormDependencies()}>
+                    <RotateCcw className="h-3.5 w-3.5" /> Retry
+                  </Button>
+                </div>
+              )}
+              {(categories.length > 0 || authors.length > 0) && (
+                <>
+                  {formDataError && (
+                    <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/20 px-4 py-2.5 text-sm text-amber-800 dark:text-amber-200">
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      {formDataError} — some dropdowns may be empty
+                    </div>
+                  )}
+                  <ArticleForm
+                    key={artEdit.id}
+                    mode='edit'
+                    variant='page'
+                    categories={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+                    authors={authors.map(a => ({ id: a.id, name: a.name, role: a.role }))}
+                    initialData={{
+                      title: artEdit.title, slug: artEdit.slug, excerpt: artEdit.excerpt,
+                      content: artEdit.content || '',
+                      coverImage: artEdit.coverImage || '',
+                      categoryId: categories.find(c => c.name === artEdit.category?.name)?.id || '',
+                      authorId: artEdit.author?.id || '',
+                      tags: artEdit.tags || '',
+                      readTime: String(artEdit.readTime || 5),
+                      isFeatured: artEdit.isFeatured, isPinned: artEdit.isPinned,
+                    }}
+                    onSubmit={async (data: ArticleFormData) => {
+                      const res = await fetch(`/api/admin/articles/${artEdit.id}`, {
+                        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...data, readTime: parseInt(data.readTime) || 5 }),
+                      })
+                      if (res.ok) { const updated = await res.json(); setArticles(p => p.map(a => a.id === artEdit.id ? { ...a, ...updated } : a)); fetchAll() }
+                      navigate('articles')
+                    }}
+                    onCancel={() => navigate('articles')}
+                  />
+                </>
+              )}
+            </div>
+          )}
+
           {/* ═══════════════════ ARTICLES ═══════════════════ */}
           {activeTab === 'articles' && (
             <div className="animate-fadeIn">
@@ -1577,38 +1575,7 @@ export default function AdminPage() {
 
       {/* ═══════════════════ DIALOGS ═══════════════════ */}
 
-      {/* Article Edit Dialog (create uses page tab) */}
-      {artEdit && (
-      <Dialog open={artDialog} onOpenChange={setArtDialog}>
-        <DialogContent className="max-w-6xl max-h-[92vh] overflow-hidden w-[97vw] sm:w-full p-0">
-          <ArticleForm
-            key={artEdit.id}
-            mode='edit'
-            variant='dialog'
-            categories={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
-            authors={authors.map(a => ({ id: a.id, name: a.name, role: a.role }))}
-            initialData={{
-              title: artEdit.title, slug: artEdit.slug, excerpt: artEdit.excerpt,
-              coverImage: artEdit.coverImage || '',
-              categoryId: categories.find(c => c.name === artEdit.category?.name)?.id || '',
-              authorId: artEdit.author?.id || '',
-              tags: artEdit.tags || '',
-              readTime: String(artEdit.readTime || 5),
-              isFeatured: artEdit.isFeatured, isPinned: artEdit.isPinned,
-            }}
-            onSubmit={async (data: ArticleFormData) => {
-              const res = await fetch(`/api/admin/articles/${artEdit.id}`, {
-                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...data, readTime: parseInt(data.readTime) || 5 }),
-              })
-              if (res.ok) { const updated = await res.json(); setArticles(p => p.map(a => a.id === artEdit.id ? { ...a, ...updated } : a)); fetchAll() }
-              setArtDialog(false)
-            }}
-            onCancel={() => setArtDialog(false)}
-          />
-        </DialogContent>
-      </Dialog>
-      )}
+      {/* Article edit now uses full-page tab (edit-article) — no dialog */}
 
       {/* Event Dialog */}
       <Dialog open={evtDialog} onOpenChange={setEvtDialog}>
