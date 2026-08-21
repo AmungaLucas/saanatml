@@ -79,9 +79,12 @@ export async function POST(request: NextRequest) {
       authorId: user.authorId || '',
     })
 
-    // Send email (fire-and-forget)
-    send2FACode({ to: normalizedEmail, code: twoFACode })
-      .then(ok => { if (!ok) console.error(`Failed to send 2FA code to ${normalizedEmail}`) })
+    // Send 2FA code via email
+    const emailOk = await send2FACode({ to: normalizedEmail, code: twoFACode })
+    if (!emailOk) {
+      console.error(`Failed to send 2FA code to ${normalizedEmail}`)
+      return NextResponse.json({ error: 'Failed to send verification email. Please try again or contact the admin.' }, { status: 500 })
+    }
 
     return NextResponse.json({ requires2FA: true, message: 'Verification code sent to your email' })
   } catch (err) {

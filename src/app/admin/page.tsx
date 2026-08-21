@@ -471,7 +471,10 @@ export default function AdminPage() {
           const n = await res.json();
           setAuthors(p => [n, ...p]); fetchAll()
           if (n.credentialEmail) {
-            setAutCredFeedback(`Login credentials sent to ${n.credentialEmail}`)
+            setAutCredFeedback(n.emailWarning
+              ? `Warning: ${n.emailWarning}`
+              : `Login credentials sent to ${n.credentialEmail}`
+            )
           }
           return // keep dialog open to show feedback
         }

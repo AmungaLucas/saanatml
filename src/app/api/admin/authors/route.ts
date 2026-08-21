@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
 
     // If an email was provided, create a User account and send credentials
     let credentialEmail = ''
+    let emailSent = true // default: no email needed
     if (email && email.trim()) {
       const plainPassword = generatePassword()
       const hashedPassword = await bcrypt.hash(plainPassword, 10)
@@ -68,23 +69,23 @@ export async function POST(request: NextRequest) {
         })
         credentialEmail = email.trim()
 
-        // Send credentials email (fire-and-forget)
-        sendCredentialsEmail({
+        // Send credentials email (await so we can warn on failure)
+        emailSent = await sendCredentialsEmail({
           to: credentialEmail,
           name,
           email: credentialEmail,
           password: plainPassword,
-        }).then(ok => {
-          if (ok) console.log(`Credentials sent to ${credentialEmail}`)
-          else console.error(`Failed to send credentials to ${credentialEmail}`)
         })
+        if (!emailSent) {
+          console.error(`Failed to send credentials to ${credentialEmail}`)
+        }
       } catch (e: any) {
         // If user already exists, still return the author
         if (e.code !== 'P2002') console.error('User creation error:', e)
       }
     }
 
-    return NextResponse.json({ ...author, credentialEmail }, { status: 201 })
+    return NextResponse.json({ ...author, credentialEmail, emailWarning: credentialEmail && !emailSent ? 'Credentials email failed to send — check SMTP configuration' : undefined }, { status: 201 })
   } catch (e: any) {
     if (e.code === 'P2002') {
       return NextResponse.json({ error: 'Slug already exists' }, { status: 409 })
