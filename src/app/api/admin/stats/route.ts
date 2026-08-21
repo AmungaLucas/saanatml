@@ -62,6 +62,9 @@ export async function GET(request: NextRequest) {
     })
   } catch (err) {
     console.error('Admin stats GET error:', err)
-    return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 })
+    const msg = !process.env.DATABASE_URL
+      ? 'DATABASE_URL is not configured. Please set it in your Vercel environment variables.'
+      : 'Failed to fetch stats'
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
