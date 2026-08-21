@@ -208,7 +208,9 @@ export default function AdminPage() {
   const [autBio, setAutBio] = useState('')
   const [autAvatar, setAutAvatar] = useState('')
   const [autRole, setAutRole] = useState('Writer')
+  const [autEmail, setAutEmail] = useState('')
   const [autSaving, setAutSaving] = useState(false)
+  const [autCredFeedback, setAutCredFeedback] = useState<string | null>(null)
 
   // Category form
   const [catDialog, setCatDialog] = useState(false)
@@ -449,7 +451,7 @@ export default function AdminPage() {
 
   // ── Author CRUD ────────────────────────────────────────────
   const openAutCreate = () => {
-    setAutEdit(null); setAutName(''); setAutSlug(''); setAutBio(''); setAutAvatar(''); setAutRole('Writer'); setAutDialog(true)
+    setAutEdit(null); setAutName(''); setAutSlug(''); setAutBio(''); setAutAvatar(''); setAutRole('Writer'); setAutEmail(''); setAutCredFeedback(null); setAutDialog(true)
   }
   const openAutEdit = (a: AuthorItem) => {
     setAutEdit(a); setAutName(a.name); setAutSlug(a.slug); setAutBio(a.bio); setAutAvatar(a.avatar); setAutRole(a.role); setAutDialog(true)
@@ -458,13 +460,21 @@ export default function AdminPage() {
     if (!autName || !autSlug) return
     setAutSaving(true)
     try {
-      const payload = { name: autName, slug: autSlug, bio: autBio, avatar: autAvatar, role: autRole }
+      const payload: Record<string, string> = { name: autName, slug: autSlug, bio: autBio, avatar: autAvatar, role: autRole }
+      if (!autEdit && autEmail.trim()) payload.email = autEmail.trim()
       if (autEdit) {
         const res = await fetch(`/api/admin/authors/${autEdit.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
         if (res.ok) { const u = await res.json(); setAuthors(p => p.map(a => a.id === u.id ? u : a)) }
       } else {
         const res = await fetch('/api/admin/authors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-        if (res.ok) { const n = await res.json(); setAuthors(p => [n, ...p]); fetchAll() }
+        if (res.ok) {
+          const n = await res.json();
+          setAuthors(p => [n, ...p]); fetchAll()
+          if (n.credentialEmail) {
+            setAutCredFeedback(`Login credentials sent to ${n.credentialEmail}`)
+          }
+          return // keep dialog open to show feedback
+        }
       }
       setAutDialog(false)
     } catch {}
@@ -1705,12 +1715,18 @@ export default function AdminPage() {
       </Dialog>
 
       {/* Author Dialog */}
-      <Dialog open={autDialog} onOpenChange={setAutDialog}>
+      <Dialog open={autDialog} onOpenChange={(open) => { setAutDialog(open); if (!open) setAutCredFeedback(null) }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
           <DialogHeader>
             <DialogTitle className="font-serif text-xl">{autEdit ? 'Edit Author' : 'New Author'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {autCredFeedback && (
+              <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 dark:border-green-900/60 dark:bg-green-950/20 px-4 py-2.5 text-sm text-green-800 dark:text-green-200">
+                <CheckCircle className="h-4 w-4 shrink-0" />
+                {autCredFeedback}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Name *</label>
@@ -1721,6 +1737,13 @@ export default function AdminPage() {
                 <Input value={autSlug} onChange={e => setAutSlug(e.target.value)} placeholder="author-slug" className="font-mono" />
               </div>
             </div>
+            {!autEdit && (
+              <div>
+                <label className={labelCls}>Email (creates login account)</label>
+                <Input type="email" value={autEmail} onChange={e => setAutEmail(e.target.value)} placeholder="editor@example.com" />
+                <p className="text-[11px] text-muted-foreground mt-1">A password will be auto-generated and sent to this email.</p>
+              </div>
+            )}
             <div>
               <label className={labelCls}>Role</label>
               <Select value={autRole} onValueChange={setAutRole}>
@@ -1746,10 +1769,15 @@ export default function AdminPage() {
               placeholder="Upload or paste a CDN URL…"
             />
             <div className="flex justify-end gap-3 pt-4 border-t border-border">
-              <Button variant="outline" onClick={() => setAutDialog(false)}>Cancel</Button>
-              <Button onClick={saveAut} disabled={autSaving || !autName || !autSlug} className="font-mono text-xs">
-                {autSaving ? 'Saving...' : autEdit ? 'Update' : 'Create Author'}
-              </Button>
+              <Button variant="outline" onClick={() => { setAutDialog(false); setAutCredFeedback(null) }}>{autCredFeedback ? 'Close' : 'Cancel'}</Button>
+              {autCredFeedback && (
+                <Button onClick={() => { setAutCredFeedback(null); setAutDialog(false) }}>Done</Button>
+              )}
+              {!autCredFeedback && (
+                <Button onClick={saveAut} disabled={autSaving || !autName || !autSlug} className="font-mono text-xs">
+                  {autSaving ? 'Saving...' : autEdit ? 'Update' : 'Create Author'}
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>

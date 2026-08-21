@@ -1,0 +1,1807 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useMemo, useCallback } from 'react'
+     4→import { Badge } from '@/components/ui/badge'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Input } from '@/components/ui/input'
+     7→import { Textarea } from '@/components/ui/textarea'
+     8→import { Switch } from '@/components/ui/switch'
+     9→import {
+    10→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    11→} from '@/components/ui/select'
+    12→import {
+    13→  Dialog, DialogContent, DialogHeader, DialogTitle,
+    14→} from '@/components/ui/dialog'
+    15→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    16→import {
+    17→  FileText, Users, Tag, Calendar, Eye, MessageSquare, Star, Pin, Trash2,
+    18→  Plus, BarChart3, ArrowLeft, BookmarkCheck, BookOpen, Mail,
+    19→  TrendingUp, Pencil, ExternalLink, Palette, Flag, CheckCircle, XCircle,
+    20→  Upload, Loader2, Search, Shield, AlertTriangle, ChevronRight, Filter,
+    21→  LayoutDashboard, MessagesSquare, UserCog, FolderOpen, Megaphone, Paintbrush, UsersRound,
+    22→  Menu, X, ChevronDown, ImageIcon, Copy, Check, RotateCcw,
+    23→} from 'lucide-react'
+    24→import { ImageUpload } from '@/components/ui/image-upload'
+    25→import { ArticleForm, type ArticleFormData } from '@/components/article-form'
+    26→import { type CDNFile, CDN_FOLDERS, type CDNFolder } from '@/lib/cdn'
+    27→import Link from 'next/link'
+    28→import ReactMarkdown from 'react-markdown'
+    29→import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
+    30→
+    31→// ── Interfaces ──────────────────────────────────────────────
+    32→
+    33→interface Article {
+    34→  id: string; title: string; slug: string; excerpt: string; content?: string
+    35→  publishedAt: string; views: number; isFeatured: boolean; isPinned: boolean
+    36→  category: { name: string; color: string }; author: { name: string; id: string }
+    37→  commentCount: number; coverImage?: string; tags?: string; readTime?: number
+    38→}
+    39→
+    40→interface EventItem {
+    41→  id: string; title: string; description: string; date: string
+    42→  endDate: string | null; venue: string; city: string; category: string
+    43→  imageUrl: string; ticketUrl: string; isFeatured: boolean; isPast: boolean
+    44→  createdAt: string
+    45→}
+    46→
+    47→interface MakerItem {
+    48→  id: string; name: string; slug: string; discipline: string; bio: string
+    49→  avatar: string; location: string; website: string; instagram: string
+    50→  twitter: string; isFeatured: boolean; createdAt: string
+    51→}
+    52→
+    53→interface AuthorItem {
+    54→  id: string; name: string; slug: string; bio: string; avatar: string
+    55→  role: string; createdAt: string; _count?: { articles: number }
+    56→}
+    57→
+    58→interface CategoryItem {
+    59→  id: string; name: string; slug: string; description: string; color: string
+    60→  createdAt: string; _count?: { articles: number; events: number }
+    61→}
+    62→
+    63→interface SubscriberItem {
+    64→  id: string; name: string; email: string; createdAt: string
+    65→}
+    66→
+    67→interface CommentItem {
+    68→  id: string; author: string; content: string; status: string
+    69→  reportCount: number; createdAt: string; articleId: string
+    70→  article: { id: string; title: string; slug: string }
+    71→}
+    72→
+    73→interface Stats {
+    74→  articles: number; authors: number; categories: number; events: number
+    75→  comments: number; makers: number; subscribers: number; totalViews: number
+    76→  flaggedComments: number
+    77→  commentBreakdown: { published: number; flagged: number; removed: number }
+    78→  recentFlagged: CommentItem[]
+    79→}
+    80→
+    81→interface CommentStats {
+    82→  published: number; flagged: number; removed: number; total: number
+    83→}
+    84→
+    85→// ── Helpers ─────────────────────────────────────────────────
+    86→
+    87→const slugify = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '')
+    88→
+    89→const toDatetimeLocal = (iso: string) => {
+    90→  if (!iso) return ''
+    91→  const d = new Date(iso)
+    92→  const pad = (n: number) => String(n).padStart(2, '0')
+    93→  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    94→}
+    95→
+    96→const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+    97→const fmtDateTime = (iso: string) => new Date(iso).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    98→const timeAgo = (iso: string) => {
+    99→  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+   100→  if (seconds < 60) return 'just now'
+   101→  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+   102→  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+   103→  return `${Math.floor(seconds / 86400)}d ago`
+   104→}
+   105→
+   106→const labelCls = 'font-mono text-[10px] uppercase tracking-wider text-muted-foreground block mb-1'
+   107→const thCls = 'text-left px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground'
+   108→const tdCls = 'px-4 py-3'
+   109→const actionBtnCls = 'p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground'
+   110→
+   111→const PIE_COLORS = ['#22c55e', '#ef4444', '#6b7280']
+   112→
+   113→// ── Sidebar Nav Items ───────────────────────────────────────
+   114→
+   115→const navItems = [
+   116→  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+   117→  { id: 'moderation', label: 'Moderation', icon: Shield },
+   118→  { id: 'articles', label: 'Articles', icon: FileText },
+   119→  { id: 'new-article', label: 'New Article', icon: Plus },
+   120→  { id: 'events', label: 'Events', icon: Calendar },
+   121→  { id: 'makers', label: 'Makers', icon: Paintbrush },
+   122→  { id: 'authors', label: 'Authors', icon: UserCog },
+   123→  { id: 'categories', label: 'Categories', icon: FolderOpen },
+   124→  { id: 'media', label: 'Media', icon: ImageIcon },
+   125→  { id: 'subscribers', label: 'Subscribers', icon: Megaphone },
+   126→] as const
+   127→
+   128→// ── Component ───────────────────────────────────────────────
+   129→
+   130→export default function AdminPage() {
+   131→  const [activeTab, setActiveTab] = useState<string>('overview')
+   132→  const [sidebarOpen, setSidebarOpen] = useState(false)
+   133→
+   134→  // Data
+   135→  const [loading, setLoading] = useState(true)
+   136→  const [fetchError, setFetchError] = useState<string | null>(null)
+   137→  const [stats, setStats] = useState<Stats | null>(null)
+   138→  const [articles, setArticles] = useState<Article[]>([])
+   139→  const [events, setEvents] = useState<EventItem[]>([])
+   140→  const [makers, setMakers] = useState<MakerItem[]>([])
+   141→  const [authors, setAuthors] = useState<AuthorItem[]>([])
+   142→  const [categories, setCategories] = useState<CategoryItem[]>([])
+   143→  const [subscribers, setSubscribers] = useState<SubscriberItem[]>([])
+   144→
+   145→  // Comments state for moderation tab
+   146→  const [modComments, setMmodComments] = useState<CommentItem[]>([])
+   147→  const [modStats, setMmodStats] = useState<CommentStats | null>(null)
+   148→  const [modStatus, setModStatus] = useState<string>('flagged')
+   149→  const [modSearch, setMmodSearch] = useState('')
+   150→  const [modPage, setMmodPage] = useState(1)
+   151→  const [modTotalPages, setMmodTotalPages] = useState(1)
+   152→  const [modLoading, setMmodLoading] = useState(false)
+   153→
+   154→  // Media library state
+   155→  const [mediaFiles, setMediaFiles] = useState<CDNFile[]>([])
+   156→  const [mediaLoading, setMediaLoading] = useState(false)
+   157→  const [mediaFolder, setMediaFolder] = useState<CDNFolder | ''>('')
+   158→  const [mediaSearch, setMediaSearch] = useState('')
+   159→  const [mediaPage, setMediaPage] = useState(1)
+   160→  const [mediaTotalPages, setMediaTotalPages] = useState(1)
+   161→  const [mediaTotal, setMediaTotal] = useState(0)
+   162→  const [mediaDeleting, setMediaDeleting] = useState<string | null>(null)
+   163→  const [mediaUploading, setMediaUploading] = useState(false)
+   164→  const [mediaUploadFolder, setMediaUploadFolder] = useState<CDNFolder>('misc')
+   165→  const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
+   166→  const [mediaPreview, setMediaPreview] = useState<CDNFile | null>(null)
+   167→
+   168→  // Article form
+   169→  const [artEdit, setArtEdit] = useState<Article | null>(null)
+   170→  const [formDataLoading, setFormDataLoading] = useState(false)
+   171→  const [formDataError, setFormDataError] = useState<string | null>(null)
+   172→
+   173→  // Event form
+   174→  const [evtDialog, setEvtDialog] = useState(false)
+   175→  const [evtEdit, setEvtEdit] = useState<EventItem | null>(null)
+   176→  const [evtTitle, setEvtTitle] = useState('')
+   177→  const [evtDesc, setEvtDesc] = useState('')
+   178→  const [evtDate, setEvtDate] = useState('')
+   179→  const [evtEndDate, setEvtEndDate] = useState('')
+   180→  const [evtVenue, setEvtVenue] = useState('')
+   181→  const [evtCity, setEvtCity] = useState('')
+   182→  const [evtCategory, setEvtCategory] = useState('')
+   183→  const [evtImageUrl, setEvtImageUrl] = useState('')
+   184→  const [evtTicketUrl, setEvtTicketUrl] = useState('')
+   185→  const [evtFeatured, setEvtFeatured] = useState(false)
+   186→  const [evtPast, setEvtPast] = useState(false)
+   187→  const [evtSaving, setEvtSaving] = useState(false)
+   188→
+   189→  // Maker form
+   190→  const [mkrDialog, setMkrDialog] = useState(false)
+   191→  const [mkrEdit, setMkrEdit] = useState<MakerItem | null>(null)
+   192→  const [mkrName, setMkrName] = useState('')
+   193→  const [mkrSlug, setMkrSlug] = useState('')
+   194→  const [mkrDiscipline, setMkrDiscipline] = useState('')
+   195→  const [mkrBio, setMkrBio] = useState('')
+   196→  const [mkrLocation, setMkrLocation] = useState('')
+   197→  const [mkrWebsite, setMkrWebsite] = useState('')
+   198→  const [mkrInstagram, setMkrInstagram] = useState('')
+   199→  const [mkrTwitter, setMkrTwitter] = useState('')
+   200→  const [mkrFeatured, setMkrFeatured] = useState(false)
+   201→  const [mkrSaving, setMkrSaving] = useState(false)
+   202→
+   203→  // Author form
+   204→  const [autDialog, setAutDialog] = useState(false)
+   205→  const [autEdit, setAutEdit] = useState<AuthorItem | null>(null)
+   206→  const [autName, setAutName] = useState('')
+   207→  const [autSlug, setAutSlug] = useState('')
+   208→  const [autBio, setAutBio] = useState('')
+   209→  const [autAvatar, setAutAvatar] = useState('')
+   210→  const [autRole, setAutRole] = useState('Writer')
+   211→  const [autEmail, setAutEmail] = useState('')
+   212→  const [autSaving, setAutSaving] = useState(false)
+   213→  const [autCredFeedback, setAutCredFeedback] = useState<string | null>(null)
+   214→
+   215→  // Category form
+   216→  const [catDialog, setCatDialog] = useState(false)
+   217→  const [catEdit, setCatEdit] = useState<CategoryItem | null>(null)
+   218→  const [catName, setCatName] = useState('')
+   219→  const [catSlug, setCatSlug] = useState('')
+   220→  const [catDescription, setCatDescription] = useState('')
+   221→  const [catColor, setCatColor] = useState('#8B2252')
+   222→  const [catSaving, setCatSaving] = useState(false)
+   223→
+   224→  // ── Fetch all data ─────────────────────────────────────────
+   225→  const fetchAll = useCallback(async () => {
+   226→    setLoading(true)
+   227→    setFetchError(null)
+   228→    try {
+   229→      const endpoints = [
+   230→        ['stats', '/api/admin/stats', setStats],
+   231→        ['articles', '/api/admin/articles', setArticles],
+   232→        ['events', '/api/admin/events', setEvents],
+   233→        ['makers', '/api/admin/makers', setMakers],
+   234→        ['authors', '/api/admin/authors', setAuthors],
+   235→        ['categories', '/api/admin/categories', setCategories],
+   236→        ['subscribers', '/api/admin/subscribers', setSubscribers],
+   237→      ] as const
+   238→      const results = await Promise.allSettled(
+   239→        endpoints.map(async ([key, url, setter]) => {
+   240→          const res = await fetch(url)
+   241→          if (!res.ok) throw new Error(`${key} returned ${res.status}`)
+   242→          const data = await res.json()
+   243→          setter(data)
+   244→        })
+   245→      )
+   246→      // Check if stats specifically failed
+   247→      const statsResult = results[0]
+   248→      if (statsResult.status === 'rejected') {
+   249→        setFetchError(statsResult.reason?.message || 'Failed to load stats')
+   250→      }
+   251→    } catch (err: any) {
+   252→      setFetchError(err.message || 'Failed to load dashboard data')
+   253→    } finally {
+   254→      setLoading(false)
+   255→    }
+   256→  }, [])
+   257→
+   258→  useEffect(() => { fetchAll() }, [fetchAll])
+   259→
+   260→  // ── Independent fetch for categories/authors (new article tab) ──
+   261→  const fetchFormDependencies = useCallback(async () => {
+   262→    if (categories.length > 0 && authors.length > 0) return // already loaded
+   263→    setFormDataLoading(true)
+   264→    setFormDataError(null)
+   265→    try {
+   266→      const results = await Promise.allSettled([
+   267→        categories.length === 0 ? fetch('/api/admin/categories').then(r => { if (!r.ok) throw new Error(`categories ${r.status}`); return r.json() }) : Promise.resolve(categories),
+   268→        authors.length === 0 ? fetch('/api/admin/authors').then(r => { if (!r.ok) throw new Error(`authors ${r.status}`); return r.json() }) : Promise.resolve(authors),
+   269→      ])
+   270→      if (results[0].status === 'fulfilled' && Array.isArray(results[0].value)) setCategories(results[0].value)
+   271→      if (results[1].status === 'fulfilled' && Array.isArray(results[1].value)) setAuthors(results[1].value)
+   272→      const failed = results.filter(r => r.status === 'rejected').map(r => (r as PromiseRejectedResult).reason?.message)
+   273→      if (failed.length === 2) setFormDataError('Could not load categories or authors')
+   274→      else if (failed.length === 1) setFormDataError(`Could not load ${failed[0]}`)
+   275→    } catch (err: any) {
+   276→      setFormDataError(err.message || 'Failed to load form data')
+   277→    } finally {
+   278→      setFormDataLoading(false)
+   279→    }
+   280→  }, [categories.length, authors.length])
+   281→
+   282→  useEffect(() => {
+   283→    if (activeTab === 'new-article' || activeTab === 'edit-article') fetchFormDependencies()
+   284→  }, [activeTab, fetchFormDependencies])
+   285→
+   286→  // ── Fetch comments for moderation ──────────────────────────
+   287→  const fetchMmodComments = useCallback(async () => {
+   288→    setMmodLoading(true)
+   289→    try {
+   290→      const params = new URLSearchParams()
+   291→      if (modStatus) params.set('status', modStatus)
+   292→      if (modSearch) params.set('search', modSearch)
+   293→      params.set('page', String(modPage))
+   294→      const res = await fetch(`/api/admin/comments?${params}`)
+   295→      const data = await res.json()
+   296→      setMmodComments(data.comments || [])
+   297→      setMmodStats(data.stats || null)
+   298→      setMmodTotalPages(data.pagination?.pages || 1)
+   299→    } catch (err) {
+   300→      console.error('Failed to fetch comments', err)
+   301→    } finally {
+   302→      setMmodLoading(false)
+   303→    }
+   304→  }, [modStatus, modSearch, modPage])
+   305→
+   306→  useEffect(() => { fetchMmodComments() }, [fetchMmodComments])
+   307→
+   308→  // ── Comment moderation actions ─────────────────────────────
+   309→  const moderateComment = async (id: string, status: string) => {
+   310→    await fetch(`/api/admin/comments/${id}`, {
+   311→      method: 'PATCH',
+   312→      headers: { 'Content-Type': 'application/json' },
+   313→      body: JSON.stringify({ status }),
+   314→    })
+   315→    fetchMmodComments()
+   316→    fetchAll() // refresh stats
+   317→  }
+   318→
+   319→  const deleteComment = async (id: string) => {
+   320→    if (!confirm('Permanently delete this comment? This cannot be undone.')) return
+   321→    await fetch(`/api/admin/comments/${id}`, { method: 'DELETE' })
+   322→    fetchMmodComments()
+   323→    fetchAll()
+   324→  }
+   325→
+   326→  const bulkAction = async (action: 'published' | 'removed') => {
+   327→    const selected = modComments.map(c => c.id)
+   328→    if (!selected.length) return
+   329→    if (!confirm(`${action === 'published' ? 'Restore' : 'Remove'} ${selected.length} comments?`)) return
+   330→    await Promise.all(selected.map(id =>
+   331→      fetch(`/api/admin/comments/${id}`, {
+   332→        method: 'PATCH',
+   333→        headers: { 'Content-Type': 'application/json' },
+   334→        body: JSON.stringify({ status: action }),
+   335→      })
+   336→    ))
+   337→    fetchMmodComments()
+   338→    fetchAll()
+   339→  }
+   340→
+   341→  // ── Charts data ────────────────────────────────────────────
+   342→  const viewsChartData = useMemo(() => {
+   343→    if (!articles.length) return []
+   344→    return articles.slice(0, 8).map(a => ({
+   345→      name: a.title.length > 20 ? a.title.slice(0, 20) + '...' : a.title,
+   346→      views: a.views,
+   347→    }))
+   348→  }, [articles])
+   349→
+   350→  const categoryData = useMemo(() => {
+   351→    const map: Record<string, number> = {}
+   352→    articles.forEach(a => { map[a.category.name] = (map[a.category.name] || 0) + 1 })
+   353→    return Object.entries(map).map(([name, count]) => ({ name, count }))
+   354→  }, [articles])
+   355→
+   356→  const commentPieData = useMemo(() => {
+   357→    if (!modStats) return []
+   358→    return [
+   359→      { name: 'Published', value: modStats.published },
+   360→      { name: 'Flagged', value: modStats.flagged },
+   361→      { name: 'Removed', value: modStats.removed },
+   362→    ].filter(d => d.value > 0)
+   363→  }, [modStats])
+   364→
+   365→  // ── Article CRUD ───────────────────────────────────────────
+   366→  const openArtEdit = (a: Article) => {
+   367→    setArtEdit(a)
+   368→    navigate('edit-article')
+   369→  }
+   370→  const toggleArtFeatured = async (a: Article) => {
+   371→    const res = await fetch(`/api/admin/articles/${a.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isFeatured: !a.isFeatured }) })
+   372→    if (res.ok) setArticles(p => p.map(x => x.id === a.id ? { ...x, isFeatured: !x.isFeatured } : x))
+   373→  }
+   374→  const toggleArtPinned = async (a: Article) => {
+   375→    const res = await fetch(`/api/admin/articles/${a.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isPinned: !a.isPinned }) })
+   376→    if (res.ok) setArticles(p => p.map(x => x.id === a.id ? { ...x, isPinned: !x.isPinned } : x))
+   377→  }
+   378→  const deleteArt = async (id: string) => {
+   379→    if (!confirm('Delete this article? This cannot be undone.')) return
+   380→    const res = await fetch(`/api/admin/articles/${id}`, { method: 'DELETE' })
+   381→    if (res.ok) { setArticles(p => p.filter(a => a.id !== id)); fetchAll() }
+   382→  }
+   383→
+   384→  // ── Event CRUD ─────────────────────────────────────────────
+   385→  const openEvtCreate = () => {
+   386→    setEvtEdit(null); setEvtTitle(''); setEvtDesc(''); setEvtDate(''); setEvtEndDate('')
+   387→    setEvtVenue(''); setEvtCity(''); setEvtCategory(''); setEvtImageUrl(''); setEvtTicketUrl('')
+   388→    setEvtFeatured(false); setEvtPast(false); setEvtDialog(true)
+   389→  }
+   390→  const openEvtEdit = (e: EventItem) => {
+   391→    setEvtEdit(e); setEvtTitle(e.title); setEvtDesc(e.description)
+   392→    setEvtDate(toDatetimeLocal(e.date)); setEvtEndDate(e.endDate ? toDatetimeLocal(e.endDate) : '')
+   393→    setEvtVenue(e.venue); setEvtCity(e.city); setEvtCategory(e.category)
+   394→    setEvtImageUrl(e.imageUrl); setEvtTicketUrl(e.ticketUrl)
+   395→    setEvtFeatured(e.isFeatured); setEvtPast(e.isPast); setEvtDialog(true)
+   396→  }
+   397→  const saveEvt = async () => {
+   398→    if (!evtTitle || !evtDate || !evtVenue || !evtCity) return
+   399→    setEvtSaving(true)
+   400→    try {
+   401→      const payload = { title: evtTitle, description: evtDesc, date: evtDate, endDate: evtEndDate || null, venue: evtVenue, city: evtCity, category: evtCategory, imageUrl: evtImageUrl, ticketUrl: evtTicketUrl, isFeatured: evtFeatured, isPast: evtPast }
+   402→      if (evtEdit) {
+   403→        const res = await fetch(`/api/admin/events/${evtEdit.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+   404→        if (res.ok) { const u = await res.json(); setEvents(p => p.map(e => e.id === u.id ? u : e)) }
+   405→      } else {
+   406→        const res = await fetch('/api/admin/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+   407→        if (res.ok) { const n = await res.json(); setEvents(p => [n, ...p]); fetchAll() }
+   408→      }
+   409→      setEvtDialog(false)
+   410→    } catch {}
+   411→    setEvtSaving(false)
+   412→  }
+   413→  const deleteEvt = async (id: string) => {
+   414→    if (!confirm('Delete this event? This cannot be undone.')) return
+   415→    const res = await fetch(`/api/admin/events/${id}`, { method: 'DELETE' })
+   416→    if (res.ok) { setEvents(p => p.filter(e => e.id !== id)); fetchAll() }
+   417→  }
+   418→
+   419→  // ── Maker CRUD ─────────────────────────────────────────────
+   420→  const openMkrCreate = () => {
+   421→    setMkrEdit(null); setMkrName(''); setMkrSlug(''); setMkrDiscipline(''); setMkrBio('')
+   422→    setMkrLocation(''); setMkrWebsite(''); setMkrInstagram(''); setMkrTwitter('')
+   423→    setMkrFeatured(false); setMkrDialog(true)
+   424→  }
+   425→  const openMkrEdit = (m: MakerItem) => {
+   426→    setMkrEdit(m); setMkrName(m.name); setMkrSlug(m.slug); setMkrDiscipline(m.discipline)
+   427→    setMkrBio(m.bio); setMkrLocation(m.location); setMkrWebsite(m.website)
+   428→    setMkrInstagram(m.instagram); setMkrTwitter(m.twitter); setMkrFeatured(m.isFeatured); setMkrDialog(true)
+   429→  }
+   430→  const saveMkr = async () => {
+   431→    if (!mkrName || !mkrSlug || !mkrDiscipline) return
+   432→    setMkrSaving(true)
+   433→    try {
+   434→      const payload = { name: mkrName, slug: mkrSlug, discipline: mkrDiscipline, bio: mkrBio, location: mkrLocation, website: mkrWebsite, instagram: mkrInstagram, twitter: mkrTwitter, isFeatured: mkrFeatured }
+   435→      if (mkrEdit) {
+   436→        const res = await fetch(`/api/admin/makers/${mkrEdit.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+   437→        if (res.ok) { const u = await res.json(); setMakers(p => p.map(m => m.id === u.id ? u : m)) }
+   438→      } else {
+   439→        const res = await fetch('/api/admin/makers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+   440→        if (res.ok) { const n = await res.json(); setMakers(p => [n, ...p]); fetchAll() }
+   441→      }
+   442→      setMkrDialog(false)
+   443→    } catch {}
+   444→    setMkrSaving(false)
+   445→  }
+   446→  const deleteMkr = async (id: string) => {
+   447→    if (!confirm('Delete this maker? This cannot be undone.')) return
+   448→    const res = await fetch(`/api/admin/makers/${id}`, { method: 'DELETE' })
+   449→    if (res.ok) { setMakers(p => p.filter(m => m.id !== id)); fetchAll() }
+   450→  }
+   451→
+   452→  // ── Author CRUD ────────────────────────────────────────────
+   453→  const openAutCreate = () => {
+   454→    setAutEdit(null); setAutName(''); setAutSlug(''); setAutBio(''); setAutAvatar(''); setAutRole('Writer'); setAutEmail(''); setAutCredFeedback(null); setAutDialog(true)
+   455→  }
+   456→  const openAutEdit = (a: AuthorItem) => {
+   457→    setAutEdit(a); setAutName(a.name); setAutSlug(a.slug); setAutBio(a.bio); setAutAvatar(a.avatar); setAutRole(a.role); setAutDialog(true)
+   458→  }
+   459→  const saveAut = async () => {
+   460→    if (!autName || !autSlug) return
+   461→    setAutSaving(true)
+   462→    try {
+   463→      const payload: Record<string, string> = { name: autName, slug: autSlug, bio: autBio, avatar: autAvatar, role: autRole }
+   464→      if (!autEdit && autEmail.trim()) payload.email = autEmail.trim()
+   465→      if (autEdit) {
+   466→        const res = await fetch(`/api/admin/authors/${autEdit.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+   467→        if (res.ok) { const u = await res.json(); setAuthors(p => p.map(a => a.id === u.id ? u : a)) }
+   468→      } else {
+   469→        const res = await fetch('/api/admin/authors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+   470→        if (res.ok) {
+   471→          const n = await res.json();
+   472→          setAuthors(p => [n, ...p]); fetchAll()
+   473→          if (n.credentialEmail) {
+   474→            setAutCredFeedback(`Login credentials sent to ${n.credentialEmail}`)
+   475→          }
+   476→          return // keep dialog open to show feedback
+   477→        }
+   478→      }
+   479→      setAutDialog(false)
+   480→    } catch {}
+   481→    setAutSaving(false)
+   482→  }
+   483→  const deleteAut = async (id: string) => {
+   484→    if (!confirm('Delete this author? This will also delete all their articles. This cannot be undone.')) return
+   485→    const res = await fetch(`/api/admin/authors/${id}`, { method: 'DELETE' })
+   486→    if (res.ok) { setAuthors(p => p.filter(a => a.id !== id)); fetchAll() }
+   487→  }
+   488→
+   489→  // ── Category CRUD ──────────────────────────────────────────
+   490→  const openCatCreate = () => {
+   491→    setCatEdit(null); setCatName(''); setCatSlug(''); setCatDescription(''); setCatColor('#8B2252'); setCatDialog(true)
+   492→  }
+   493→  const openCatEdit = (c: CategoryItem) => {
+   494→    setCatEdit(c); setCatName(c.name); setCatSlug(c.slug); setCatDescription(c.description); setCatColor(c.color); setCatDialog(true)
+   495→  }
+   496→  const saveCat = async () => {
+   497→    if (!catName || !catSlug) return
+   498→    setCatSaving(true)
+   499→    try {
+   500→      const payload = { name: catName, slug: catSlug, description: catDescription, color: catColor }
+   501→      if (catEdit) {
+   502→        const res = await fetch(`/api/admin/categories/${catEdit.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+   503→        if (res.ok) { const u = await res.json(); setCategories(p => p.map(c => c.id === u.id ? u : c)) }
+   504→      } else {
+   505→        const res = await fetch('/api/admin/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+   506→        if (res.ok) { const n = await res.json(); setCategories(p => [...p, n]); fetchAll() }
+   507→      }
+   508→      setCatDialog(false)
+   509→    } catch {}
+   510→    setCatSaving(false)
+   511→  }
+   512→  const deleteCat = async (id: string) => {
+   513→    if (!confirm('Delete this category? This will affect associated articles and events. This cannot be undone.')) return
+   514→    const res = await fetch(`/api/admin/categories/${id}`, { method: 'DELETE' })
+   515→    if (res.ok) { setCategories(p => p.filter(c => c.id !== id)); fetchAll() }
+   516→  }
+   517→
+   518→  // ── Subscriber delete ──────────────────────────────────────
+   519→  const deleteSub = async (id: string) => {
+   520→    if (!confirm('Remove this subscriber?')) return
+   521→    const res = await fetch(`/api/admin/subscribers/${id}`, { method: 'DELETE' })
+   522→    if (res.ok) { setSubscribers(p => p.filter(s => s.id !== id)); fetchAll() }
+   523→  }
+   524→
+   525→  // ── Media Library helpers ─────────────────────────────────
+   526→  const fetchMedia = useCallback(async () => {
+   527→    setMediaLoading(true)
+   528→    try {
+   529→      const params = new URLSearchParams({ page: String(mediaPage), limit: '40' })
+   530→      if (mediaFolder) params.set('folder', mediaFolder)
+   531→      const res = await fetch(`/api/cdn/list?${params}`)
+   532→      const json = await res.json()
+   533→      if (json.success) {
+   534→        let files = json.data.files || []
+   535→        if (mediaSearch) {
+   536→          const q = mediaSearch.toLowerCase()
+   537→          files = files.filter((f: CDNFile) => f.filename.toLowerCase().includes(q) || f.path.toLowerCase().includes(q))
+   538→        }
+   539→        setMediaFiles(files)
+   540→        setMediaTotal(json.data.total || 0)
+   541→        setMediaTotalPages(json.data.totalPages || 1)
+   542→      }
+   543→    } catch { /* silent */ }
+   544→    setMediaLoading(false)
+   545→  }, [mediaPage, mediaFolder, mediaSearch])
+   546→
+   547→  useEffect(() => { if (activeTab === 'media') fetchMedia() }, [activeTab, fetchMedia])
+   548→
+   549→  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+   550→    const file = e.target.files?.[0]
+   551→    if (!file) return
+   552→    const allowed = ['image/jpeg','image/png','image/gif','image/webp','image/svg+xml','image/avif']
+   553→    if (!allowed.includes(file.type)) return
+   554→    if (file.size > 10 * 1024 * 1024) return
+   555→    setMediaUploading(true)
+   556→    try {
+   557→      const form = new FormData()
+   558→      form.append('file', file)
+   559→      form.append('folder', mediaUploadFolder)
+   560→      const res = await fetch('/api/cdn/upload', { method: 'POST', body: form })
+   561→      const json = await res.json()
+   562→      if (json.success) fetchMedia()
+   563→    } catch { /* silent */ }
+   564→    setMediaUploading(false)
+   565→    e.target.value = ''
+   566→  }
+   567→
+   568→  const handleMediaDelete = async (file: CDNFile) => {
+   569→    if (!confirm(`Delete "${file.filename}"?`)) return
+   570→    setMediaDeleting(file.path)
+   571→    try {
+   572→      const res = await fetch('/api/cdn/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: file.path }) })
+   573→      const json = await res.json()
+   574→      if (json.success) fetchMedia()
+   575→    } catch { /* silent */ }
+   576→    setMediaDeleting(null)
+   577→  }
+   578→
+   579→  const copyToClipboard = async (url: string) => {
+   580→    try { await navigator.clipboard.writeText(url); setCopiedUrl(url); setTimeout(() => setCopiedUrl(null), 2000) } catch { /* silent */ }
+   581→  }
+   582→
+   583→  const formatSize = (bytes: number) => {
+   584→    if (bytes < 1024) return bytes + ' B'
+   585→    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB'
+   586→    return (bytes / 1048576).toFixed(1) + ' MB'
+   587→  }
+   588→
+   589→  // ── Navigate helper ────────────────────────────────────────
+   590→  const navigate = (tab: string) => {
+   591→    setActiveTab(tab)
+   592→    setSidebarOpen(false)
+   593→  }
+   594→
+   595→  // ── Render ─────────────────────────────────────────────────
+   596→  return (
+   597→    <div className="min-h-screen bg-background flex">
+   598→      {/* Mobile sidebar overlay */}
+   599→      {sidebarOpen && (
+   600→        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
+   601→      )}
+   602→
+   603→      {/* ─── Sidebar ─── */}
+   604→      <aside className={`
+   605→        fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:z-auto lg:shrink-0
+   606→        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+   607→      `}>
+   608→        <div className="flex flex-col h-full">
+   609→          {/* Sidebar header */}
+   610→          <div className="h-14 flex items-center justify-between px-4 border-b border-border shrink-0">
+   611→            <Link href="/" className="flex items-center gap-2">
+   612→              <BookOpen className="h-5 w-5 text-primary" />
+   613→              <span className="font-serif font-bold text-lg">Sanaa</span>
+   614→              <Badge variant="outline" className="font-mono text-[9px] px-1.5 py-0">CMS</Badge>
+   615→            </Link>
+   616→            <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 rounded hover:bg-secondary">
+   617→              <X className="h-4 w-4" />
+   618→            </button>
+   619→          </div>
+   620→
+   621→          {/* Nav items */}
+   622→          <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+   623→            {navItems.map(item => {
+   624→              const isActive = activeTab === item.id
+   625→              const showBadge = item.id === 'moderation' && stats && stats.flaggedComments > 0
+   626→              return (
+   627→                <button
+   628→                  key={item.id}
+   629→                  onClick={() => navigate(item.id)}
+   630→                  className={`
+   631→                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+   632→                    ${isActive
+   633→                      ? 'bg-primary/10 text-primary border border-primary/20'
+   634→                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+   635→                    }
+   636→                  `}
+   637→                >
+   638→                  <item.icon className="h-4 w-4 shrink-0" />
+   639→                  <span className="flex-1 text-left">{item.label}</span>
+   640→                  {showBadge && (
+   641→                    <span className="px-2 py-0.5 text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
+   642→                      {stats.flaggedComments}
+   643→                    </span>
+   644→                  )}
+   645→                </button>
+   646→              )
+   647→            })}
+   648→          </nav>
+   649→
+   650→          {/* Sidebar footer */}
+   651→          <div className="border-t border-border p-3 space-y-1 shrink-0">
+   652→            <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+   653→              <Pencil className="h-4 w-4" />
+   654→              <span>Editor Dashboard</span>
+   655→              <ChevronRight className="h-3 w-3 ml-auto" />
+   656→            </Link>
+   657→            <button
+   658→              onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login' }}
+   659→              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+   660→            >
+   661→              <ArrowLeft className="h-4 w-4" />
+   662→              <span>Logout</span>
+   663→            </button>
+   664→          </div>
+   665→        </div>
+   666→      </aside>
+   667→
+   668→      {/* ─── Main Content ─── */}
+   669→      <div className="flex-1 min-w-0">
+   670→        {/* Top bar */}
+   671→        <header className="sticky top-0 z-30 h-14 bg-background/95 backdrop-blur border-b border-border flex items-center justify-between px-4 md:px-6">
+   672→          <div className="flex items-center gap-3">
+   673→            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-1.5 rounded-md hover:bg-secondary">
+   674→              <Menu className="h-5 w-5" />
+   675→            </button>
+   676→            <h1 className="font-serif font-bold text-lg">
+   677→              {navItems.find(n => n.id === activeTab)?.label || 'Dashboard'}
+   678→            </h1>
+   679→          </div>
+   680→          <div className="flex items-center gap-2">
+   681→            <Link href="/" className="text-xs text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
+   682→              View Site <ExternalLink className="h-3 w-3 inline ml-1" />
+   683→            </Link>
+   684→          </div>
+   685→        </header>
+   686→
+   687→        <main className="p-4 md:p-6 lg:p-8 max-w-7xl">
+   688→          {/* ═══════════════════ OVERVIEW ═══════════════════ */}
+   689→          {activeTab === 'overview' && loading && !fetchError && (
+   690→            <div className="flex items-center justify-center py-24">
+   691→              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mr-3" />
+   692→              <span className="text-sm text-muted-foreground">Loading dashboard...</span>
+   693→            </div>
+   694→          )}
+   695→          {activeTab === 'overview' && fetchError && !stats && (
+   696→            <div className="flex flex-col items-center justify-center py-24 text-center">
+   697→              <AlertTriangle className="h-10 w-10 text-amber-500/50 mb-3" />
+   698→              <p className="text-sm font-medium">Failed to load dashboard</p>
+   699→              <p className="text-xs text-muted-foreground mt-1 max-w-sm">{fetchError}</p>
+   700→              <p className="text-[11px] text-muted-foreground/70 mt-2 max-w-xs">Ensure <code className="font-mono bg-muted px-1 py-0.5 rounded">DATABASE_URL</code> is set in your Vercel environment variables.</p>
+   701→              <Button variant="outline" size="sm" className="mt-4 gap-1.5" onClick={() => fetchAll()}>
+   702→                <RotateCcw className="h-3.5 w-3.5" /> Retry
+   703→              </Button>
+   704→            </div>
+   705→          )}
+   706→          {activeTab === 'overview' && stats && (
+   707→            <div className="animate-fadeIn space-y-6">
+   708→              {/* Flagged alert banner */}
+   709→              {stats.flaggedComments > 0 && (
+   710→                <button
+   711→                  onClick={() => navigate('moderation')}
+   712→                  className="w-full flex items-center gap-4 p-4 rounded-xl border border-destructive/30 bg-destructive/5 hover:bg-destructive/10 transition-colors text-left group"
+   713→                >
+   714→                  <div className="h-10 w-10 rounded-lg bg-destructive/20 flex items-center justify-center shrink-0">
+   715→                    <AlertTriangle className="h-5 w-5 text-destructive" />
+   716→                  </div>
+   717→                  <div className="flex-1 min-w-0">
+   718→                    <p className="font-semibold text-sm">
+   719→                      {stats.flaggedComments} comment{stats.flaggedComments !== 1 ? 's' : ''} flagged for review
+   720→                    </p>
+   721→                    <p className="text-xs text-muted-foreground mt-0.5">
+   722→                      {stats.recentFlagged?.[0]?.content.slice(0, 80)}...
+   723→                    </p>
+   724→                  </div>
+   725→                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-destructive transition-colors" />
+   726→                </button>
+   727→              )}
+   728→
+   729→              {/* Stat cards */}
+   730→              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   731→                {[
+   732→                  { label: 'Articles', value: stats.articles, icon: FileText, color: 'text-primary', bg: 'bg-primary/10' },
+   733→                  { label: 'Total Views', value: stats.totalViews.toLocaleString(), icon: Eye, color: 'text-forest', bg: 'bg-forest/10' },
+   734→                  { label: 'Comments', value: stats.comments, icon: MessageSquare, color: 'text-primary', bg: 'bg-primary/10', sub: stats.flaggedComments > 0 ? `${stats.flaggedComments} flagged` : undefined, subColor: 'text-destructive' },
+   735→                  { label: 'Subscribers', value: stats.subscribers, icon: Mail, color: 'text-terracotta', bg: 'bg-terracotta/10' },
+   736→                  { label: 'Authors', value: stats.authors, icon: Users, color: 'text-gold', bg: 'bg-gold/10' },
+   737→                  { label: 'Categories', value: stats.categories, icon: Tag, color: 'text-terracotta', bg: 'bg-terracotta/10' },
+   738→                  { label: 'Events', value: stats.events, icon: Calendar, color: 'text-forest', bg: 'bg-forest/10' },
+   739→                  { label: 'Makers', value: stats.makers, icon: BookmarkCheck, color: 'text-gold', bg: 'bg-gold/10' },
+   740→                ].map(stat => (
+   741→                  <div key={stat.label} className="p-5 rounded-xl border border-border bg-card hover:shadow-md transition-shadow">
+   742→                    <div className="flex items-start justify-between">
+   743→                      <div className={`h-10 w-10 rounded-lg ${stat.bg} flex items-center justify-center`}>
+   744→                        <stat.icon className={`h-5 w-5 ${stat.color}`} />
+   745→                      </div>
+   746→                      {stat.sub && <span className={`text-[10px] font-mono font-bold ${stat.subColor}`}>{stat.sub}</span>}
+   747→                    </div>
+   748→                    <p className="font-serif text-2xl md:text-3xl font-bold mt-3">{stat.value}</p>
+   749→                    <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mt-1">{stat.label}</p>
+   750→                  </div>
+   751→                ))}
+   752→              </div>
+   753→
+   754→              {/* Charts row */}
+   755→              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+   756→                <div className="lg:col-span-2 p-6 rounded-xl border border-border bg-card">
+   757→                  <h3 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+   758→                    <TrendingUp className="h-4 w-4 text-primary" /> Top Article Views
+   759→                  </h3>
+   760→                  {viewsChartData.length > 0 ? (
+   761→                    <ResponsiveContainer width="100%" height={240}>
+   762→                      <AreaChart data={viewsChartData}>
+   763→                        <defs>
+   764→                          <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+   765→                            <stop offset="5%" stopColor="oklch(0.37 0.14 350)" stopOpacity={0.3} />
+   766→                            <stop offset="95%" stopColor="oklch(0.37 0.14 350)" stopOpacity={0} />
+   767→                          </linearGradient>
+   768→                        </defs>
+   769→                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+   770→                        <YAxis tick={{ fontSize: 10 }} />
+   771→                        <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card)' }} />
+   772→                        <Area type="monotone" dataKey="views" stroke="oklch(0.37 0.14 350)" fillOpacity={1} fill="url(#colorViews)" />
+   773→                      </AreaChart>
+   774→                    </ResponsiveContainer>
+   775→                  ) : (
+   776→                    <p className="text-sm text-muted-foreground text-center py-12">No data yet</p>
+   777→                  )}
+   778→                </div>
+   779→                <div className="p-6 rounded-xl border border-border bg-card">
+   780→                  <h3 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+   781→                    <MessageSquare className="h-4 w-4 text-primary" /> Comments
+   782→                  </h3>
+   783→                  {commentPieData.length > 0 ? (
+   784→                    <div className="space-y-4">
+   785→                      <ResponsiveContainer width="100%" height={160}>
+   786→                        <PieChart>
+   787→                          <Pie data={commentPieData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="value">
+   788→                            {commentPieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
+   789→                          </Pie>
+   790→                          <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card)' }} />
+   791→                        </PieChart>
+   792→                      </ResponsiveContainer>
+   793→                      <div className="flex justify-center gap-4 text-xs">
+   794→                        {commentPieData.map((d, i) => (
+   795→                          <div key={d.name} className="flex items-center gap-1.5">
+   796→                            <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[i] }} />
+   797→                            <span className="text-muted-foreground">{d.name}</span>
+   798→                            <span className="font-bold">{d.value}</span>
+   799→                          </div>
+   800→                        ))}
+   801→                      </div>
+   802→                    </div>
+   803→                  ) : (
+   804→                    <p className="text-sm text-muted-foreground text-center py-12">No comments yet</p>
+   805→                  )}
+   806→                </div>
+   807→              </div>
+   808→
+   809→              {/* Category chart + Quick actions */}
+   810→              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+   811→                <div className="lg:col-span-2 p-6 rounded-xl border border-border bg-card">
+   812→                  <h3 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+   813→                    <Palette className="h-4 w-4 text-gold" /> Category Distribution
+   814→                  </h3>
+   815→                  {categoryData.length > 0 ? (
+   816→                    <ResponsiveContainer width="100%" height={220}>
+   817→                      <BarChart data={categoryData}>
+   818→                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+   819→                        <YAxis tick={{ fontSize: 10 }} />
+   820→                        <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card)' }} />
+   821→                        <Bar dataKey="count" fill="oklch(0.72 0.14 55)" radius={[4, 4, 0, 0]} />
+   822→                      </BarChart>
+   823→                    </ResponsiveContainer>
+   824→                  ) : (
+   825→                    <p className="text-sm text-muted-foreground text-center py-12">No data yet</p>
+   826→                  )}
+   827→                </div>
+   828→                <div className="p-6 rounded-xl border border-border bg-card">
+   829→                  <h3 className="font-serif font-bold text-lg mb-4">Quick Actions</h3>
+   830→                  <div className="space-y-2">
+   831→                    <Button onClick={() => navigate('new-article')} variant="outline" className="w-full justify-start gap-2"><Plus className="h-4 w-4" /> New Article</Button>
+   832→                    <Button onClick={() => { navigate('events'); setTimeout(openEvtCreate, 50) }} variant="outline" className="w-full justify-start gap-2"><Plus className="h-4 w-4" /> New Event</Button>
+   833→                    <Button onClick={() => { navigate('makers'); setTimeout(openMkrCreate, 50) }} variant="outline" className="w-full justify-start gap-2"><Plus className="h-4 w-4" /> New Maker</Button>
+   834→                    <Button onClick={() => { navigate('authors'); setTimeout(openAutCreate, 50) }} variant="outline" className="w-full justify-start gap-2"><Plus className="h-4 w-4" /> New Author</Button>
+   835→                    {stats.flaggedComments > 0 && (
+   836→                      <Button onClick={() => navigate('moderation')} className="w-full justify-start gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+   837→                        <Shield className="h-4 w-4" /> Review {stats.flaggedComments} Flagged
+   838→                      </Button>
+   839→                    )}
+   840→                  </div>
+   841→                </div>
+   842→              </div>
+   843→            </div>
+   844→          )}
+   845→
+   846→          {/* ═══════════════════ MODERATION ═══════════════════ */}
+   847→          {activeTab === 'moderation' && (
+   848→            <div className="animate-fadeIn space-y-6">
+   849→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   850→                <div>
+   851→                  <h2 className="font-serif text-2xl font-bold">Comment Moderation</h2>
+   852→                  <p className="text-sm text-muted-foreground mt-1">Manage reported comments and moderation queue</p>
+   853→                </div>
+   854→                {modComments.length > 0 && (
+   855→                  <div className="flex items-center gap-2">
+   856→                    <Button size="sm" variant="outline" onClick={() => bulkAction('published')} className="gap-1.5 text-xs">
+   857→                      <CheckCircle className="h-3.5 w-3.5" /> Restore All
+   858→                    </Button>
+   859→                    <Button size="sm" variant="outline" onClick={() => bulkAction('removed')} className="gap-1.5 text-xs text-destructive hover:text-destructive">
+   860→                      <XCircle className="h-3.5 w-3.5" /> Remove All
+   861→                    </Button>
+   862→                  </div>
+   863→                )}
+   864→              </div>
+   865→
+   866→              {/* Stats cards */}
+   867→              {modStats && (
+   868→                <div className="grid grid-cols-3 gap-3">
+   869→                  {[
+   870→                    { label: 'Published', value: modStats.published, color: 'text-green-600', bg: 'bg-green-500/10', border: 'border-green-500/20' },
+   871→                    { label: 'Flagged', value: modStats.flagged, color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/20' },
+   872→                    { label: 'Removed', value: modStats.removed, color: 'text-muted-foreground', bg: 'bg-muted', border: 'border-border' },
+   873→                  ].map(s => (
+   874→                    <button
+   875→                      key={s.label}
+   876→                      onClick={() => { setModStatus(s.label.toLowerCase()); setMmodPage(1) }}
+   877→                      className={`p-4 rounded-xl border text-left transition-all hover:shadow-md ${
+   878→                        modStatus === s.label.toLowerCase() ? `${s.border} ${s.bg} ring-1 ring-current/20` : 'border-border bg-card'
+   879→                      }`}
+   880→                    >
+   881→                      <p className={`font-serif text-2xl font-bold ${s.color}`}>{s.value}</p>
+   882→                      <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mt-1">{s.label}</p>
+   883→                    </button>
+   884→                  ))}
+   885→                </div>
+   886→              )}
+   887→
+   888→              {/* Search & Filter bar */}
+   889→              <div className="flex flex-col sm:flex-row gap-3">
+   890→                <div className="relative flex-1">
+   891→                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   892→                  <Input
+   893→                    placeholder="Search by author, content, or article title..."
+   894→                    value={modSearch}
+   895→                    onChange={e => { setMmodSearch(e.target.value); setMmodPage(1) }}
+   896→                    className="pl-10 font-mono text-sm"
+   897→                  />
+   898→                </div>
+   899→                <Select value={modStatus} onValueChange={v => { setModStatus(v); setMmodPage(1) }}>
+   900→                  <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
+   901→                  <SelectContent>
+   902→                    <SelectItem value="flagged">Flagged</SelectItem>
+   903→                    <SelectItem value="published">Published</SelectItem>
+   904→                    <SelectItem value="removed">Removed</SelectItem>
+   905→                    <SelectItem value="all">All Comments</SelectItem>
+   906→                  </SelectContent>
+   907→                </Select>
+   908→              </div>
+   909→
+   910→              {/* Comments list */}
+   911→              {modLoading ? (
+   912→                <div className="flex items-center justify-center py-16">
+   913→                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+   914→                  <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
+   915→                </div>
+   916→              ) : modComments.length === 0 ? (
+   917→                <div className="flex flex-col items-center justify-center py-16 text-center">
+   918→                  {modStatus === 'flagged' ? (
+   919→                    <>
+   920→                      <CheckCircle className="h-10 w-10 text-green-500/40 mb-3" />
+   921→                      <p className="text-sm text-muted-foreground">No flagged comments. All clear!</p>
+   922→                    </>
+   923→                  ) : (
+   924→                    <>
+   925→                      <MessageSquare className="h-10 w-10 text-muted-foreground/40 mb-3" />
+   926→                      <p className="text-sm text-muted-foreground">No comments found.</p>
+   927→                    </>
+   928→                  )}
+   929→                </div>
+   930→              ) : (
+   931→                <>
+   932→                  <div className="space-y-3">
+   933→                    {modComments.map(c => {
+   934→                      const isFlagged = c.status === 'flagged'
+   935→                      const isRemoved = c.status === 'removed'
+   936→                      return (
+   937→                        <div
+   938→                          key={c.id}
+   939→                          className={`
+   940→                            p-4 rounded-xl border transition-all hover:shadow-sm
+   941→                            ${isFlagged ? 'border-destructive/30 bg-destructive/5' : isRemoved ? 'border-border bg-muted/50 opacity-70' : 'border-border bg-card'}
+   942→                          `}
+   943→                        >
+   944→                          <div className="flex items-start gap-4">
+   945→                            {/* Avatar */}
+   946→                            <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold ${
+   947→                              isFlagged ? 'bg-destructive/20 text-destructive' : 'bg-primary/10 text-primary'
+   948→                            }`}>
+   949→                              {c.author.charAt(0).toUpperCase()}
+   950→                            </div>
+   951→
+   952→                            <div className="flex-1 min-w-0">
+   953→                              <div className="flex items-center flex-wrap gap-2 mb-1">
+   954→                                <span className="font-semibold text-sm">{c.author}</span>
+   955→                                {isFlagged && (
+   956→                                  <Badge variant="destructive" className="text-[10px] gap-1">
+   957→                                    <Flag className="h-2.5 w-2.5" /> {c.reportCount} report{c.reportCount !== 1 ? 's' : ''}
+   958→                                  </Badge>
+   959→                                )}
+   960→                                {isRemoved && (
+   961→                                  <Badge variant="secondary" className="text-[10px]">Removed</Badge>
+   962→                                )}
+   963→                                {c.status === 'published' && (
+   964→                                  <Badge variant="outline" className="text-[10px] text-green-600 border-green-200">Published</Badge>
+   965→                                )}
+   966→                                <span className="text-[10px] font-mono text-muted-foreground ml-auto">{timeAgo(c.createdAt)}</span>
+   967→                              </div>
+   968→                              <p className="text-sm text-foreground/80 mb-2 leading-relaxed">{c.content}</p>
+   969→                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+   970→                                <span className="font-mono">on:</span>
+   971→                                <a href={`/articles/${c.article.slug}`} target="_blank" className="text-primary hover:underline font-medium">
+   972→                                  {c.article.title}
+   973→                                </a>
+   974→                                <span className="text-border">|</span>
+   975→                                <span className="font-mono">{fmtDateTime(c.createdAt)}</span>
+   976→                              </div>
+   977→                            </div>
+   978→
+   979→                            {/* Actions */}
+   980→                            <div className="flex items-center gap-1 shrink-0">
+   981→                              {isFlagged && (
+   982→                                <button
+   983→                                  onClick={() => moderateComment(c.id, 'published')}
+   984→                                  className="p-2 rounded-lg hover:bg-green-500/10 text-muted-foreground hover:text-green-600 transition-colors"
+   985→                                  title="Restore (publish)"
+   986→                                >
+   987→                                  <CheckCircle className="h-4 w-4" />
+   988→                                </button>
+   989→                              )}
+   990→                              {c.status !== 'removed' && (
+   991→                                <button
+   992→                                  onClick={() => moderateComment(c.id, 'removed')}
+   993→                                  className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+   994→                                  title="Remove"
+   995→                                >
+   996→                                  <XCircle className="h-4 w-4" />
+   997→                                </button>
+   998→                              )}
+   999→                              {c.status !== 'flagged' && (
+  1000→                                <button
+  1001→                                  onClick={() => moderateComment(c.id, 'flagged')}
+  1002→                                  className="p-2 rounded-lg hover:bg-yellow-500/10 text-muted-foreground hover:text-yellow-600 transition-colors"
+  1003→                                  title="Flag"
+  1004→                                >
+  1005→                                  <Flag className="h-4 w-4" />
+  1006→                                </button>
+  1007→                              )}
+  1008→                              <button
+  1009→                                onClick={() => deleteComment(c.id)}
+  1010→                                className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+  1011→                                title="Delete permanently"
+  1012→                              >
+  1013→                                <Trash2 className="h-4 w-4" />
+  1014→                              </button>
+  1015→                            </div>
+  1016→                          </div>
+  1017→                        </div>
+  1018→                      )
+  1019→                    })}
+  1020→                  </div>
+  1021→
+  1022→                  {/* Pagination */}
+  1023→                  {modTotalPages > 1 && (
+  1024→                    <div className="flex items-center justify-center gap-2 pt-4">
+  1025→                      <Button
+  1026→                        size="sm" variant="outline"
+  1027→                        disabled={modPage <= 1}
+  1028→                        onClick={() => setMmodPage(p => p - 1)}
+  1029→                      >Previous</Button>
+  1030→                      <span className="text-sm text-muted-foreground font-mono">
+  1031→                        Page {modPage} of {modTotalPages}
+  1032→                      </span>
+  1033→                      <Button
+  1034→                        size="sm" variant="outline"
+  1035→                        disabled={modPage >= modTotalPages}
+  1036→                        onClick={() => setMmodPage(p => p + 1)}
+  1037→                      >Next</Button>
+  1038→                    </div>
+  1039→                  )}
+  1040→                </>
+  1041→              )}
+  1042→            </div>
+  1043→          )}
+  1044→
+  1045→          {/* ═══════════════════ NEW ARTICLE (page) ═══════════════════ */}
+  1046→          {activeTab === 'new-article' && (
+  1047→            <div className="animate-fadeIn">
+  1048→              {formDataLoading && categories.length === 0 && (
+  1049→                <div className="flex items-center gap-2 py-8 justify-center text-sm text-muted-foreground">
+  1050→                  <Loader2 className="h-4 w-4 animate-spin" /> Loading categories & authors…
+  1051→                </div>
+  1052→              )}
+  1053→              {formDataError && categories.length === 0 && authors.length === 0 && !formDataLoading && (
+  1054→                <div className="flex flex-col items-center gap-3 py-12 text-center">
+  1055→                  <AlertTriangle className="h-8 w-8 text-amber-500/50" />
+  1056→                  <p className="text-sm font-medium">{formDataError}</p>
+  1057→                  <p className="text-xs text-muted-foreground max-w-sm">Make sure your database is configured. Categories and authors are required to create an article.</p>
+  1058→                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => fetchFormDependencies()}>
+  1059→                    <RotateCcw className="h-3.5 w-3.5" /> Retry
+  1060→                  </Button>
+  1061→                </div>
+  1062→              )}
+  1063→              {(categories.length > 0 || authors.length > 0) && (
+  1064→                <>
+  1065→                  {formDataError && (
+  1066→                    <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/20 px-4 py-2.5 text-sm text-amber-800 dark:text-amber-200">
+  1067→                      <AlertTriangle className="h-4 w-4 shrink-0" />
+  1068→                      {formDataError} — some dropdowns may be empty
+  1069→                    </div>
+  1070→                  )}
+  1071→                  <ArticleForm
+  1072→                    mode='create'
+  1073→                    variant='page'
+  1074→                    categories={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+  1075→                    authors={authors.map(a => ({ id: a.id, name: a.name, role: a.role }))}
+  1076→                    onSubmit={async (data: ArticleFormData) => {
+  1077→                      const res = await fetch('/api/admin/articles', {
+  1078→                        method: 'POST',
+  1079→                        headers: { 'Content-Type': 'application/json' },
+  1080→                        body: JSON.stringify({ ...data, readTime: parseInt(data.readTime) || 5 }),
+  1081→                      })
+  1082→                      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to create article') }
+  1083→                      await fetchAll()
+  1084→                      navigate('articles')
+  1085→                    }}
+  1086→                    onCancel={() => navigate('articles')}
+  1087→                  />
+  1088→                </>
+  1089→              )}
+  1090→            </div>
+  1091→          )}
+  1092→
+  1093→          {/* ═══════════════════ EDIT ARTICLE (full page) ═══════════════════ */}
+  1094→          {activeTab === 'edit-article' && artEdit && (
+  1095→            <div className="animate-fadeIn">
+  1096→              {formDataLoading && categories.length === 0 && (
+  1097→                <div className="flex items-center gap-2 py-8 justify-center text-sm text-muted-foreground">
+  1098→                  <Loader2 className="h-4 w-4 animate-spin" /> Loading categories & authors…
+  1099→                </div>
+  1100→              )}
+  1101→              {formDataError && categories.length === 0 && authors.length === 0 && !formDataLoading && (
+  1102→                <div className="flex flex-col items-center gap-3 py-12 text-center">
+  1103→                  <AlertTriangle className="h-8 w-8 text-amber-500/50" />
+  1104→                  <p className="text-sm font-medium">{formDataError}</p>
+  1105→                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => fetchFormDependencies()}>
+  1106→                    <RotateCcw className="h-3.5 w-3.5" /> Retry
+  1107→                  </Button>
+  1108→                </div>
+  1109→              )}
+  1110→              {(categories.length > 0 || authors.length > 0) && (
+  1111→                <>
+  1112→                  {formDataError && (
+  1113→                    <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/20 px-4 py-2.5 text-sm text-amber-800 dark:text-amber-200">
+  1114→                      <AlertTriangle className="h-4 w-4 shrink-0" />
+  1115→                      {formDataError} — some dropdowns may be empty
+  1116→                    </div>
+  1117→                  )}
+  1118→                  <ArticleForm
+  1119→                    key={artEdit.id}
+  1120→                    mode='edit'
+  1121→                    variant='page'
+  1122→                    categories={categories.map(c => ({ id: c.id, name: c.name, color: c.color }))}
+  1123→                    authors={authors.map(a => ({ id: a.id, name: a.name, role: a.role }))}
+  1124→                    initialData={{
+  1125→                      title: artEdit.title, slug: artEdit.slug, excerpt: artEdit.excerpt,
+  1126→                      content: artEdit.content || '',
+  1127→                      coverImage: artEdit.coverImage || '',
+  1128→                      categoryId: categories.find(c => c.name === artEdit.category?.name)?.id || '',
+  1129→                      authorId: artEdit.author?.id || '',
+  1130→                      tags: artEdit.tags || '',
+  1131→                      readTime: String(artEdit.readTime || 5),
+  1132→                      isFeatured: artEdit.isFeatured, isPinned: artEdit.isPinned,
+  1133→                    }}
+  1134→                    onSubmit={async (data: ArticleFormData) => {
+  1135→                      const res = await fetch(`/api/admin/articles/${artEdit.id}`, {
+  1136→                        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+  1137→                        body: JSON.stringify({ ...data, readTime: parseInt(data.readTime) || 5 }),
+  1138→                      })
+  1139→                      if (res.ok) { const updated = await res.json(); setArticles(p => p.map(a => a.id === artEdit.id ? { ...a, ...updated } : a)); fetchAll() }
+  1140→                      navigate('articles')
+  1141→                    }}
+  1142→                    onCancel={() => navigate('articles')}
+  1143→                  />
+  1144→                </>
+  1145→              )}
+  1146→            </div>
+  1147→          )}
+  1148→
+  1149→          {/* ═══════════════════ ARTICLES ═══════════════════ */}
+  1150→          {activeTab === 'articles' && (
+  1151→            <div className="animate-fadeIn">
+  1152→              <div className="flex items-center justify-between mb-6">
+  1153→                <div>
+  1154→                  <h2 className="font-serif text-2xl font-bold">Articles ({articles.length})</h2>
+  1155→                  <p className="text-sm text-muted-foreground mt-1">Manage your published content</p>
+  1156→                </div>
+  1157→                <Button onClick={() => navigate('new-article')} className="gap-2"><Plus className="h-4 w-4" /> New Article</Button>
+  1158→              </div>
+  1159→              <div className="border border-border rounded-xl overflow-hidden">
+  1160→                <div className="overflow-x-auto">
+  1161→                  <table className="w-full">
+  1162→                    <thead>
+  1163→                      <tr className="bg-secondary/50 border-b border-border">
+  1164→                        <th className={thCls}>Title</th>
+  1165→                        <th className={`${thCls} hidden md:table-cell`}>Category</th>
+  1166→                        <th className={`${thCls} hidden lg:table-cell`}>Author</th>
+  1167→                        <th className={`${thCls} text-right`}>Views</th>
+  1168→                        <th className={`${thCls} text-center`}>Status</th>
+  1169→                        <th className={`${thCls} text-right`}>Actions</th>
+  1170→                      </tr>
+  1171→                    </thead>
+  1172→                    <tbody>
+  1173→                      {articles.map(article => (
+  1174→                        <tr key={article.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+  1175→                          <td className={tdCls}>
+  1176→                            <p className="font-serif font-semibold text-sm line-clamp-1">{article.title}</p>
+  1177→                            <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{fmtDate(article.publishedAt)}</p>
+  1178→                          </td>
+  1179→                          <td className={`${tdCls} hidden md:table-cell`}>
+  1180→                            <Badge className="text-[10px]" style={{ backgroundColor: article.category.color + '20', color: article.category.color }}>{article.category.name}</Badge>
+  1181→                          </td>
+  1182→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{article.author.name}</td>
+  1183→                          <td className={`${tdCls} text-right`}><span className="font-mono text-sm">{article.views}</span></td>
+  1184→                          <td className={`${tdCls}`}>
+  1185→                            <div className="flex items-center justify-center gap-1">
+  1186→                              <button onClick={() => toggleArtFeatured(article)} className={`p-1 rounded ${article.isFeatured ? 'text-gold' : 'text-muted-foreground/30 hover:text-gold/50'}`} title="Featured">
+  1187→                                <Star className="h-3.5 w-3.5" fill={article.isFeatured ? 'currentColor' : 'none'} />
+  1188→                              </button>
+  1189→                              <button onClick={() => toggleArtPinned(article)} className={`p-1 rounded ${article.isPinned ? 'text-primary' : 'text-muted-foreground/30 hover:text-primary/50'}`} title="Pinned">
+  1190→                                <Pin className="h-3.5 w-3.5" />
+  1191→                              </button>
+  1192→                            </div>
+  1193→                          </td>
+  1194→                          <td className={`${tdCls} text-right`}>
+  1195→                            <div className="flex items-center justify-end gap-1">
+  1196→                              <button onClick={() => openArtEdit(article)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+  1197→                              <a href={`/articles/${article.slug}`} target="_blank" className={actionBtnCls} title="View"><ExternalLink className="h-3.5 w-3.5" /></a>
+  1198→                              <button onClick={() => deleteArt(article.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+  1199→                            </div>
+  1200→                          </td>
+  1201→                        </tr>
+  1202→                      ))}
+  1203→                    </tbody>
+  1204→                  </table>
+  1205→                </div>
+  1206→              </div>
+  1207→            </div>
+  1208→          )}
+  1209→
+  1210→          {/* ═══════════════════ EVENTS ═══════════════════ */}
+  1211→          {activeTab === 'events' && (
+  1212→            <div className="animate-fadeIn">
+  1213→              <div className="flex items-center justify-between mb-6">
+  1214→                <div>
+  1215→                  <h2 className="font-serif text-2xl font-bold">Events ({events.length})</h2>
+  1216→                  <p className="text-sm text-muted-foreground mt-1">Manage upcoming and past events</p>
+  1217→                </div>
+  1218→                <Button onClick={openEvtCreate} className="gap-2"><Plus className="h-4 w-4" /> New Event</Button>
+  1219→              </div>
+  1220→              <div className="border border-border rounded-xl overflow-hidden">
+  1221→                <div className="overflow-x-auto">
+  1222→                  <table className="w-full">
+  1223→                    <thead>
+  1224→                      <tr className="bg-secondary/50 border-b border-border">
+  1225→                        <th className={thCls}>Title</th>
+  1226→                        <th className={`${thCls} hidden md:table-cell`}>Date</th>
+  1227→                        <th className={`${thCls} hidden lg:table-cell`}>Venue</th>
+  1228→                        <th className={`${thCls} hidden lg:table-cell`}>City</th>
+  1229→                        <th className={`${thCls} text-center`}>Status</th>
+  1230→                        <th className={`${thCls} text-right`}>Actions</th>
+  1231→                      </tr>
+  1232→                    </thead>
+  1233→                    <tbody>
+  1234→                      {events.map(evt => (
+  1235→                        <tr key={evt.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+  1236→                          <td className={tdCls}>
+  1237→                            <p className="font-serif font-semibold text-sm line-clamp-1">{evt.title}</p>
+  1238→                            <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{evt.category}</p>
+  1239→                          </td>
+  1240→                          <td className={`${tdCls} text-sm text-muted-foreground hidden md:table-cell`}>{fmtDate(evt.date)}</td>
+  1241→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{evt.venue}</td>
+  1242→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{evt.city}</td>
+  1243→                          <td className={`${tdCls}`}>
+  1244→                            <div className="flex items-center justify-center gap-1">
+  1245→                              <Badge variant={evt.isPast ? 'secondary' : 'outline'} className="text-[10px]">{evt.isPast ? 'Past' : 'Upcoming'}</Badge>
+  1246→                              {evt.isFeatured && <Star className="h-3 w-3 text-gold" fill="currentColor" />}
+  1247→                            </div>
+  1248→                          </td>
+  1249→                          <td className={`${tdCls} text-right`}>
+  1250→                            <div className="flex items-center justify-end gap-1">
+  1251→                              <button onClick={() => openEvtEdit(evt)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+  1252→                              <button onClick={() => deleteEvt(evt.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+  1253→                            </div>
+  1254→                          </td>
+  1255→                        </tr>
+  1256→                      ))}
+  1257→                    </tbody>
+  1258→                  </table>
+  1259→                </div>
+  1260→              </div>
+  1261→            </div>
+  1262→          )}
+  1263→
+  1264→          {/* ═══════════════════ MAKERS ═══════════════════ */}
+  1265→          {activeTab === 'makers' && (
+  1266→            <div className="animate-fadeIn">
+  1267→              <div className="flex items-center justify-between mb-6">
+  1268→                <div>
+  1269→                  <h2 className="font-serif text-2xl font-bold">Makers ({makers.length})</h2>
+  1270→                  <p className="text-sm text-muted-foreground mt-1">Cultural artisans and creatives</p>
+  1271→                </div>
+  1272→                <Button onClick={openMkrCreate} className="gap-2"><Plus className="h-4 w-4" /> New Maker</Button>
+  1273→              </div>
+  1274→              <div className="border border-border rounded-xl overflow-hidden">
+  1275→                <div className="overflow-x-auto">
+  1276→                  <table className="w-full">
+  1277→                    <thead>
+  1278→                      <tr className="bg-secondary/50 border-b border-border">
+  1279→                        <th className={thCls}>Name</th>
+  1280→                        <th className={`${thCls} hidden md:table-cell`}>Discipline</th>
+  1281→                        <th className={`${thCls} hidden lg:table-cell`}>Location</th>
+  1282→                        <th className={`${thCls} text-center`}>Featured</th>
+  1283→                        <th className={`${thCls} text-right`}>Actions</th>
+  1284→                      </tr>
+  1285→                    </thead>
+  1286→                    <tbody>
+  1287→                      {makers.map(mkr => (
+  1288→                        <tr key={mkr.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+  1289→                          <td className={tdCls}>
+  1290→                            <div className="flex items-center gap-2">
+  1291→                              {mkr.avatar ? (
+  1292→                                <img src={mkr.avatar} alt={mkr.name} className="h-7 w-7 rounded-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+  1293→                              ) : (
+  1294→                                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">{mkr.name.charAt(0)}</div>
+  1295→                              )}
+  1296→                              <div>
+  1297→                                <p className="font-serif font-semibold text-sm">{mkr.name}</p>
+  1298→                                <p className="text-[10px] font-mono text-muted-foreground">{mkr.slug}</p>
+  1299→                              </div>
+  1300→                            </div>
+  1301→                          </td>
+  1302→                          <td className={`${tdCls} text-sm text-muted-foreground hidden md:table-cell`}>{mkr.discipline}</td>
+  1303→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{mkr.location}</td>
+  1304→                          <td className={`${tdCls}`}>
+  1305→                            <div className="flex justify-center">
+  1306→                              {mkr.isFeatured ? <Star className="h-4 w-4 text-gold" fill="currentColor" /> : <span className="text-muted-foreground/30">—</span>}
+  1307→                            </div>
+  1308→                          </td>
+  1309→                          <td className={`${tdCls} text-right`}>
+  1310→                            <div className="flex items-center justify-end gap-1">
+  1311→                              <button onClick={() => openMkrEdit(mkr)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+  1312→                              <button onClick={() => deleteMkr(mkr.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+  1313→                            </div>
+  1314→                          </td>
+  1315→                        </tr>
+  1316→                      ))}
+  1317→                    </tbody>
+  1318→                  </table>
+  1319→                </div>
+  1320→              </div>
+  1321→            </div>
+  1322→          )}
+  1323→
+  1324→          {/* ═══════════════════ AUTHORS ═══════════════════ */}
+  1325→          {activeTab === 'authors' && (
+  1326→            <div className="animate-fadeIn">
+  1327→              <div className="flex items-center justify-between mb-6">
+  1328→                <div>
+  1329→                  <h2 className="font-serif text-2xl font-bold">Authors ({authors.length})</h2>
+  1330→                  <p className="text-sm text-muted-foreground mt-1">Writers, editors, and contributors</p>
+  1331→                </div>
+  1332→                <Button onClick={openAutCreate} className="gap-2"><Plus className="h-4 w-4" /> New Author</Button>
+  1333→              </div>
+  1334→              <div className="border border-border rounded-xl overflow-hidden">
+  1335→                <div className="overflow-x-auto">
+  1336→                  <table className="w-full">
+  1337→                    <thead>
+  1338→                      <tr className="bg-secondary/50 border-b border-border">
+  1339→                        <th className={thCls}>Name</th>
+  1340→                        <th className={`${thCls} hidden md:table-cell`}>Role</th>
+  1341→                        <th className={`${thCls} hidden lg:table-cell`}>Articles</th>
+  1342→                        <th className={`${thCls} text-right`}>Actions</th>
+  1343→                      </tr>
+  1344→                    </thead>
+  1345→                    <tbody>
+  1346→                      {authors.map(aut => (
+  1347→                        <tr key={aut.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+  1348→                          <td className={tdCls}>
+  1349→                            <div className="flex items-center gap-2">
+  1350→                              {aut.avatar ? (
+  1351→                                <img src={aut.avatar} alt={aut.name} className="h-7 w-7 rounded-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+  1352→                              ) : (
+  1353→                                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">{aut.name.charAt(0)}</div>
+  1354→                              )}
+  1355→                              <div>
+  1356→                                <p className="font-serif font-semibold text-sm">{aut.name}</p>
+  1357→                                <p className="text-[10px] font-mono text-muted-foreground">{aut.slug}</p>
+  1358→                              </div>
+  1359→                            </div>
+  1360→                          </td>
+  1361→                          <td className={`${tdCls} hidden md:table-cell`}>
+  1362→                            <Badge variant="outline" className="text-[10px]">{aut.role}</Badge>
+  1363→                          </td>
+  1364→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{aut._count?.articles || 0}</td>
+  1365→                          <td className={`${tdCls} text-right`}>
+  1366→                            <div className="flex items-center justify-end gap-1">
+  1367→                              <button onClick={() => openAutEdit(aut)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+  1368→                              <button onClick={() => deleteAut(aut.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+  1369→                            </div>
+  1370→                          </td>
+  1371→                        </tr>
+  1372→                      ))}
+  1373→                    </tbody>
+  1374→                  </table>
+  1375→                </div>
+  1376→              </div>
+  1377→            </div>
+  1378→          )}
+  1379→
+  1380→          {/* ═══════════════════ CATEGORIES ═══════════════════ */}
+  1381→          {activeTab === 'categories' && (
+  1382→            <div className="animate-fadeIn">
+  1383→              <div className="flex items-center justify-between mb-6">
+  1384→                <div>
+  1385→                  <h2 className="font-serif text-2xl font-bold">Categories ({categories.length})</h2>
+  1386→                  <p className="text-sm text-muted-foreground mt-1">Organize your content sections</p>
+  1387→                </div>
+  1388→                <Button onClick={openCatCreate} className="gap-2"><Plus className="h-4 w-4" /> New Category</Button>
+  1389→              </div>
+  1390→              <div className="border border-border rounded-xl overflow-hidden">
+  1391→                <div className="overflow-x-auto">
+  1392→                  <table className="w-full">
+  1393→                    <thead>
+  1394→                      <tr className="bg-secondary/50 border-b border-border">
+  1395→                        <th className={thCls}>Color</th>
+  1396→                        <th className={thCls}>Name</th>
+  1397→                        <th className={`${thCls} hidden md:table-cell`}>Slug</th>
+  1398→                        <th className={`${thCls} hidden lg:table-cell`}>Articles</th>
+  1399→                        <th className={`${thCls} hidden lg:table-cell`}>Events</th>
+  1400→                        <th className={`${thCls} text-right`}>Actions</th>
+  1401→                      </tr>
+  1402→                    </thead>
+  1403→                    <tbody>
+  1404→                      {categories.map(cat => (
+  1405→                        <tr key={cat.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+  1406→                          <td className={tdCls}>
+  1407→                            <div className="h-6 w-6 rounded-full border border-border" style={{ backgroundColor: cat.color }} />
+  1408→                          </td>
+  1409→                          <td className={tdCls}>
+  1410→                            <p className="font-serif font-semibold text-sm">{cat.name}</p>
+  1411→                          </td>
+  1412→                          <td className={`${tdCls} font-mono text-sm text-muted-foreground hidden md:table-cell`}>{cat.slug}</td>
+  1413→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{cat._count?.articles || 0}</td>
+  1414→                          <td className={`${tdCls} text-sm text-muted-foreground hidden lg:table-cell`}>{cat._count?.events || 0}</td>
+  1415→                          <td className={`${tdCls} text-right`}>
+  1416→                            <div className="flex items-center justify-end gap-1">
+  1417→                              <button onClick={() => openCatEdit(cat)} className={actionBtnCls} title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+  1418→                              <button onClick={() => deleteCat(cat.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+  1419→                            </div>
+  1420→                          </td>
+  1421→                        </tr>
+  1422→                      ))}
+  1423→                    </tbody>
+  1424→                  </table>
+  1425→                </div>
+  1426→              </div>
+  1427→            </div>
+  1428→          )}
+  1429→
+  1430→          {/* ═══════════════════ SUBSCRIBERS ═══════════════════ */}
+  1431→          {activeTab === 'media' && (
+  1432→            <div className="animate-fadeIn">
+  1433→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+  1434→                <div>
+  1435→                  <h2 className="font-serif text-2xl font-bold">Media Library{mediaTotal > 0 ? ` (${mediaTotal})` : ''}</h2>
+  1436→                  <p className="text-sm text-muted-foreground mt-1">Upload, browse, and manage CDN images</p>
+  1437→                </div>
+  1438→                <div className="flex items-center gap-2">
+  1439→                  <Select value={mediaUploadFolder} onValueChange={v => setMediaUploadFolder(v as CDNFolder)}>
+  1440→                    <SelectTrigger className="w-32 text-xs h-9"><SelectValue /></SelectTrigger>
+  1441→                    <SelectContent>
+  1442→                      {CDN_FOLDERS.map(f => <SelectItem key={f} value={f} className="text-xs capitalize">{f}</SelectItem>)}
+  1443→                    </SelectContent>
+  1444→                  </Select>
+  1445→                  <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer">
+  1446→                    {mediaUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+  1447→                    {mediaUploading ? 'Uploading…' : 'Upload'}
+  1448→                    <input type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml,image/avif" onChange={handleMediaUpload} disabled={mediaUploading} className="hidden" />
+  1449→                  </label>
+  1450→                </div>
+  1451→              </div>
+  1452→
+  1453→              {/* Filters */}
+  1454→              <div className="flex flex-col sm:flex-row gap-3 mb-6">
+  1455→                <div className="relative flex-1">
+  1456→                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+  1457→                  <Input value={mediaSearch} onChange={e => { setMediaSearch(e.target.value); setMediaPage(1) }} placeholder="Search files…" className="pl-9 text-sm" />
+  1458→                </div>
+  1459→                <div className="flex gap-1.5 flex-wrap">
+  1460→                  <button onClick={() => { setMediaFolder(''); setMediaPage(1) }} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${mediaFolder === '' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}>All</button>
+  1461→                  {CDN_FOLDERS.map(f => (
+  1462→                    <button key={f} onClick={() => { setMediaFolder(f); setMediaPage(1) }} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize ${mediaFolder === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}>{f}</button>
+  1463→                  ))}
+  1464→                </div>
+  1465→              </div>
+  1466→
+  1467→              {/* Grid */}
+  1468→              {mediaLoading ? (
+  1469→                <div className="flex items-center justify-center py-24 text-muted-foreground">
+  1470→                  <Loader2 className="h-5 w-5 animate-spin mr-3" /> Loading media…
+  1471→                </div>
+  1472→              ) : mediaFiles.length === 0 ? (
+  1473→                <div className="flex flex-col items-center justify-center py-24 text-center">
+  1474→                  <ImageIcon className="h-12 w-12 text-muted-foreground/20 mb-4" />
+  1475→                  <p className="text-sm font-medium text-muted-foreground">No media files found</p>
+  1476→                  <p className="text-xs text-muted-foreground/60 mt-1">Upload images or change the folder filter</p>
+  1477→                </div>
+  1478→              ) : (
+  1479→                <>
+  1480→                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+  1481→                    {mediaFiles.map(file => (
+  1482→                      <div key={file.path} className="group relative rounded-xl overflow-hidden border border-border bg-secondary aspect-square">
+  1483→                        <img src={file.url} alt={file.filename} className="w-full h-full object-cover" loading="lazy" />
+  1484→                        {/* Hover overlay */}
+  1485→                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
+  1486→                          <p className="text-[10px] font-mono text-white truncate mb-1">{file.filename}</p>
+  1487→                          <p className="text-[9px] text-white/60 font-mono">{formatSize(file.size)}</p>
+  1488→                        </div>
+  1489→                        {/* Action buttons */}
+  1490→                        <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+  1491→                          <button onClick={() => copyToClipboard(file.url)} className="p-1.5 rounded-md bg-black/60 text-white hover:bg-black/80 transition-colors" title="Copy URL">
+  1492→                            {copiedUrl === file.url ? <Check className="h-3 w-3 text-green-400" /> : <Copy className="h-3 w-3" />}
+  1493→                          </button>
+  1494→                          <button onClick={() => setMediaPreview(file)} className="p-1.5 rounded-md bg-black/60 text-white hover:bg-black/80 transition-colors" title="Preview">
+  1495→                            <Eye className="h-3 w-3" />
+  1496→                          </button>
+  1497→                          <button onClick={() => handleMediaDelete(file)} disabled={mediaDeleting === file.path} className="p-1.5 rounded-md bg-black/60 text-white hover:bg-red-600 transition-colors" title="Delete">
+  1498→                            {mediaDeleting === file.path ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+  1499→                          </button>
+  1500→                        </div>
+  1501→                      </div>
+  1502→                    ))}
+  1503→                  </div>
+  1504→
+  1505→                  {/* Pagination */}
+  1506→                  {mediaTotalPages > 1 && (
+  1507→                    <div className="flex items-center justify-center gap-2 mt-8">
+  1508→                      <button onClick={() => setMediaPage(p => Math.max(1, p - 1))} disabled={mediaPage <= 1} className="px-3 py-1.5 rounded-lg text-xs bg-secondary hover:bg-secondary/80 disabled:opacity-40 transition-colors">Prev</button>
+  1509→                      <span className="text-xs text-muted-foreground font-mono">Page {mediaPage} of {mediaTotalPages}</span>
+  1510→                      <button onClick={() => setMediaPage(p => Math.min(mediaTotalPages, p + 1))} disabled={mediaPage >= mediaTotalPages} className="px-3 py-1.5 rounded-lg text-xs bg-secondary hover:bg-secondary/80 disabled:opacity-40 transition-colors">Next</button>
+  1511→                    </div>
+  1512→                  )}
+  1513→                </>
+  1514→              )}
+  1515→            </div>
+  1516→          )}
+  1517→
+  1518→          {/* Image Preview Modal */}
+  1519→          {mediaPreview && (
+  1520→            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setMediaPreview(null)}>
+  1521→              <div className="relative max-w-4xl w-[92vw] max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+  1522→                <div className="flex items-center justify-between mb-3">
+  1523→                  <div>
+  1524→                    <p className="text-sm font-medium text-white truncate max-w-[60vw]">{mediaPreview.filename}</p>
+  1525→                    <p className="text-[10px] font-mono text-white/50">{mediaPreview.path} · {formatSize(mediaPreview.size)}</p>
+  1526→                  </div>
+  1527→                  <div className="flex items-center gap-2">
+  1528→                    <button onClick={() => copyToClipboard(mediaPreview.url)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/10 text-white text-xs hover:bg-white/20 transition-colors">
+  1529→                      {copiedUrl === mediaPreview.url ? <><Check className="h-3 w-3 text-green-400" /> Copied</> : <><Copy className="h-3 w-3" /> Copy URL</>}
+  1530→                    </button>
+  1531→                    <button onClick={() => setMediaPreview(null)} className="p-1.5 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors">
+  1532→                      <X className="h-5 w-5" />
+  1533→                    </button>
+  1534→                  </div>
+  1535→                </div>
+  1536→                <div className="flex-1 overflow-hidden rounded-xl">
+  1537→                  <img src={mediaPreview.url} alt={mediaPreview.filename} className="w-full h-full max-h-[75vh] object-contain rounded-xl" />
+  1538→                </div>
+  1539→              </div>
+  1540→            </div>
+  1541→          )}
+  1542→
+  1543→          {activeTab === 'subscribers' && (
+  1544→            <div className="animate-fadeIn">
+  1545→              <div className="mb-6">
+  1546→                <h2 className="font-serif text-2xl font-bold">Newsletter Subscribers ({subscribers.length})</h2>
+  1547→                <p className="text-sm text-muted-foreground mt-1">Manage your mailing list</p>
+  1548→              </div>
+  1549→              <div className="border border-border rounded-xl overflow-hidden">
+  1550→                <div className="overflow-x-auto">
+  1551→                  <table className="w-full">
+  1552→                    <thead>
+  1553→                      <tr className="bg-secondary/50 border-b border-border">
+  1554→                        <th className={thCls}>Name</th>
+  1555→                        <th className={thCls}>Email</th>
+  1556→                        <th className={`${thCls} hidden md:table-cell`}>Subscribed</th>
+  1557→                        <th className={`${thCls} text-right`}>Actions</th>
+  1558→                      </tr>
+  1559→                    </thead>
+  1560→                    <tbody>
+  1561→                      {subscribers.map(sub => (
+  1562→                        <tr key={sub.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+  1563→                          <td className={tdCls}>
+  1564→                            <p className="font-serif font-semibold text-sm">{sub.name || '—'}</p>
+  1565→                          </td>
+  1566→                          <td className={tdCls}>
+  1567→                            <p className="font-mono text-sm text-muted-foreground">{sub.email}</p>
+  1568→                          </td>
+  1569→                          <td className={`${tdCls} text-sm text-muted-foreground hidden md:table-cell`}>{fmtDate(sub.createdAt)}</td>
+  1570→                          <td className={`${tdCls} text-right`}>
+  1571→                            <div className="flex items-center justify-end gap-1">
+  1572→                              <button onClick={() => deleteSub(sub.id)} className={`${actionBtnCls} hover:bg-destructive/10 hover:text-destructive`} title="Remove"><Trash2 className="h-3.5 w-3.5" /></button>
+  1573→                            </div>
+  1574→                          </td>
+  1575→                        </tr>
+  1576→                      ))}
+  1577→                    </tbody>
+  1578→                  </table>
+  1579→                </div>
+  1580→              </div>
+  1581→            </div>
+  1582→          )}
+  1583→        </main>
+  1584→      </div>
+  1585→
+  1586→      {/* ═══════════════════ DIALOGS ═══════════════════ */}
+  1587→
+  1588→      {/* Article edit now uses full-page tab (edit-article) — no dialog */}
+  1589→
+  1590→      {/* Event Dialog */}
+  1591→      <Dialog open={evtDialog} onOpenChange={setEvtDialog}>
+  1592→        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+  1593→          <DialogHeader>
+  1594→            <DialogTitle className="font-serif text-xl">{evtEdit ? 'Edit Event' : 'New Event'}</DialogTitle>
+  1595→          </DialogHeader>
+  1596→          <div className="space-y-4">
+  1597→            <div>
+  1598→              <label className={labelCls}>Title *</label>
+  1599→              <Input value={evtTitle} onChange={e => setEvtTitle(e.target.value)} placeholder="Event title" />
+  1600→            </div>
+  1601→            <div>
+  1602→              <label className={labelCls}>Description</label>
+  1603→              <Textarea value={evtDesc} onChange={e => setEvtDesc(e.target.value)} placeholder="Event description..." rows={3} />
+  1604→            </div>
+  1605→            <div className="grid grid-cols-2 gap-4">
+  1606→              <div>
+  1607→                <label className={labelCls}>Date *</label>
+  1608→                <Input type="datetime-local" value={evtDate} onChange={e => setEvtDate(e.target.value)} />
+  1609→              </div>
+  1610→              <div>
+  1611→                <label className={labelCls}>End Date (optional)</label>
+  1612→                <Input type="datetime-local" value={evtEndDate} onChange={e => setEvtEndDate(e.target.value)} />
+  1613→              </div>
+  1614→            </div>
+  1615→            <div className="grid grid-cols-2 gap-4">
+  1616→              <div>
+  1617→                <label className={labelCls}>Venue *</label>
+  1618→                <Input value={evtVenue} onChange={e => setEvtVenue(e.target.value)} placeholder="Venue name" />
+  1619→              </div>
+  1620→              <div>
+  1621→                <label className={labelCls}>City *</label>
+  1622→                <Input value={evtCity} onChange={e => setEvtCity(e.target.value)} placeholder="Nairobi" />
+  1623→              </div>
+  1624→            </div>
+  1625→            <div>
+  1626→              <label className={labelCls}>Category</label>
+  1627→              <Input value={evtCategory} onChange={e => setEvtCategory(e.target.value)} placeholder="e.g. Exhibition, Workshop, Concert" />
+  1628→            </div>
+  1629→            <ImageUpload
+  1630→              value={evtImageUrl}
+  1631→              onChange={setEvtImageUrl}
+  1632→              folder="events"
+  1633→              label="Event Image"
+  1634→              placeholder="Upload or paste a CDN URL…"
+  1635→            />
+  1636→            <div>
+  1637→              <label className={labelCls}>Ticket URL</label>
+  1638→              <Input value={evtTicketUrl} onChange={e => setEvtTicketUrl(e.target.value)} placeholder="https://ticketsite.com/..." className="font-mono text-sm" />
+  1639→            </div>
+  1640→            <div className="flex items-center justify-between">
+  1641→              <div className="flex items-center gap-2">
+  1642→                <Switch checked={evtFeatured} onCheckedChange={setEvtFeatured} />
+  1643→                <label className={labelCls + ' mb-0'}>Featured</label>
+  1644→              </div>
+  1645→              <div className="flex items-center gap-2">
+  1646→                <Switch checked={evtPast} onCheckedChange={setEvtPast} />
+  1647→                <label className={labelCls + ' mb-0'}>Past Event</label>
+  1648→              </div>
+  1649→            </div>
+  1650→            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+  1651→              <Button variant="outline" onClick={() => setEvtDialog(false)}>Cancel</Button>
+  1652→              <Button onClick={saveEvt} disabled={evtSaving || !evtTitle || !evtDate || !evtVenue || !evtCity} className="font-mono text-xs">
+  1653→                {evtSaving ? 'Saving...' : evtEdit ? 'Update' : 'Create Event'}
+  1654→              </Button>
+  1655→            </div>
+  1656→          </div>
+  1657→        </DialogContent>
+  1658→      </Dialog>
+  1659→
+  1660→      {/* Maker Dialog */}
+  1661→      <Dialog open={mkrDialog} onOpenChange={setMkrDialog}>
+  1662→        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+  1663→          <DialogHeader>
+  1664→            <DialogTitle className="font-serif text-xl">{mkrEdit ? 'Edit Maker' : 'New Maker'}</DialogTitle>
+  1665→          </DialogHeader>
+  1666→          <div className="space-y-4">
+  1667→            <div className="grid grid-cols-2 gap-4">
+  1668→              <div>
+  1669→                <label className={labelCls}>Name *</label>
+  1670→                <Input value={mkrName} onChange={e => { setMkrName(e.target.value); if (!mkrEdit) setMkrSlug(slugify(e.target.value)) }} placeholder="Maker name" />
+  1671→              </div>
+  1672→              <div>
+  1673→                <label className={labelCls}>Slug *</label>
+  1674→                <Input value={mkrSlug} onChange={e => setMkrSlug(e.target.value)} placeholder="maker-slug" className="font-mono" />
+  1675→              </div>
+  1676→            </div>
+  1677→            <div>
+  1678→              <label className={labelCls}>Discipline *</label>
+  1679→              <Input value={mkrDiscipline} onChange={e => setMkrDiscipline(e.target.value)} placeholder="e.g. Ceramicist, Painter, Sculptor" />
+  1680→            </div>
+  1681→            <div>
+  1682→              <label className={labelCls}>Bio</label>
+  1683→              <Textarea value={mkrBio} onChange={e => setMkrBio(e.target.value)} placeholder="Biography..." rows={3} />
+  1684→            </div>
+  1685→            <div>
+  1686→              <label className={labelCls}>Location</label>
+  1687→              <Input value={mkrLocation} onChange={e => setMkrLocation(e.target.value)} placeholder="Nairobi, Kenya" />
+  1688→            </div>
+  1689→            <div className="grid grid-cols-2 gap-4">
+  1690→              <div>
+  1691→                <label className={labelCls}>Website</label>
+  1692→                <Input value={mkrWebsite} onChange={e => setMkrWebsite(e.target.value)} placeholder="https://..." className="font-mono text-sm" />
+  1693→              </div>
+  1694→              <div>
+  1695→                <label className={labelCls}>Instagram</label>
+  1696→                <Input value={mkrInstagram} onChange={e => setMkrInstagram(e.target.value)} placeholder="@handle" className="font-mono text-sm" />
+  1697→              </div>
+  1698→            </div>
+  1699→            <div>
+  1700→              <label className={labelCls}>Twitter / X</label>
+  1701→              <Input value={mkrTwitter} onChange={e => setMkrTwitter(e.target.value)} placeholder="@handle" className="font-mono text-sm" />
+  1702→            </div>
+  1703→            <div className="flex items-center gap-2">
+  1704→              <Switch checked={mkrFeatured} onCheckedChange={setMkrFeatured} />
+  1705→              <label className={labelCls + ' mb-0'}>Featured</label>
+  1706→            </div>
+  1707→            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+  1708→              <Button variant="outline" onClick={() => setMkrDialog(false)}>Cancel</Button>
+  1709→              <Button onClick={saveMkr} disabled={mkrSaving || !mkrName || !mkrSlug || !mkrDiscipline} className="font-mono text-xs">
+  1710→                {mkrSaving ? 'Saving...' : mkrEdit ? 'Update' : 'Create Maker'}
+  1711→              </Button>
+  1712→            </div>
+  1713→          </div>
+  1714→        </DialogContent>
+  1715→      </Dialog>
+  1716→
+  1717→      {/* Author Dialog */}
+  1718→      <Dialog open={autDialog} onOpenChange={setAutDialog}>
+  1719→        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+  1720→          <DialogHeader>
+  1721→            <DialogTitle className="font-serif text-xl">{autEdit ? 'Edit Author' : 'New Author'}</DialogTitle>
+  1722→          </DialogHeader>
+  1723→          <div className="space-y-4">
+  1724→            <div className="grid grid-cols-2 gap-4">
+  1725→              <div>
+  1726→                <label className={labelCls}>Name *</label>
+  1727→                <Input value={autName} onChange={e => { setAutName(e.target.value); if (!autEdit) setAutSlug(slugify(e.target.value)) }} placeholder="Author name" />
+  1728→              </div>
+  1729→              <div>
+  1730→                <label className={labelCls}>Slug *</label>
+  1731→                <Input value={autSlug} onChange={e => setAutSlug(e.target.value)} placeholder="author-slug" className="font-mono" />
+  1732→              </div>
+  1733→            </div>
+  1734→            <div>
+  1735→              <label className={labelCls}>Role</label>
+  1736→              <Select value={autRole} onValueChange={setAutRole}>
+  1737→                <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+  1738→                <SelectContent>
+  1739→                  <SelectItem value="Writer">Writer</SelectItem>
+  1740→                  <SelectItem value="Editor">Editor</SelectItem>
+  1741→                  <SelectItem value="Contributor">Contributor</SelectItem>
+  1742→                  <SelectItem value="Columnist">Columnist</SelectItem>
+  1743→                </SelectContent>
+  1744→              </Select>
+  1745→            </div>
+  1746→            <div>
+  1747→              <label className={labelCls}>Bio</label>
+  1748→              <Textarea value={autBio} onChange={e => setAutBio(e.target.value)} placeholder="Author biography..." rows={3} />
+  1749→            </div>
+  1750→            <ImageUpload
+  1751→              value={autAvatar}
+  1752→              onChange={setAutAvatar}
+  1753→              folder="profiles"
+  1754→              label="Avatar"
+  1755→              previewClass="aspect-square w-16 h-16 rounded-full"
+  1756→              placeholder="Upload or paste a CDN URL…"
+  1757→            />
+  1758→            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+  1759→              <Button variant="outline" onClick={() => setAutDialog(false)}>Cancel</Button>
+  1760→              <Button onClick={saveAut} disabled={autSaving || !autName || !autSlug} className="font-mono text-xs">
+  1761→                {autSaving ? 'Saving...' : autEdit ? 'Update' : 'Create Author'}
+  1762→              </Button>
+  1763→            </div>
+  1764→          </div>
+  1765→        </DialogContent>
+  1766→      </Dialog>
+  1767→
+  1768→      {/* Category Dialog */}
+  1769→      <Dialog open={catDialog} onOpenChange={setCatDialog}>
+  1770→        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+  1771→          <DialogHeader>
+  1772→            <DialogTitle className="font-serif text-xl">{catEdit ? 'Edit Category' : 'New Category'}</DialogTitle>
+  1773→          </DialogHeader>
+  1774→          <div className="space-y-4">
+  1775→            <div className="grid grid-cols-2 gap-4">
+  1776→              <div>
+  1777→                <label className={labelCls}>Name *</label>
+  1778→                <Input value={catName} onChange={e => { setCatName(e.target.value); if (!catEdit) setCatSlug(slugify(e.target.value)) }} placeholder="Category name" />
+  1779→              </div>
+  1780→              <div>
+  1781→                <label className={labelCls}>Slug *</label>
+  1782→                <Input value={catSlug} onChange={e => setCatSlug(e.target.value)} placeholder="category-slug" className="font-mono" />
+  1783→              </div>
+  1784→            </div>
+  1785→            <div>
+  1786→              <label className={labelCls}>Description</label>
+  1787→              <Textarea value={catDescription} onChange={e => setCatDescription(e.target.value)} placeholder="Category description..." rows={2} />
+  1788→            </div>
+  1789→            <div>
+  1790→              <label className={labelCls}>Color</label>
+  1791→              <div className="flex items-center gap-3">
+  1792→                <input type="color" value={catColor} onChange={e => setCatColor(e.target.value)} className="h-10 w-10 rounded-md border border-border cursor-pointer p-0" />
+  1793→                <Input value={catColor} onChange={e => setCatColor(e.target.value)} placeholder="#8B2252" className="font-mono text-sm w-32" />
+  1794→              </div>
+  1795→            </div>
+  1796→            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+  1797→              <Button variant="outline" onClick={() => setCatDialog(false)}>Cancel</Button>
+  1798→              <Button onClick={saveCat} disabled={catSaving || !catName || !catSlug} className="font-mono text-xs">
+  1799→                {catSaving ? 'Saving...' : catEdit ? 'Update' : 'Create Category'}
+  1800→              </Button>
+  1801→            </div>
+  1802→          </div>
+  1803→        </DialogContent>
+  1804→      </Dialog>
+  1805→    </div>
+  1806→  )
+  1807→}

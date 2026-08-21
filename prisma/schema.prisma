@@ -19,6 +19,17 @@ model Category {
   createdAt   DateTime  @default(now())
 }
 
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      String   @default("editor") // 'admin' | 'editor'
+  authorId  String?  @unique
+  author    Author?  @relation("AuthorUser", fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Author {
   id        String    @id @default(cuid())
   name      String
@@ -27,6 +38,7 @@ model Author {
   avatar    String
   role      String
   articles  Article[]
+  user      User?    @relation("AuthorUser")
   createdAt DateTime  @default(now())
 }
 
